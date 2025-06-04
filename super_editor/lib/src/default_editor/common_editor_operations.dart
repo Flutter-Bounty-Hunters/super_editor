@@ -100,8 +100,7 @@ class CommonEditorOperations {
   }) {
     DocumentPosition? position;
     if (findNearestPosition) {
-      position = documentLayoutResolver()
-          .getDocumentPositionNearestToOffset(documentOffset);
+      position = documentLayoutResolver().getDocumentPositionNearestToOffset(documentOffset);
     } else {
       position = documentLayoutResolver().getDocumentPositionAtOffset(documentOffset);
     }
