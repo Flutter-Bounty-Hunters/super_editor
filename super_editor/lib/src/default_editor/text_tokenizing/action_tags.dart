@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:attributed_text/attributed_text.dart';
 import 'package:characters/characters.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
@@ -323,6 +324,17 @@ class ActionTagComposingReaction extends EditReaction {
       _cancelComposingTag(requestDispatcher);
       editorContext.composingActionTag.value = null;
       _onUpdateComposingActionTag(null);
+      return;
+    }
+
+    final hasComposingTagAttribution = textNode!.text
+        .getAttributionSpansInRange(
+          attributionFilter: (attribution) => attribution == actionTagComposingAttribution,
+          range: SpanRange(tagAroundPosition.indexedTag.startOffset, tagAroundPosition.indexedTag.endOffset),
+        )
+        .isNotEmpty;
+    if (changeList.none((event) => event is DocumentEdit) && !hasComposingTagAttribution) {
+      // The user is neither typing nor moving the caret within an existing composing tag.
       return;
     }
 
