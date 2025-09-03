@@ -62,6 +62,7 @@ export 'src/default_editor/text_tokenizing/tags.dart';
 export 'src/default_editor/text_tokenizing/stable_tags.dart';
 export 'src/default_editor/spelling_and_grammar/spelling_and_grammar_styler.dart';
 export 'src/default_editor/unknown_component.dart';
+export 'src/undo_redo.dart';
 
 // Document operations used by SuperEditor and/or SuperReader,
 // also made available for public use.
