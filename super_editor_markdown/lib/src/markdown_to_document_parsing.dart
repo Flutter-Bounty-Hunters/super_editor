@@ -434,17 +434,28 @@ class _MarkdownToDocument implements md.NodeVisitor {
 
   void _addTask(md.Element element) {
     bool checked = false;
+    var text = '';
     if (element.children != null && //
         element.children!.isNotEmpty &&
         element.children!.first is md.Element &&
         (element.children!.first as md.Element).tag == 'input') {
       checked = (element.children!.first as md.Element).attributes['checked'] == 'true';
+      text = element.textContent;
+    } else if (element.children != null &&
+        element.children!.isNotEmpty &&
+        (element.children!.first as md.Element).tag == 'p' &&
+        (element.children!.first as md.Element).children != null &&
+        (element.children!.first as md.Element).children!.isNotEmpty &&
+        ((element.children!.first as md.Element).children!.first as md.Element).tag == 'input') {
+      checked = ((element.children!.first as md.Element).children!.first as md.Element).attributes['checked'] == 'true';
+      var [_, ...rest] = (element.children!.first as md.Element).children!;
+      text = rest.map((e) => e.textContent).join('\n');
     }
 
     _content.add(
       TaskNode(
         id: Editor.createNodeId(),
-        text: _parseInlineText(element.textContent),
+        text: _parseInlineText(text),
         isComplete: checked,
       ),
     );
