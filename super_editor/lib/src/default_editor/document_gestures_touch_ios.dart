@@ -1517,9 +1517,10 @@ class SuperEditorIosToolbarOverlayManagerState extends State<SuperEditorIosToolb
 
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // There's some stupid Flutter error that happens without this post frame callback
-      // where the error is "OverlayPortalController.show() should not be called during build.".
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show()` during build.
+    onNextFrame((timeStamp) {
       _overlayPortalController.show();
     });
   }
@@ -1584,9 +1585,10 @@ class SuperEditorIosMagnifierOverlayManagerState extends State<SuperEditorIosMag
     super.didChangeDependencies();
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // There's some stupid Flutter error that happens without this post frame callback
-      // where the error is "OverlayPortalController.show() should not be called during build.".
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
       _overlayPortalController.show();
     });
   }
