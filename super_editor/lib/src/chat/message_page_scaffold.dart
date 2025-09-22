@@ -327,14 +327,22 @@ class MessagePageElement extends RenderObjectElement {
   @override
   void activate() {
     messagePageElementLog.info('ContentLayersElement - activating');
+    _didActivateSinceLastBuild = false;
     super.activate();
   }
+
+  // Whether this `Element` has been built since the last time `activate()` was run.
+  var _didActivateSinceLastBuild = false;
 
   @override
   void deactivate() {
     messagePageElementLog.info('ContentLayersElement - deactivating');
+    _didDeactivateSinceLastBuild = false;
     super.deactivate();
   }
+
+  // Whether this `Element` has been built since the last time `deactivate()` was run.
+  bool _didDeactivateSinceLastBuild = false;
 
   @override
   void unmount() {
@@ -389,6 +397,15 @@ class MessagePageElement extends RenderObjectElement {
         );
       }
     });
+
+    // The activation and deactivation processes involve visiting children, which
+    // we must honor, but the visitation happens some time after the actual call
+    // to activate and deactivate. So we remember when activation and deactivation
+    // happened, and now that we've built the `_content`, we clear those flags because
+    // we assume whatever visitation those processes need to do is now done, since
+    // we did a build. To learn more about this situation, look at `visitChildren`.
+    _didActivateSinceLastBuild = false;
+    _didDeactivateSinceLastBuild = false;
   }
 
   @override
@@ -486,17 +503,60 @@ class MessagePageElement extends RenderObjectElement {
       visitor(_bottomSheet!);
     }
 
+    // Building the `_content` is tricky and we're still not sure how to do it
+    // correctly. Originally, we refused to visit `_content` when `WidgetsBinding.instance.locked`
+    // is `true`. The original warning about this was the following:
+    //
     // WARNING: Do not visit content when "locked". If you do, then the pipeline
     // owner will collect that child for rebuild, e.g., for hot reload, and the
     // pipeline owner will tell it to build before the message editor is laid
     // out. We only want the content to build during the layout phase, after the
     // message editor is laid out.
+    //
+    // However, error stacktraces have been showing up for a while whenever the tree
+    // structure adds/removes widgets in the tree. One way to see this was to open the
+    // Flutter debugger and enable the widget selector. This adds the widget selector
+    // widget to tree, and seems to trigger the bug:
+    //
+    //        'package:flutter/src/widgets/framework.dart': Failed assertion: line 6164 pos 14:
+    //        '_dependents.isEmpty': is not true.
+    //
+    // This happens because when this `Element` runs `deactivate()`, its super class visits
+    // all the children to deactivate them, too. When that happens, we're apparently
+    // locked, so we weren't visiting `_content`. This resulted in an error for any
+    // `_content` subtree widget that setup an `InheritedWidget` dependency, because
+    // that dependency didn't have a chance to release.
+    //
+    // To deal with deactivation, I tried adding a flag during deactivation so that
+    // we visit `_content` during deactivation. I then discovered that the visitation
+    // related to deactivation happens sometime after the call to `deactivate()`. So instead
+    // of only allowing visitation during `deactivate()`, I tracked whether this `Element`
+    // was in a deactivated state, and allowed visitation when in a deactivated state.
+    //
+    // I then found that there's a similar issue during `activate()`. This also needs to
+    // recursively activate the subtree `Element`s, sometime after the call to `activate()`.
+    // Therefore, whether activated or deactivated, we need to allow visitation, but we're
+    // always either activated or deactivated, so this approach needed to be further adjusted.
+    //
+    // Presently, when `activate()` or `deactivate()` runs, a flag is set for each one.
+    // When either of those flags are `true`, we allow visitation. We reset those flags
+    // during the building of `_content`, as a way to recognize when the activation or
+    // deactivation process must be finished.
+    //
+    // For reference, when hot restarting or hot reloading if we don't enable visitation
+    // during activation, we get the following error:
+    //
+    //    The following assertion was thrown during performLayout():
+    //    'package:flutter/src/widgets/framework.dart': Failed assertion: line 4323 pos 7: '_lifecycleState ==
+    //     _ElementLifecycle.active &&
+    //           newWidget != widget &&
+    //           Widget.canUpdate(widget, newWidget)': is not true.
 
     // FIXME: locked is supposed to be private. We're using it as a proxy
     //        indication for when the build owner wants to build. Find an
     //        appropriate way to distinguish this.
     // ignore: invalid_use_of_protected_member
-    if (!WidgetsBinding.instance.locked) {
+    if (!WidgetsBinding.instance.locked || !_didActivateSinceLastBuild || !_didDeactivateSinceLastBuild) {
       if (_content != null) {
         visitor(_content!);
       }
@@ -811,7 +871,6 @@ class RenderMessagePageScaffold extends RenderBox {
 
   @override
   void detach() {
-    // print("detach()'ing RenderChatScaffold from pipeline");
     // IMPORTANT: we must detach ourselves before detaching our children.
     // This is a Flutter framework requirement.
     super.detach();

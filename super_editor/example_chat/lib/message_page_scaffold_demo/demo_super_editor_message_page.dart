@@ -81,6 +81,14 @@ class _ChatThread extends StatelessWidget {
       //   message appears at the bottom, and you want to retain the
       //   scroll offset near the newest messages, not the oldest.
       itemBuilder: (context, index) {
+        if (index == 8) {
+          return TextField(
+            decoration: InputDecoration(
+              hintText: "Content text field...",
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Material(
@@ -121,12 +129,6 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
   void initState() {
     super.initState();
 
-    print("Editor bottom sheet scroll controller: ${_scrollController.hashCode}");
-    _scrollController.addListener(() {
-      print(
-          "Scroll controller change - scroll offset: ${_scrollController.offset}, max scroll: ${_scrollController.position.maxScrollExtent}");
-    });
-
     _editor = createDefaultDocumentEditor(
       document: MutableDocument(
         nodes: [
@@ -134,26 +136,26 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
             id: Editor.createNodeId(),
             text: AttributedText("This is a pre-existing"),
           ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("message"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("It's tall for quick"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("testing of"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("intrinsic height that"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("exceeds available space"),
-          ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("message"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("It's tall for quick"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("testing of"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("intrinsic height that"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("exceeds available space"),
+          // ),
         ],
       ),
       composer: MutableDocumentComposer(),
@@ -244,10 +246,11 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
   Widget _buildSheetContent() {
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.paddingOf(context).bottom,
-        // ^ Avoid the bottom notch when the keyboard is closed.
-      ),
+          // bottom: MediaQuery.paddingOf(context).bottom,
+          // ^ Avoid the bottom notch when the keyboard is closed.
+          ),
       child: BottomSheetEditorHeight(
+        // FIXME: This is where the extra height is coming from
         previewHeight: 72,
         child: _ChatEditor(
           key: _editorKey,
@@ -329,17 +332,6 @@ class _ChatEditorState extends State<_ChatEditor> {
 
     widget.messagePageController.addListener(_onMessagePageControllerChange);
 
-    _editorFocusNode.addListener(() {
-      print(
-          "Editor focus change. Has primary: ${_editorFocusNode.hasPrimaryFocus}. Has non-primary: ${_editorFocusNode.hasFocus}.");
-    });
-
-    widget.scrollController.addListener(() {
-      print("Scroll change to: ${widget.scrollController.offset}");
-      // print("StackTrace:\n${StackTrace.current}");
-      // print("\n\n");
-    });
-
     _isImeConnected.addListener(_onImeConnectionChange);
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardChange);
@@ -360,8 +352,6 @@ class _ChatEditorState extends State<_ChatEditor> {
     SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardChange);
 
     widget.messagePageController.removeListener(_onMessagePageControllerChange);
-
-    widget.scrollController.dispose();
 
     _keyboardPanelController.dispose();
     _isImeConnected.dispose();
@@ -405,6 +395,7 @@ class _ChatEditorState extends State<_ChatEditor> {
       isImeConnected: _isImeConnected,
       toolbarBuilder: (BuildContext context, _Panel? openPanel) {
         return Container(
+          key: ValueKey("Toolbar"),
           width: double.infinity,
           height: 54,
           color: Colors.white.withValues(alpha: 0.3),
@@ -426,25 +417,28 @@ class _ChatEditorState extends State<_ChatEditor> {
         return SizedBox();
       },
       contentBuilder: (BuildContext context, _Panel? openPanel) {
-        return SuperEditorFocusOnTap(
-          editorFocusNode: _editorFocusNode,
-          editor: widget.editor,
-          child: SuperEditorDryLayout(
-            controller: widget.scrollController,
-            superEditor: SuperEditor(
-              key: _editorKey,
-              focusNode: _editorFocusNode,
-              editor: widget.editor,
-              softwareKeyboardController: _softwareKeyboardController,
-              isImeConnected: _isImeConnected,
-              imePolicies: SuperEditorImePolicies(),
-              selectionPolicies: SuperEditorSelectionPolicies(),
-              shrinkWrap: false,
-              stylesheet: _chatStylesheet,
-              componentBuilders: [
-                const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-                ...defaultComponentBuilders,
-              ],
+        return ColoredBox(
+          color: Colors.green,
+          child: SuperEditorFocusOnTap(
+            editorFocusNode: _editorFocusNode,
+            editor: widget.editor,
+            child: SuperEditorDryLayout(
+              controller: widget.scrollController,
+              superEditor: SuperEditor(
+                key: _editorKey,
+                focusNode: _editorFocusNode,
+                editor: widget.editor,
+                softwareKeyboardController: _softwareKeyboardController,
+                isImeConnected: _isImeConnected,
+                imePolicies: SuperEditorImePolicies(),
+                selectionPolicies: SuperEditorSelectionPolicies(),
+                shrinkWrap: false,
+                stylesheet: _chatStylesheet,
+                componentBuilders: [
+                  const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+                  ...defaultComponentBuilders,
+                ],
+              ),
             ),
           ),
         );
@@ -530,6 +524,15 @@ final _chatStylesheet = Stylesheet(
       (doc, docNode) {
         return {
           Styles.padding: const CascadingPadding.only(bottom: 48),
+        };
+      },
+    ),
+    // TODO: Delete this - using to test bottom media query padding
+    StyleRule(
+      BlockSelector.all,
+      (doc, docNode) {
+        return {
+          Styles.padding: const CascadingPadding.only(bottom: 0),
         };
       },
     ),

@@ -643,15 +643,15 @@ Building keyboard scaffold
         return ValueListenableBuilder(
           valueListenable: _currentBottomSpacing,
           builder: (context, currentHeight, child) {
-            if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
-              return const SizedBox.shrink();
-            }
-
             onNextFrame((_) {
               // Ensure that our latest keyboard height/panel height calculations are
               // accounted for in the ancestor safe area after this layout pass.
               _updateSafeArea();
             });
+
+            if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
+              return const SizedBox.shrink();
+            }
 
             return Positioned(
               bottom: 0,
