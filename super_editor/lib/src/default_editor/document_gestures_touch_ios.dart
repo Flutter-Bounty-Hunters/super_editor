@@ -1516,7 +1516,13 @@ class SuperEditorIosToolbarOverlayManagerState extends State<SuperEditorIosToolb
     super.didChangeDependencies();
 
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @visibleForTesting
@@ -1578,7 +1584,13 @@ class SuperEditorIosMagnifierOverlayManagerState extends State<SuperEditorIosMag
   void didChangeDependencies() {
     super.didChangeDependencies();
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @override
