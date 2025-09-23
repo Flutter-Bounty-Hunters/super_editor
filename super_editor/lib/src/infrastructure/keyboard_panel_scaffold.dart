@@ -1195,8 +1195,15 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
     if (_myBoxKey.currentContext != null && _myBoxKey.currentContext!.findRenderObject() != null) {
       final myBox = _myBoxKey.currentContext!.findRenderObject() as RenderBox;
 
+      // TODO: Make this relative to page scope, if available.
       late final double myGlobalBottom;
       try {
+        // If there's an ancestor [KeyboardSafeAreaPageBounds] then it means the user wants to
+        // apply insets relative to those coordinates. If no such ancestor exists, then the user wants
+        // to apply insets relative to the screen coordinates. [KeyboardSafeAreaPageBounds] is
+        // used primarily to deal with cases where pages might animate on/off screen, resulting
+        // in a temporary desire to have the content below the safe area insets.
+        // final maybePageBounds = KeyboardSafeAreaPageBounds.maybeOf(_myBoxKey.currentContext!);
         myGlobalBottom = myBox.localToGlobal(Offset(0, myBox.size.height)).dy;
       } catch (exception) {
         // It was found in a client app that there can be situations where at
@@ -1225,6 +1232,15 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
           "KeyboardScaffoldSafeArea (${widget.debugLabel}) - Tried to measure our global bottom offset on the screen but received a negative y-value from localToGlobal(). If you're able to consistently reproduce this problem, please report it to Super Editor with the repro steps.",
         );
         return 0;
+      }
+
+      final screenHeight = MediaQuery.sizeOf(safeAreaContext).height;
+      if (myGlobalBottom > screenHeight) {
+        // The content is below the bottom of the screen. This can happen, for example, when a
+        // page animates in/out, such as a bottom sheet. While the content is at all below the
+        // bottom of the screen, apply the `bottomInsets` without any adjustment. When the
+        // content is fully onscreen, we can adjust it with `spaceBelowMe`.
+        return bottomInsets;
       }
 
       final spaceBelowMe = MediaQuery.sizeOf(safeAreaContext).height - myGlobalBottom;
@@ -1258,6 +1274,47 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
     }
 
     return bottomInsets;
+  }
+}
+
+/// The bounds around a page that internally uses a [KeyboardScaffoldSafeArea], which
+/// lets [KeyboardScaffoldSafeArea] calculate safe area insets even when the page is
+/// partially offscreen.
+///
+/// ## The Safe Area Insets Problem
+///
+/// For any UI that's guaranteed to be fully on-screen at all times, this widget isn't needed.
+/// The problem this widget addresses is a page that might be partially offscreen, such as
+/// a page that slides up from the bottom (like a bottom sheet). In those cases, trying to
+/// push content up above the screen's bottom insets will almost certainly create a layout
+/// error, because most/all of the page begins below the bottom of the screen.
+///
+/// When this widget is an ancestor of a [KeyboardScaffoldSafeArea], the [KeyboardScaffoldSafeArea]
+/// will apply insets relative to the coordinates of this widget, instead of relative to the
+/// coordinates of the entire screen. As a result, you don't need to worry about [KeyboardScaffoldSafeArea]
+/// pushing content up above the page bounds.
+///
+/// However, because the insets are applied relative to this widget, instead of relative to
+/// the screen, the insets will only look correct if this page eventually ends up bottom-aligned
+/// with the screen. In other words, [KeyboardSafeAreaPageBounds] is useful when working with
+/// navigation animations, or other temporary non-screen alignment, but probably won't have
+/// a desirable result if the page bounds are permanently above or below the bottom of the screen.
+class KeyboardSafeAreaPageBounds extends StatefulWidget {
+  static KeyboardSafeAreaPageBoundsState? maybeOf(BuildContext context) =>
+      context.findAncestorStateOfType<KeyboardSafeAreaPageBoundsState>();
+
+  const KeyboardSafeAreaPageBounds({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<KeyboardSafeAreaPageBounds> createState() => KeyboardSafeAreaPageBoundsState();
+}
+
+class KeyboardSafeAreaPageBoundsState extends State<KeyboardSafeAreaPageBounds> {
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 
