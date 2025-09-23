@@ -216,7 +216,6 @@ void main() {
 
       await tester.tap(find.byType(ElevatedButton));
       await tester.pumpAndSettle();
-      await expectLater(find.byType(MaterialApp), matchesGoldenFile("deleteme.png"));
 
       // Ensure the bottom sheet was actually launched.
       expect(find.byType(MessagePageScaffold), findsOne);
