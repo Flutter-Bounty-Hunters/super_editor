@@ -1227,9 +1227,7 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
         return 0;
       }
 
-      final screenPhysicalHeight =
-          MediaQuery.sizeOf(safeAreaContext).height * MediaQuery.devicePixelRatioOf(safeAreaContext);
-      final spaceBelowMe = screenPhysicalHeight - myGlobalBottom;
+      final spaceBelowMe = MediaQuery.sizeOf(safeAreaContext).height - myGlobalBottom;
 
       // The bottom insets are measured from the bottom of the screen. But we might not
       // be sitting at the bottom of the screen. There might be some space beneath us.
