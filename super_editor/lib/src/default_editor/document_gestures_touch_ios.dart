@@ -1516,7 +1516,12 @@ class SuperEditorIosToolbarOverlayManagerState extends State<SuperEditorIosToolb
     super.didChangeDependencies();
 
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // There's some stupid Flutter error that happens without this post frame callback
+      // where the error is "OverlayPortalController.show() should not be called during build.".
+      _overlayPortalController.show();
+    });
   }
 
   @visibleForTesting
@@ -1578,7 +1583,12 @@ class SuperEditorIosMagnifierOverlayManagerState extends State<SuperEditorIosMag
   void didChangeDependencies() {
     super.didChangeDependencies();
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // There's some stupid Flutter error that happens without this post frame callback
+      // where the error is "OverlayPortalController.show() should not be called during build.".
+      _overlayPortalController.show();
+    });
   }
 
   @override

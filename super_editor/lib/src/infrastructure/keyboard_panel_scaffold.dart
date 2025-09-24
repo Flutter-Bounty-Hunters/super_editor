@@ -643,15 +643,15 @@ Building keyboard scaffold
         return ValueListenableBuilder(
           valueListenable: _currentBottomSpacing,
           builder: (context, currentHeight, child) {
-            if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
-              return const SizedBox.shrink();
-            }
-
             onNextFrame((_) {
               // Ensure that our latest keyboard height/panel height calculations are
               // accounted for in the ancestor safe area after this layout pass.
               _updateSafeArea();
             });
+
+            if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
+              return const SizedBox.shrink();
+            }
 
             return Positioned(
               bottom: 0,
@@ -1225,6 +1225,15 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
           "KeyboardScaffoldSafeArea (${widget.debugLabel}) - Tried to measure our global bottom offset on the screen but received a negative y-value from localToGlobal(). If you're able to consistently reproduce this problem, please report it to Super Editor with the repro steps.",
         );
         return 0;
+      }
+
+      final screenHeight = MediaQuery.sizeOf(safeAreaContext).height;
+      if (myGlobalBottom > screenHeight) {
+        // The content is below the bottom of the screen. This can happen, for example, when a
+        // page animates in/out, such as a bottom sheet. While the content is at all below the
+        // bottom of the screen, apply the `bottomInsets` without any adjustment. When the
+        // content is fully onscreen, we can adjust it with `spaceBelowMe`.
+        return bottomInsets;
       }
 
       final spaceBelowMe = MediaQuery.sizeOf(safeAreaContext).height - myGlobalBottom;

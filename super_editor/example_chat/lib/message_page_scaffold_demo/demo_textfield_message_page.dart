@@ -333,8 +333,6 @@ class _ChatEditorState extends State<_ChatEditor> implements SoftwareKeyboardCon
 
   @override
   Widget build(BuildContext context) {
-    print("BUILD TextField demo");
-    print(" - toolbar visibility: ${_keyboardPanelController.toolbarVisibility}");
     return KeyboardPanelScaffold(
       controller: _keyboardPanelController,
       isImeConnected: _isImeConnected,
@@ -367,6 +365,7 @@ class _ChatEditorState extends State<_ChatEditor> implements SoftwareKeyboardCon
             child: TextField(
               key: _editorKey,
               focusNode: _textFieldFocusNode,
+              scrollController: _scrollController,
               decoration: InputDecoration(
                 hintText: "Write message...",
               ),

@@ -81,6 +81,16 @@ class _ChatThread extends StatelessWidget {
       //   message appears at the bottom, and you want to retain the
       //   scroll offset near the newest messages, not the oldest.
       itemBuilder: (context, index) {
+        if (index == 8) {
+          // Arbitrarily placed text field to test moving focus between a non-editor
+          // and the editor.
+          return TextField(
+            decoration: InputDecoration(
+              hintText: "Content text field...",
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Material(
@@ -120,12 +130,6 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
   @override
   void initState() {
     super.initState();
-
-    print("Editor bottom sheet scroll controller: ${_scrollController.hashCode}");
-    _scrollController.addListener(() {
-      print(
-          "Scroll controller change - scroll offset: ${_scrollController.offset}, max scroll: ${_scrollController.position.maxScrollExtent}");
-    });
 
     _editor = createDefaultDocumentEditor(
       document: MutableDocument(
@@ -329,17 +333,6 @@ class _ChatEditorState extends State<_ChatEditor> {
 
     widget.messagePageController.addListener(_onMessagePageControllerChange);
 
-    _editorFocusNode.addListener(() {
-      print(
-          "Editor focus change. Has primary: ${_editorFocusNode.hasPrimaryFocus}. Has non-primary: ${_editorFocusNode.hasFocus}.");
-    });
-
-    widget.scrollController.addListener(() {
-      print("Scroll change to: ${widget.scrollController.offset}");
-      // print("StackTrace:\n${StackTrace.current}");
-      // print("\n\n");
-    });
-
     _isImeConnected.addListener(_onImeConnectionChange);
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardChange);
@@ -360,8 +353,6 @@ class _ChatEditorState extends State<_ChatEditor> {
     SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardChange);
 
     widget.messagePageController.removeListener(_onMessagePageControllerChange);
-
-    widget.scrollController.dispose();
 
     _keyboardPanelController.dispose();
     _isImeConnected.dispose();
