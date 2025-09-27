@@ -534,6 +534,10 @@ class SuperEditorState extends State<SuperEditor> {
       }
     }
 
+    for (final plugin in widget.plugins) {
+      plugin.detach(widget.editor);
+    }
+
     _iosControlsController.dispose();
     _androidControlsController.dispose();
 
