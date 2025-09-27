@@ -724,5 +724,8 @@ Future<TestDocumentContext> _pumpSingleParagraphApp(WidgetTester tester) async {
       .createDocument()
       // Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor...
       .withSingleParagraph()
+      // It seems that when we have the toolbar visible, we are tapping the toolbar
+      // instead of the handle. So, we add a dummy toolbar to avoid that.
+      .withAndroidToolbarBuilder((context, key, focalPoint) => SizedBox(key: key))
       .pump();
 }

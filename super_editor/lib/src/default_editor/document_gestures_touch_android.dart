@@ -1376,6 +1376,7 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
 
 @visibleForTesting
 class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAndroidControlsOverlayManager> {
+  final _boundsKey = GlobalKey();
   final _overlayController = OverlayPortalController();
 
   SuperEditorAndroidControlsController? _controlsController;
@@ -1436,7 +1437,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
 
     _controlsController = SuperEditorAndroidControlsScope.rootOf(context);
     // TODO: Replace Cupertino aligner with a generic aligner because this code runs on Android.
-    _toolbarAligner = CupertinoPopoverToolbarAligner();
+    _toolbarAligner = CupertinoPopoverToolbarAligner(_boundsKey);
     widget.selection.addListener(_onSelectionChange);
   }
 
@@ -1736,6 +1737,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
     return TapRegion(
       groupId: widget.tapRegionGroupId,
       child: Stack(
+        key: _boundsKey,
         children: [
           _buildMagnifierFocalPoint(),
           if (widget.showDebugPaint) //

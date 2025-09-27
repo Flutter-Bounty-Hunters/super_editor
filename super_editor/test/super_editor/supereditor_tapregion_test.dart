@@ -74,6 +74,9 @@ void main() {
           .fromMarkdown('Single line document.')
           .withFocusNode(focusNode)
           .withTapRegionGroupId(tapRegionGroupId)
+          // It seems that when we have the toolbar visible, we are tapping the toolbar
+          // instead of the handle. So, we add a dummy toolbar to avoid that.
+          .withAndroidToolbarBuilder((context, key, focalPoint) => SizedBox(key: key))
           .withCustomWidgetTreeBuilder(
             (superEditor) => MaterialApp(
               home: Scaffold(
