@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:mockito/mockito.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
@@ -303,6 +304,28 @@ class TestSuperEditorConfigurator {
   /// Configures the [SuperEditor] to use a custom widget tree above [SuperEditor].
   TestSuperEditorConfigurator withCustomWidgetTreeBuilder(WidgetTreeBuilder? builder) {
     _config.widgetTreeBuilder = builder;
+    return this;
+  }
+
+  /// Configures the [SuperEditor] to use a widget compatible with a [Gallery] test.
+  ///
+  /// The widget tree contains:
+  /// - The [scaffold] at the top.
+  /// - A [GoldenImageBounds] under the [scaffold].
+  /// - The [SuperEditor] widget, decorated with the [decorator].
+  ///
+  /// See [Gallery.itemFromPumper] for more details.
+  TestSuperEditorConfigurator withGalleryScaffold(GalleryItemScaffold scaffold, GalleryItemDecorator? decorator) {
+    _config.widgetTreeBuilder = (superEditor) {
+      return scaffold(
+        _widgetTester,
+        GoldenImageBounds(
+          child: decorator != null //
+              ? decorator.call(_widgetTester, superEditor)
+              : superEditor,
+        ),
+      );
+    };
     return this;
   }
 
