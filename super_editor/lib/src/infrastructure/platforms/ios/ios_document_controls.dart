@@ -104,14 +104,12 @@ class _IosFloatingToolbarOverlayState extends State<IosFloatingToolbarOverlay> w
       link: widget.toolbarFocalPoint,
       boundary: WidgetFollowerBoundary(
         boundaryKey: _boundsKey,
-        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       ),
       child: Follower.withAligner(
         link: widget.toolbarFocalPoint,
-        aligner: CupertinoPopoverToolbarAligner(_boundsKey),
+        aligner: CupertinoPopoverToolbarAligner(),
         boundary: WidgetFollowerBoundary(
           boundaryKey: _boundsKey,
-          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
         ),
         child: widget.floatingToolbarBuilder(context, DocumentKeys.mobileToolbar, widget.toolbarFocalPoint),
       ),

@@ -24,10 +24,7 @@ class AndroidFollowingMagnifier extends StatelessWidget {
       offset: offsetFromFocalPoint,
       leaderAnchor: Alignment.center,
       followerAnchor: Alignment.center,
-      boundary: ScreenFollowerBoundary(
-        screenSize: MediaQuery.sizeOf(context),
-        devicePixelRatio: devicePixelRatio,
-      ),
+      boundary: const ScreenFollowerBoundary(),
       child: AndroidMagnifyingGlass(
         magnificationScale: 1.5,
         offsetFromFocalPoint: Offset(
