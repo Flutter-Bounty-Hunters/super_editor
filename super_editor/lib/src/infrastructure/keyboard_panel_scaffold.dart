@@ -160,8 +160,11 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardGeometryChange);
 
-    _overlayPortalController.show();
     onNextFrame((_) {
+      // Wait until next frame to show overlay portal because it can't handle `show()`
+      // during a build operation.
+      _overlayPortalController.show();
+
       // Do initial safe area report to our ancestor keyboard safe area widget,
       // after we've added our UI to the overlay portal.
       _updateSafeArea();
@@ -637,62 +640,67 @@ Building keyboard scaffold
       return true;
     }());
 
-    return OverlayPortal(
-      controller: _overlayPortalController,
-      overlayChildBuilder: (context) {
-        return ValueListenableBuilder(
-          valueListenable: _currentBottomSpacing,
-          builder: (context, currentHeight, child) {
-            onNextFrame((_) {
-              // Ensure that our latest keyboard height/panel height calculations are
-              // accounted for in the ancestor safe area after this layout pass.
-              _updateSafeArea();
-            });
-
-            if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
-              return const SizedBox.shrink();
-            }
-
-            return Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_wantsToShowToolbar)
-                    KeyedSubtree(
-                      key: _toolbarKey,
-                      child: widget.toolbarBuilder(
-                        context,
-                        _activePanel,
-                      ),
-                    ),
-                  // Spacer that pushes the toolbar up above the current bottom spacing,
-                  // whether that's the software keyboard, or a panel.
-                  AnimatedBuilder(
-                    animation: _currentBottomSpacing,
-                    builder: (context, child) {
-                      return SizedBox(
-                        height: _currentBottomSpacing.value,
-                        child: child,
-                      );
-                    },
-                    // In the case that we want to display a panel, display it here,
-                    // in the current bottom space below the toolbar.
-                    child: shouldShowKeyboardPanel ? widget.keyboardPanelBuilder(context, _activePanel) : null,
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-      child: widget.contentBuilder(
-        context,
-        _activePanel,
-      ),
+    return widget.contentBuilder(
+      context,
+      _activePanel,
     );
+
+    // return OverlayPortal(
+    //   controller: _overlayPortalController,
+    //   overlayChildBuilder: (context) {
+    //     return ValueListenableBuilder(
+    //       valueListenable: _currentBottomSpacing,
+    //       builder: (context, currentHeight, child) {
+    //         onNextFrame((_) {
+    //           // Ensure that our latest keyboard height/panel height calculations are
+    //           // accounted for in the ancestor safe area after this layout pass.
+    //           _updateSafeArea();
+    //         });
+    //
+    //         if (!_wantsToShowToolbar && !shouldShowKeyboardPanel) {
+    //           return const SizedBox.shrink();
+    //         }
+    //
+    //         return Positioned(
+    //           bottom: 0,
+    //           left: 0,
+    //           right: 0,
+    //           child: Column(
+    //             mainAxisSize: MainAxisSize.min,
+    //             children: [
+    //               if (_wantsToShowToolbar)
+    //                 KeyedSubtree(
+    //                   key: _toolbarKey,
+    //                   child: widget.toolbarBuilder(
+    //                     context,
+    //                     _activePanel,
+    //                   ),
+    //                 ),
+    //               // Spacer that pushes the toolbar up above the current bottom spacing,
+    //               // whether that's the software keyboard, or a panel.
+    //               AnimatedBuilder(
+    //                 animation: _currentBottomSpacing,
+    //                 builder: (context, child) {
+    //                   return SizedBox(
+    //                     height: _currentBottomSpacing.value,
+    //                     child: child,
+    //                   );
+    //                 },
+    //                 // In the case that we want to display a panel, display it here,
+    //                 // in the current bottom space below the toolbar.
+    //                 child: shouldShowKeyboardPanel ? widget.keyboardPanelBuilder(context, _activePanel) : null,
+    //               ),
+    //             ],
+    //           ),
+    //         );
+    //       },
+    //     );
+    //   },
+    //   child: widget.contentBuilder(
+    //     context,
+    //     _activePanel,
+    //   ),
+    // );
   }
 }
 

@@ -498,6 +498,12 @@ class MessagePageElement extends RenderObjectElement {
   }
 
   @override
+  void forgetChild(Element child) {
+    print("MessagePageScaffold - forgetChild: $child");
+    super.forgetChild(child);
+  }
+
+  @override
   void visitChildren(ElementVisitor visitor) {
     if (_bottomSheet != null) {
       visitor(_bottomSheet!);
@@ -560,6 +566,9 @@ class MessagePageElement extends RenderObjectElement {
       if (_content != null) {
         visitor(_content!);
       }
+    } else {
+      print("NOT ALLOWING CHILD VISITATION!");
+      print("StackTrace:\n${StackTrace.current}");
     }
   }
 }
@@ -1266,7 +1275,13 @@ class RenderMessageEditorHeight extends RenderBox
     //
     // If we find a missing layout invalidation for MessagePageScaffold, and we
     // make this call superfluous, then remove this.
-    _findAncestorMessagePageScaffold()!.markNeedsLayout();
+    final ancestorMessagePageScaffold = _findAncestorMessagePageScaffold();
+    // Ancestor scaffold might be null during various lifecycle events, e.g.,
+    // `dropChild()` calls `markNeedsLayout()`, but when we're dropping our
+    // children, we have likely already been dropped by our parent, too.
+    if (ancestorMessagePageScaffold != null) {
+      ancestorMessagePageScaffold.markNeedsLayout();
+    }
   }
 
   @override
