@@ -519,6 +519,12 @@ class MessagePageElement extends RenderObjectElement {
   }
 
   @override
+  void forgetChild(Element child) {
+    print("MessagePageScaffold - forgetChild: $child");
+    super.forgetChild(child);
+  }
+
+  @override
   void visitChildren(ElementVisitor visitor) {
     if (_bottomSheet != null) {
       visitor(_bottomSheet!);
@@ -581,6 +587,9 @@ class MessagePageElement extends RenderObjectElement {
       if (_content != null) {
         visitor(_content!);
       }
+    } else {
+      print("NOT ALLOWING CHILD VISITATION!");
+      print("StackTrace:\n${StackTrace.current}");
     }
   }
 }
