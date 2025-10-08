@@ -42,7 +42,7 @@ class ReadOnlyDocumentMouseInteractor extends StatefulWidget {
     this.focusNode,
     required this.readerContext,
     this.contentTapHandler,
-    required this.autoScroller,
+    this.autoScroller,
     required this.fillViewport,
     this.showDebugPaint = false,
     required this.child,
@@ -58,7 +58,7 @@ class ReadOnlyDocumentMouseInteractor extends StatefulWidget {
   final ContentTapDelegate? contentTapHandler;
 
   /// Auto-scrolling delegate.
-  final AutoScrollController autoScroller;
+  final AutoScrollController? autoScroller;
 
   /// Whether the document gesture detector should fill the entire viewport
   /// even if the actual content is smaller.
@@ -99,7 +99,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
     _focusNode = widget.focusNode ?? FocusNode();
     widget.readerContext.composer.selectionNotifier.addListener(_onSelectionChange);
     widget.autoScroller
-      ..addListener(_updateDragSelection)
+      ?..addListener(_updateDragSelection)
       ..addListener(_updateMouseCursorAtLatestOffset);
     widget.contentTapHandler?.addListener(_updateMouseCursorAtLatestOffset);
   }
@@ -116,10 +116,10 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
     }
     if (widget.autoScroller != oldWidget.autoScroller) {
       oldWidget.autoScroller
-        ..removeListener(_updateDragSelection)
+        ?..removeListener(_updateDragSelection)
         ..removeListener(_updateMouseCursorAtLatestOffset);
       widget.autoScroller
-        ..addListener(_updateDragSelection)
+        ?..addListener(_updateDragSelection)
         ..addListener(_updateMouseCursorAtLatestOffset);
     }
     if (widget.contentTapHandler != oldWidget.contentTapHandler) {
@@ -136,7 +136,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
     }
     widget.readerContext.composer.selectionNotifier.removeListener(_onSelectionChange);
     widget.autoScroller
-      ..removeListener(_updateDragSelection)
+      ?..removeListener(_updateDragSelection)
       ..removeListener(_updateMouseCursorAtLatestOffset);
     super.dispose();
   }
@@ -163,7 +163,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
 
         final globalExtentRect = _getSelectionExtentAsGlobalRect();
         if (globalExtentRect != null) {
-          widget.autoScroller.ensureGlobalRectIsVisible(globalExtentRect);
+          widget.autoScroller?.ensureGlobalRectIsVisible(globalExtentRect);
         }
       });
     }
@@ -412,7 +412,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
 
     _dragStartGlobal = details.globalPosition;
 
-    widget.autoScroller.enableAutoScrolling();
+    widget.autoScroller?.enableAutoScrolling();
 
     if (_isShiftPressed) {
       _expandSelectionDuringDrag = true;
@@ -437,7 +437,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
 
       _updateDragSelection();
 
-      widget.autoScroller.setGlobalAutoScrollRegion(
+      widget.autoScroller?.setGlobalAutoScrollRegion(
         Rect.fromLTWH(_dragEndGlobal!.dx, _dragEndGlobal!.dy, 1, 1),
       );
     });
@@ -449,7 +449,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
     if (_panGestureDevice == PointerDeviceKind.trackpad) {
       // The user ended a pan gesture with two fingers on a trackpad.
       // We already scrolled the document.
-      widget.autoScroller.goBallistic(-details.velocity.pixelsPerSecond.dy);
+      widget.autoScroller?.goBallistic(-details.velocity.pixelsPerSecond.dy);
       return;
     }
     _onDragEnd();
@@ -467,7 +467,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
       _expandSelectionDuringDrag = false;
     });
 
-    widget.autoScroller.disableAutoScrolling();
+    widget.autoScroller?.disableAutoScrolling();
   }
 
   void _updateDragSelection() {
@@ -477,7 +477,7 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
     }
 
     final dragStartInDoc =
-        _getDocOffsetFromGlobalOffset(_dragStartGlobal!) + Offset(0, widget.autoScroller.deltaWhileAutoScrolling);
+        _getDocOffsetFromGlobalOffset(_dragStartGlobal!) + Offset(0, widget.autoScroller?.deltaWhileAutoScrolling ?? 0);
     final dragEndInDoc = _getDocOffsetFromGlobalOffset(_dragEndGlobal!);
     readerGesturesLog.finest(
       '''
@@ -616,7 +616,8 @@ Updating drag selection:
 
   List<Widget> _buildDebugPaintInDocSpace() {
     final dragStartInDoc = _dragStartGlobal != null
-        ? _getDocOffsetFromGlobalOffset(_dragStartGlobal!) + Offset(0, widget.autoScroller.deltaWhileAutoScrolling)
+        ? _getDocOffsetFromGlobalOffset(_dragStartGlobal!) +
+            Offset(0, widget.autoScroller?.deltaWhileAutoScrolling ?? 0)
         : null;
     final dragEndInDoc = _dragEndGlobal != null ? _getDocOffsetFromGlobalOffset(_dragEndGlobal!) : null;
 
