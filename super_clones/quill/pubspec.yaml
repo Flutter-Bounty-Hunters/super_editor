@@ -17,10 +17,10 @@ dependencies:
   super_editor_markdown: any
   super_text_layout: any
   collection: ^1.18.0
-  overlord: ^0.0.3+5
+  overlord: ^0.4.2
   material_symbols_icons: ^4.2762.0
   dart_quill_delta: ^9.4.6
-  follow_the_leader: ^0.0.4+8
+  follow_the_leader: ^0.5.1
 
 dependency_overrides:
   super_editor:

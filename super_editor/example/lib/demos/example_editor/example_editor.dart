@@ -49,6 +49,7 @@ class _ExampleEditorState extends State<ExampleEditor> {
     ..screenPadding = const EdgeInsets.all(20.0);
 
   late final SuperEditorIosControlsController _iosControlsController;
+  late final SuperEditorAndroidControlsController _androidControlsController;
 
   @override
   void initState() {
@@ -67,11 +68,13 @@ class _ExampleEditorState extends State<ExampleEditor> {
     _scrollController = ScrollController()..addListener(_hideOrShowToolbar);
 
     _iosControlsController = SuperEditorIosControlsController();
+    _androidControlsController = SuperEditorAndroidControlsController();
   }
 
   @override
   void dispose() {
     _iosControlsController.dispose();
+    _androidControlsController.dispose();
     _scrollController.dispose();
     _editorFocusNode.dispose();
     _composer.dispose();
@@ -209,29 +212,6 @@ class _ExampleEditorState extends State<ExampleEditor> {
         return TextInputSource.ime;
     }
   }
-
-  void _cut() {
-    _docOps.cut();
-    // TODO: get rid of overlay controller once Android is refactored to use a control scope (as follow up to: https://github.com/superlistapp/super_editor/pull/1470)
-    _overlayController.hideToolbar();
-    _iosControlsController.hideToolbar();
-  }
-
-  void _copy() {
-    _docOps.copy();
-    // TODO: get rid of overlay controller once Android is refactored to use a control scope (as follow up to: https://github.com/superlistapp/super_editor/pull/1470)
-    _overlayController.hideToolbar();
-    _iosControlsController.hideToolbar();
-  }
-
-  void _paste() {
-    _docOps.paste();
-    // TODO: get rid of overlay controller once Android is refactored to use a control scope (as follow up to: https://github.com/superlistapp/super_editor/pull/1470)
-    _overlayController.hideToolbar();
-    _iosControlsController.hideToolbar();
-  }
-
-  void _selectAll() => _docOps.selectAll();
 
   void _showImageToolbar() {
     // Schedule a callback after this frame to locate the selection
@@ -388,71 +368,57 @@ class _ExampleEditorState extends State<ExampleEditor> {
         config: _debugConfig ?? const SuperEditorDebugVisualsConfig(),
         child: KeyedSubtree(
           key: _viewportKey,
-          child: SuperEditorIosControlsScope(
-            controller: _iosControlsController,
-            child: SuperEditor(
-              editor: _docEditor,
-              focusNode: _editorFocusNode,
-              scrollController: _scrollController,
-              documentLayoutKey: _docLayoutKey,
-              documentOverlayBuilders: [
-                DefaultCaretOverlayBuilder(
-                  caretStyle: const CaretStyle().copyWith(color: isLight ? Colors.black : Colors.redAccent),
+          child: SuperEditorAndroidControlsScope(
+            controller: _androidControlsController,
+            child: SuperEditorIosControlsScope(
+              controller: _iosControlsController,
+              child: SuperEditor(
+                editor: _docEditor,
+                focusNode: _editorFocusNode,
+                scrollController: _scrollController,
+                documentLayoutKey: _docLayoutKey,
+                documentOverlayBuilders: [
+                  DefaultCaretOverlayBuilder(
+                    caretStyle: const CaretStyle().copyWith(color: isLight ? Colors.black : Colors.redAccent),
+                  ),
+                  if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+                    SuperEditorIosHandlesDocumentLayerBuilder(),
+                    SuperEditorIosToolbarFocalPointDocumentLayerBuilder(),
+                  ],
+                  if (defaultTargetPlatform == TargetPlatform.android) ...[
+                    SuperEditorAndroidToolbarFocalPointDocumentLayerBuilder(),
+                    SuperEditorAndroidHandlesDocumentLayerBuilder(),
+                  ],
+                ],
+                selectionLayerLinks: _selectionLayerLinks,
+                selectionStyle: isLight
+                    ? defaultSelectionStyle
+                    : SelectionStyles(
+                        selectionColor: Colors.red.withValues(alpha: 0.3),
+                      ),
+                stylesheet: defaultStylesheet.copyWith(
+                  addRulesAfter: [
+                    if (!isLight) ..._darkModeStyles,
+                    taskStyles,
+                  ],
                 ),
-                if (defaultTargetPlatform == TargetPlatform.iOS) ...[
-                  SuperEditorIosHandlesDocumentLayerBuilder(),
-                  SuperEditorIosToolbarFocalPointDocumentLayerBuilder(),
+                componentBuilders: [
+                  TaskComponentBuilder(_docEditor),
+                  ...defaultComponentBuilders,
                 ],
-                if (defaultTargetPlatform == TargetPlatform.android) ...[
-                  SuperEditorAndroidToolbarFocalPointDocumentLayerBuilder(),
-                  SuperEditorAndroidHandlesDocumentLayerBuilder(),
-                ],
-              ],
-              selectionLayerLinks: _selectionLayerLinks,
-              selectionStyle: isLight
-                  ? defaultSelectionStyle
-                  : SelectionStyles(
-                      selectionColor: Colors.red.withValues(alpha: 0.3),
-                    ),
-              stylesheet: defaultStylesheet.copyWith(
-                addRulesAfter: [
-                  if (!isLight) ..._darkModeStyles,
-                  taskStyles,
-                ],
+                gestureMode: _gestureMode,
+                inputSource: _inputSource,
+                keyboardActions:
+                    _inputSource == TextInputSource.ime ? defaultImeKeyboardActions : defaultKeyboardActions,
+                overlayController: _overlayController,
+                plugins: {
+                  MarkdownInlineUpstreamSyntaxPlugin(),
+                },
               ),
-              componentBuilders: [
-                TaskComponentBuilder(_docEditor),
-                ...defaultComponentBuilders,
-              ],
-              gestureMode: _gestureMode,
-              inputSource: _inputSource,
-              keyboardActions: _inputSource == TextInputSource.ime ? defaultImeKeyboardActions : defaultKeyboardActions,
-              androidToolbarBuilder: (_) => _buildAndroidFloatingToolbar(),
-              overlayController: _overlayController,
-              plugins: {
-                MarkdownInlineUpstreamSyntaxPlugin(),
-              },
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildAndroidFloatingToolbar() {
-    return ListenableBuilder(
-      listenable: _brightness,
-      builder: (context, _) {
-        return Theme(
-          data: ThemeData(brightness: _brightness.value),
-          child: AndroidTextEditingFloatingToolbar(
-            onCutPressed: _cut,
-            onCopyPressed: _copy,
-            onPastePressed: _paste,
-            onSelectAllPressed: _selectAll,
-          ),
-        );
-      },
     );
   }
 

@@ -97,11 +97,10 @@ class _ToolbarFollowingContentInLayerState extends State<ToolbarFollowingContent
       link: _leaderLink,
       boundary: WidgetFollowerBoundary(
         boundaryKey: _viewportKey,
-        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       ),
       child: Follower.withAligner(
         link: _leaderLink,
-        aligner: CupertinoPopoverToolbarAligner(_viewportKey),
+        aligner: CupertinoPopoverToolbarAligner(),
         child: CupertinoPopoverToolbar(
           focalPoint: LeaderMenuFocalPoint(link: _leaderLink),
           children: [
