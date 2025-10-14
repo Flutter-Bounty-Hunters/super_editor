@@ -1,4 +1,4 @@
-import 'package:example_chat/floating_chat_editor_demo/floating_chat_editor_demo.dart';
+import 'package:example_chat/floating_chat_editor_demo/floating_chat_editor_demo_configured.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 
@@ -10,7 +10,7 @@ void main() {
 
   runApp(
     MaterialApp(
-      home: FloatingChatEditorDemo(),
+      home: FloatingChatEditorBuilderDemo(),
     ),
   );
 }
