@@ -1,4 +1,5 @@
 import 'package:example_chat/floating_chat_editor_demo/fake_chat_thread.dart';
+import 'package:example_chat/floating_chat_editor_demo/floating_editor_toolbar.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 
@@ -13,9 +14,10 @@ class FloatingChatEditorBuilderDemo extends StatefulWidget {
 
 class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilderDemo> {
   final _messagePageController = MessagePageController();
-  final _sheetKey = GlobalKey(debugLabel: "bottom sheet boundary");
 
+  final _editorFocusNode = FocusNode(debugLabel: "chat editor");
   late final Editor _editor;
+  final _softwareKeyboardController = SoftwareKeyboardController();
 
   var _showShadowSheetBanner = false;
 
@@ -33,6 +35,7 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
   void dispose() {
     _messagePageController.dispose();
 
+    _editorFocusNode.dispose();
     _editor.dispose();
 
     super.dispose();
@@ -44,7 +47,6 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
       child: FloatingSuperChatPageBuilder(
         messagePageController: _messagePageController,
         pageBuilder: (context, bottomSpacing) => _ChatPage(appBar: _buildAppBar()),
-        sheetKey: _sheetKey,
         editorSheet: _buildEditorSheet(),
         shadowSheetBanner: _showShadowSheetBanner ? _buildBanner() : null,
       ),
@@ -52,19 +54,73 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
   }
 
   Widget _buildEditorSheet() {
-    return DefaultFloatingEditorSheet(
-      messagePageController: _messagePageController,
-      sheetKey: _sheetKey,
-      editor: _editor,
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.only(left: 14, right: 14, top: 8, bottom: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildBanner(),
+          const SizedBox(height: 16),
+          _buildEditor(),
+          _maybeBuildToolbar(),
+        ],
+      ),
     );
+  }
 
-    // return Container(
-    //   height: 100,
-    //   decoration: ShapeDecoration(
-    //     shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(28)),
-    //     color: Colors.red.withValues(alpha: 0.5),
-    //   ),
-    // );
+  Widget _buildBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.shade300,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            WidgetSpan(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4, bottom: 1),
+                child: Icon(Icons.supervised_user_circle_rounded, size: 13),
+              ),
+            ),
+            TextSpan(
+              text: "Ella Martinez",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: " is from Acme"),
+          ],
+          style: TextStyle(
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditor() {
+    return SuperChatEditor(
+      editorFocusNode: _editorFocusNode,
+      editor: _editor,
+      messagePageController: _messagePageController,
+      softwareKeyboardController: _softwareKeyboardController,
+    );
+  }
+
+  Widget _maybeBuildToolbar() {
+    return ListenableBuilder(
+      listenable: _editorFocusNode,
+      builder: (context, child) {
+        if (!_editorFocusNode.hasFocus) {
+          return const SizedBox();
+        }
+
+        return FloatingEditorToolbar(softwareKeyboardController: _softwareKeyboardController);
+      },
+    );
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -82,29 +138,6 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
           icon: Icon(Icons.warning),
         ),
       ],
-    );
-  }
-
-  Widget _buildBanner() {
-    return Text.rich(
-      TextSpan(
-        children: [
-          WidgetSpan(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 4, bottom: 1),
-              child: Icon(Icons.supervised_user_circle_rounded, size: 13),
-            ),
-          ),
-          TextSpan(
-            text: "Ella Martinez",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          TextSpan(text: " is from Acme"),
-        ],
-        style: TextStyle(
-          fontSize: 13,
-        ),
-      ),
     );
   }
 }
