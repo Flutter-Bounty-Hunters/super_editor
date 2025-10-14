@@ -461,7 +461,19 @@ class SuperEditorState extends State<SuperEditor> {
     );
 
     _createEditContext();
-    _createLayoutPresenter();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_docLayoutPresenter == null) {
+      _createLayoutPresenter();
+    } else if (widget.stylesheet.inheritDefaultTextStyle) {
+      // The default text style might have changed. Update it in the stylesheet styler.
+      final defaultTextStyle = DefaultTextStyle.of(context).style;
+      _docStylesheetStyler.defaultTextStyle = defaultTextStyle;
+    }
   }
 
   @override
@@ -594,7 +606,10 @@ class SuperEditorState extends State<SuperEditor> {
 
     final document = editContext.document;
 
-    _docStylesheetStyler = SingleColumnStylesheetStyler(stylesheet: widget.stylesheet);
+    _docStylesheetStyler = SingleColumnStylesheetStyler(
+      stylesheet: widget.stylesheet,
+      defaultTextStyle: DefaultTextStyle.of(context).style,
+    );
 
     _docLayoutPerComponentBlockStyler = SingleColumnLayoutCustomComponentStyler();
 

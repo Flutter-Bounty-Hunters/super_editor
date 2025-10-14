@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
+import 'package:golden_bricks/golden_bricks.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_text_layout/super_text_layout.dart';
@@ -240,6 +241,161 @@ A paragraph
       expect(
         SuperEditorInspector.findComponentOffset("4", Alignment.bottomLeft).dy,
         lessThanOrEqualTo(SuperEditorInspector.findComponentOffset("2", Alignment.topLeft).dy),
+      );
+    });
+
+    testWidgetsOnArbitraryDesktop('does not inherit the enclosing default text style by default', (tester) async {
+      await tester
+          .createDocument() //
+          .withSingleParagraph()
+          .withCustomWidgetTreeBuilder(
+            (superEditor) => MaterialApp(
+              home: Scaffold(
+                body: DefaultTextStyle(
+                  style: const TextStyle(fontFamily: goldenBricks),
+                  child: superEditor,
+                ),
+              ),
+            ),
+          )
+          .pump();
+
+      // Ensure we didn't inherit the font family from the enclosing text style.
+      expect(
+        _findSpanAtOffset(tester, offset: 0).style!.fontFamily,
+        isNull,
+      );
+    });
+
+    testWidgetsOnArbitraryDesktop('inherits the enclosing default text style if requested', (tester) async {
+      await tester
+          .createDocument() //
+          .withSingleParagraph()
+          // Use an empty stylesheet to ensure the default text style is inherited when
+          // there is no style rule for a node.
+          .useStylesheet(
+            const Stylesheet(
+              inheritDefaultTextStyle: true,
+              rules: [],
+              inlineTextStyler: defaultInlineTextStyler,
+              inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
+            ),
+          )
+          .withCustomWidgetTreeBuilder(
+            (superEditor) => MaterialApp(
+              home: Scaffold(
+                body: DefaultTextStyle(
+                  style: const TextStyle(fontFamily: goldenBricks),
+                  child: superEditor,
+                ),
+              ),
+            ),
+          )
+          .pump();
+
+      // Ensure the font family from the default text style was applied.
+      expect(
+        _findSpanAtOffset(tester, offset: 0).style!.fontFamily,
+        goldenBricks,
+      );
+    });
+
+    testWidgetsOnArbitraryDesktop('merges style with the enclosing default text style if requested', (tester) async {
+      await tester
+          .createDocument() //
+          .withSingleParagraph()
+          .useStylesheet(
+            Stylesheet(
+              inheritDefaultTextStyle: true,
+              rules: [
+                StyleRule(
+                  BlockSelector.all,
+                  (doc, docNode) {
+                    return {
+                      Styles.textStyle: const TextStyle(fontSize: 24),
+                    };
+                  },
+                ),
+              ],
+              inlineTextStyler: defaultInlineTextStyler,
+              inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
+            ),
+          )
+          .withCustomWidgetTreeBuilder(
+            (superEditor) => MaterialApp(
+              home: Scaffold(
+                body: DefaultTextStyle(
+                  style: const TextStyle(fontFamily: goldenBricks),
+                  child: superEditor,
+                ),
+              ),
+            ),
+          )
+          .pump();
+
+      final appliedStyle = _findSpanAtOffset(tester, offset: 0).style!;
+
+      // Ensure the font family from the default text style was applied.
+      expect(
+        appliedStyle.fontFamily,
+        goldenBricks,
+      );
+
+      // Ensure the font size from the style rule was applied.
+      expect(appliedStyle.fontSize, 24);
+    });
+
+    testWidgetsOnArbitraryDesktop('changes visual text when the enclosing default text style changes', (tester) async {
+      final styleNotifier = ValueNotifier<TextStyle>(
+        const TextStyle(fontFamily: goldenBricks),
+      );
+
+      await tester
+          .createDocument() //
+          .withSingleParagraph()
+          // Use an empty stylesheet to ensure the default text style is inherited when
+          // there is no style rule for a node.
+          .useStylesheet(
+            const Stylesheet(
+              inheritDefaultTextStyle: true,
+              rules: [],
+              inlineTextStyler: defaultInlineTextStyler,
+              inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
+            ),
+          )
+          .withCustomWidgetTreeBuilder(
+            (superEditor) => MaterialApp(
+              home: Scaffold(
+                body: ValueListenableBuilder(
+                  valueListenable: styleNotifier,
+                  builder: (context, style, child) {
+                    return DefaultTextStyle(
+                      style: style,
+                      child: superEditor,
+                    );
+                  },
+                ),
+              ),
+            ),
+          )
+          .pump();
+
+      // Ensure the font family from the default text style was applied.
+      expect(
+        _findSpanAtOffset(tester, offset: 0).style!.fontFamily,
+        goldenBricks,
+      );
+
+      // Change the default text style.
+      styleNotifier.value = const TextStyle(
+        fontFamily: 'Roboto',
+      );
+      await tester.pump();
+
+      // Ensure the font family from the new default text style was applied.
+      expect(
+        _findSpanAtOffset(tester, offset: 0).style!.fontFamily,
+        'Roboto',
       );
     });
   });

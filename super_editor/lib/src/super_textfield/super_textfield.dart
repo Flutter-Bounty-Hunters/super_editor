@@ -62,6 +62,7 @@ class SuperTextField extends StatefulWidget {
     this.textController,
     this.textAlign,
     this.textStyleBuilder = defaultTextFieldStyleBuilder,
+    this.inheritDefaultTextStyle = false,
     this.inlineWidgetBuilders = const [],
     this.hintBehavior = HintBehavior.displayHintUntilFocus,
     this.hintBuilder,
@@ -115,6 +116,16 @@ class SuperTextField extends StatefulWidget {
   /// used for a given inline placeholder.
   /// {@endtemplate}
   final InlineWidgetBuilderChain inlineWidgetBuilders;
+
+  /// {@template super_text_field_inherit_default_text_style}
+  /// Whether this text field should inherit the enclosing [DefaultTextStyle].
+  ///
+  /// If `true`, the text styles in [textStyleBuilder] will be merged with the
+  /// enclosing [DefaultTextStyle] in the widget tree.
+  ///
+  /// Defaults to `false`.
+  /// {@endtemplate}
+  final bool inheritDefaultTextStyle;
 
   /// Policy for when the hint should be displayed.
   final HintBehavior hintBehavior;
@@ -374,6 +385,7 @@ class SuperTextFieldState extends State<SuperTextField> implements ImeInputOwner
           textAlign: widget.textAlign,
           textStyleBuilder: widget.textStyleBuilder,
           inlineWidgetBuilders: widget.inlineWidgetBuilders,
+          inheritDefaultTextStyle: widget.inheritDefaultTextStyle,
           hintBehavior: widget.hintBehavior,
           hintBuilder: widget.hintBuilder,
           selectionHighlightStyle: SelectionHighlightStyle(
@@ -409,6 +421,7 @@ class SuperTextFieldState extends State<SuperTextField> implements ImeInputOwner
             textAlign: widget.textAlign,
             textStyleBuilder: widget.textStyleBuilder,
             inlineWidgetBuilders: widget.inlineWidgetBuilders,
+            inheritDefaultTextStyle: widget.inheritDefaultTextStyle,
             hintBehavior: widget.hintBehavior,
             hintBuilder: widget.hintBuilder,
             caretStyle: widget.caretStyle ??
@@ -439,6 +452,7 @@ class SuperTextFieldState extends State<SuperTextField> implements ImeInputOwner
             textAlign: widget.textAlign,
             textStyleBuilder: widget.textStyleBuilder,
             inlineWidgetBuilders: widget.inlineWidgetBuilders,
+            inheritDefaultTextStyle: widget.inheritDefaultTextStyle,
             padding: widget.padding,
             hintBehavior: widget.hintBehavior,
             hintBuilder: widget.hintBuilder,

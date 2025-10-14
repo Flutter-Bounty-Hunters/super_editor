@@ -20,11 +20,11 @@ import 'package:super_editor/src/super_textfield/input_method_engine/_ime_text_e
 import 'package:super_editor/src/super_textfield/ios/editing_controls.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../metrics.dart';
-import '../styles.dart';
-import 'floating_cursor.dart';
-import '../../infrastructure/platforms/ios/ios_system_context_menu.dart';
-import 'user_interaction.dart';
+import 'package:super_editor/src/super_textfield/metrics.dart';
+import 'package:super_editor/src/super_textfield/styles.dart';
+import 'package:super_editor/src/super_textfield/ios/floating_cursor.dart';
+import 'package:super_editor/src/infrastructure/platforms/ios/ios_system_context_menu.dart';
+import 'package:super_editor/src/super_textfield/ios/user_interaction.dart';
 
 export '../infrastructure/magnifier.dart';
 export 'caret.dart';
@@ -42,6 +42,7 @@ class SuperIOSTextField extends StatefulWidget {
     this.tapHandlers = const [],
     this.textController,
     this.textStyleBuilder = defaultTextFieldStyleBuilder,
+    this.inheritDefaultTextStyle = false,
     this.inlineWidgetBuilders = const [],
     this.textAlign = TextAlign.left,
     this.padding,
@@ -86,6 +87,9 @@ class SuperIOSTextField extends StatefulWidget {
 
   /// {@macro super_text_field_inline_widget_builders}
   final InlineWidgetBuilderChain inlineWidgetBuilders;
+
+  /// {@macro super_text_field_inherit_default_text_style}
+  final bool inheritDefaultTextStyle;
 
   /// Padding placed around the text content of this text field, but within the
   /// scrollable viewport.
@@ -629,7 +633,12 @@ class SuperIOSTextFieldState extends State<SuperIOSTextField>
 
   Widget _buildSelectableText() {
     final textSpan = _textEditingController.text //
-        .computeInlineSpan(context, widget.textStyleBuilder, widget.inlineWidgetBuilders);
+        .computeInlineSpan(
+      context,
+      widget.textStyleBuilder,
+      widget.inlineWidgetBuilders,
+      defaultTextStyle: widget.inheritDefaultTextStyle ? DefaultTextStyle.of(context).style : null,
+    );
 
     CaretStyle caretStyle = widget.caretStyle;
 
