@@ -12,7 +12,7 @@ class BottomFloatingChatSheet extends StatefulWidget {
     super.key,
     required this.messagePageController,
     this.shadowSheetBanner,
-    required this.editor,
+    required this.editorSheet,
     this.style = const FloatingEditorStyle(),
   });
 
@@ -20,7 +20,7 @@ class BottomFloatingChatSheet extends StatefulWidget {
 
   final Widget? shadowSheetBanner;
 
-  final Widget editor;
+  final Widget editorSheet;
 
   final FloatingEditorStyle style;
 
@@ -35,13 +35,7 @@ class _BottomFloatingChatSheetState extends State<BottomFloatingChatSheet> {
       padding: widget.style.margin,
       child: FloatingShadowSheet(
         banner: widget.shadowSheetBanner,
-        editorSheet: widget.editor,
-        // editorSheet: FloatingEditorSheet(
-        //   sheetKey: _sheetKey,
-        //   messagePageController: widget.messagePageController,
-        //   editor: widget.editor,
-        //   style: widget.style.editorSheet,
-        // ),
+        editorSheet: widget.editorSheet,
         style: widget.style.shadowSheet,
       ),
     );
@@ -52,6 +46,7 @@ class FloatingEditorStyle {
   const FloatingEditorStyle({
     this.margin = const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     this.borderRadius = const Radius.circular(28),
+    this.shadow = const FloatingEditorShadow(),
     this.shadowSheetBackground = Colors.grey,
     this.shadowSheetPadding = const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
     this.editorSheetBackground = Colors.white,
@@ -59,6 +54,7 @@ class FloatingEditorStyle {
 
   final EdgeInsets margin;
   final Radius borderRadius;
+  final FloatingEditorShadow shadow;
 
   final Color shadowSheetBackground;
   final EdgeInsets shadowSheetPadding;
@@ -74,7 +70,32 @@ class FloatingEditorStyle {
         borderRadius: borderRadius,
         background: shadowSheetBackground,
         padding: shadowSheetPadding,
+        shadow: shadow,
       );
+}
+
+/// Shadow configuration for a [BottomFloatingChatSheet].
+///
+/// This configuration is a custom selection of properties because with the way that
+/// the bottom sheet is clipped, a shadow with any y-offset will look buggy. Therefore,
+/// we can't allow for a typical `BoxShadow` or other shadow configuration. We can only
+/// support a color and a blur amount.
+class FloatingEditorShadow {
+  const FloatingEditorShadow({
+    this.color = const Color(0x33000000),
+    this.blur = 12,
+  });
+
+  final Color color;
+  final double blur;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FloatingEditorShadow && runtimeType == other.runtimeType && color == other.color && blur == other.blur;
+
+  @override
+  int get hashCode => color.hashCode ^ blur.hashCode;
 }
 
 /// A superellipse sheet which has a [banner] at the top and an [editorSheet] below that.
@@ -129,11 +150,13 @@ class FloatingShadowSheetStyle {
     this.background = Colors.grey,
     this.padding = const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
     this.borderRadius = const Radius.circular(28),
+    this.shadow = const FloatingEditorShadow(),
   });
 
   final Color background;
   final EdgeInsets padding;
   final Radius borderRadius;
+  final FloatingEditorShadow shadow;
 
   @override
   bool operator ==(Object other) =>
@@ -141,10 +164,12 @@ class FloatingShadowSheetStyle {
       other is FloatingShadowSheetStyle &&
           runtimeType == other.runtimeType &&
           background == other.background &&
-          borderRadius == other.borderRadius;
+          padding == other.padding &&
+          borderRadius == other.borderRadius &&
+          shadow == other.shadow;
 
   @override
-  int get hashCode => background.hashCode ^ borderRadius.hashCode;
+  int get hashCode => background.hashCode ^ padding.hashCode ^ borderRadius.hashCode ^ shadow.hashCode;
 }
 
 enum ShadowSheetSlot {
@@ -254,6 +279,18 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     final banner = childForSlot(ShadowSheetSlot.banner);
     final editorSheet = childForSlot(ShadowSheetSlot.editorSheet)!;
 
+    final editorSheetOffset = offset + (editorSheet.parentData as BoxParentData).offset;
+    final editorSheetBoundary = Path()
+      ..addRSuperellipse(
+        RSuperellipse.fromLTRBR(
+          editorSheetOffset.dx,
+          editorSheetOffset.dy,
+          editorSheetOffset.dx + size.width,
+          editorSheetOffset.dy + editorSheet.size.height,
+          _style.borderRadius,
+        ),
+      );
+
     // Shadow sheet includes the banner and the editor sheet.
     final shadowSheetBoundary = RSuperellipse.fromLTRBR(
       offset.dx,
@@ -265,9 +302,17 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     final shadowSheetBoundaryPath = Path()..addRSuperellipse(shadowSheetBoundary);
 
     // Paint the shadow for the entire shadow sheet.
+    // final shadowPaint = Paint()
+    //   ..color = Colors.black.withValues(alpha: 0.2)
+    //   ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12);
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.2)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12);
+      ..color = _style.shadow.color
+      // Note: We use a normal blur instead of an outer blur because we have to
+      // clip the shadow no matter what. If we do an outer blur without clipping
+      // the shadow then any backdrop blur that the editor sheet applies will pull
+      // in a little bit of that surrounding shadow, giving a beveled or shaded edge
+      // look that we don't want.
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, _style.shadow.blur);
 
     context.canvas.saveLayer(null, Paint());
     context.canvas
@@ -285,18 +330,6 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     // This also requires cutting the editor sheet out of the shadow sheet, to
     // support translucent editor sheets.
     if (banner != null) {
-      final editorSheetOffset = offset + (editorSheet.parentData as BoxParentData).offset;
-      final editorSheetBoundary = Path()
-        ..addRSuperellipse(
-          RSuperellipse.fromLTRBR(
-            editorSheetOffset.dx,
-            editorSheetOffset.dy,
-            editorSheetOffset.dx + size.width,
-            editorSheetOffset.dy + editorSheet.size.height,
-            _style.borderRadius,
-          ),
-        );
-
       final hollowShadowSheet = Path.combine(PathOperation.xor, shadowSheetBoundaryPath, editorSheetBoundary);
       context.canvas.drawPath(hollowShadowSheet, Paint()..color = _style.background);
 
@@ -311,7 +344,19 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
       context.canvas.restore();
     }
 
-    editorSheet.paint(context, offset + (editorSheet.parentData as BoxParentData).offset);
+    // Clip any part of the editor sheet outside the expected superellipse shape.
+    //
+    // We do this by pushing a clip layer because there's a high likelihood that the editor
+    // sheet blurs its backdrop, which can only be clipped by pushing a clip path.
+    final clipLayer = (layer as ClipPathLayer? ?? ClipPathLayer())
+      ..clipPath = editorSheetBoundary
+      ..clipBehavior = Clip.hardEdge;
+    layer = clipLayer;
+
+    context.pushLayer(clipLayer, (clippedContext, clippedOffset) {
+      // Paint the editor sheet.
+      editorSheet.paint(clippedContext, clippedOffset);
+    }, editorSheetOffset);
   }
 }
 

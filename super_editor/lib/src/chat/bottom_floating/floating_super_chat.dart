@@ -8,7 +8,6 @@ class FloatingSuperChatPageBuilder extends StatefulWidget {
     super.key,
     this.messagePageController,
     required this.pageBuilder,
-    this.sheetKey,
     required this.editorSheet,
     this.shadowSheetBanner,
     this.style = const FloatingEditorStyle(),
@@ -18,7 +17,6 @@ class FloatingSuperChatPageBuilder extends StatefulWidget {
 
   final MessagePageScaffoldContentBuilder pageBuilder;
 
-  final GlobalKey? sheetKey;
   final Widget editorSheet;
   final Widget? shadowSheetBanner;
 
@@ -64,7 +62,6 @@ class _FloatingSuperChatPageBuilderState extends State<FloatingSuperChatPageBuil
     return FloatingEditorPageScaffold(
       messagePageController: _messagePageController,
       pageBuilder: widget.pageBuilder,
-      sheetKey: widget.sheetKey,
       editorSheet: widget.editorSheet,
       shadowSheetBanner: widget.shadowSheetBanner,
       style: widget.style,

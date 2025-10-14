@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/bottom_floating/default/default_editor_toolbar.dart';
+import 'package:super_editor/src/chat/bottom_floating/ui_kit/floating_editor_page_scaffold.dart';
 import 'package:super_editor/src/chat/bottom_floating/ui_kit/floating_editor_sheet.dart';
 import 'package:super_editor/src/chat/chat_editor.dart';
 import 'package:super_editor/src/chat/message_page_scaffold.dart';
@@ -19,25 +20,12 @@ class DefaultFloatingEditorSheet extends StatefulWidget {
   const DefaultFloatingEditorSheet({
     super.key,
     required this.editor,
-    this.sheetKey,
     required this.messagePageController,
     this.visualEditor,
     this.style = const EditorSheetStyle(),
   });
 
   final Editor editor;
-
-  /// A [GlobalKey] that's attached to the outermost boundary of the sheet that
-  /// contains this [DefaultFloatingEditorSheet].
-  ///
-  /// In the typical case, [DefaultFloatingEditorSheet] is the outermost boundary, in which case
-  /// no key needs to be provided. This widget will create a key internally.
-  ///
-  /// However, if additional content is added above or below this [DefaultFloatingEditorSheet] then
-  /// we need to be able to account for the global offset of that content. To make layout
-  /// decisions based on the entire sheet, clients must wrap the whole sheet with a [GlobalKey]
-  /// and provide that key as [sheetKey].
-  final GlobalKey? sheetKey;
 
   final MessagePageController messagePageController;
 
@@ -55,8 +43,6 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   final _scrollController = ScrollController();
 
   final _editorFocusNode = FocusNode();
-  late GlobalKey _sheetKey;
-  final _editorSheetKey = GlobalKey(debugLabel: "editor-sheet-within-bigger-sheet");
   late final SoftwareKeyboardController _softwareKeyboardController;
 
   final _hasSelection = ValueNotifier(false);
@@ -69,8 +55,6 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
 
     _softwareKeyboardController = SoftwareKeyboardController();
 
-    _sheetKey = widget.sheetKey ?? GlobalKey();
-
     widget.editor.composer.selectionNotifier.addListener(_onSelectionChange);
   }
 
@@ -81,10 +65,6 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
     if (widget.editor != oldWidget.editor) {
       oldWidget.editor.composer.selectionNotifier.removeListener(_onSelectionChange);
       widget.editor.composer.selectionNotifier.addListener(_onSelectionChange);
-    }
-
-    if (widget.sheetKey != _sheetKey) {
-      _sheetKey = widget.sheetKey ?? GlobalKey();
     }
   }
 
@@ -134,7 +114,7 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   }
 
   double get _dragIndicatorOffsetFromTop {
-    final bottomSheetBox = _sheetKey.currentContext!.findRenderObject();
+    final bottomSheetBox = FloatingChatBottomSheet.of(context).findRenderObject();
     final dragIndicatorBox = _dragIndicatorKey.currentContext!.findRenderObject()! as RenderBox;
 
     return dragIndicatorBox.localToGlobal(Offset.zero, ancestor: bottomSheetBox).dy;
@@ -156,36 +136,29 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   Widget _buildSheet({
     required Widget child,
   }) {
-    return KeyedSubtree(
-      // If we're provided with a [widget.sheetKey] it means the full sheet boundary
-      // expands beyond this widget, and that key is attached to that outer boundary.
-      // If we're not provided with a [widget.sheetKey], it's because we are the outer
-      // boundary, so we need to key our subtree for layout calculations.
-      key: widget.sheetKey == null ? _sheetKey : _editorSheetKey,
-      child: Listener(
-        onPointerDown: (_) => setState(() {
-          _isUserPressingDown = true;
-        }),
-        onPointerUp: (_) => setState(() {
-          _isUserPressingDown = false;
-        }),
-        onPointerCancel: (_) => setState(() {
-          _isUserPressingDown = false;
-        }),
-        child: ClipRSuperellipse(
-          borderRadius: BorderRadius.all(widget.style.borderRadius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4, tileMode: TileMode.decal),
-            child: Container(
-              decoration: ShapeDecoration(
-                color: widget.style.background.withValues(alpha: _isUserPressingDown ? 1.0 : 0.8),
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.all(widget.style.borderRadius),
-                ),
+    return Listener(
+      onPointerDown: (_) => setState(() {
+        _isUserPressingDown = true;
+      }),
+      onPointerUp: (_) => setState(() {
+        _isUserPressingDown = false;
+      }),
+      onPointerCancel: (_) => setState(() {
+        _isUserPressingDown = false;
+      }),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.all(widget.style.borderRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4, tileMode: TileMode.decal),
+          child: Container(
+            decoration: ShapeDecoration(
+              color: widget.style.background.withValues(alpha: _isUserPressingDown ? 1.0 : 0.8),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.all(widget.style.borderRadius),
               ),
-              child: KeyboardScaffoldSafeArea(
-                child: child,
-              ),
+            ),
+            child: KeyboardScaffoldSafeArea(
+              child: child,
             ),
           ),
         ),

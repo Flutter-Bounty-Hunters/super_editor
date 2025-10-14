@@ -10,7 +10,6 @@ class FloatingEditorPageScaffold extends StatefulWidget {
     super.key,
     this.messagePageController,
     required this.pageBuilder,
-    this.sheetKey,
     required this.editorSheet,
     this.shadowSheetBanner,
     this.style = const FloatingEditorStyle(),
@@ -19,13 +18,6 @@ class FloatingEditorPageScaffold extends StatefulWidget {
   final MessagePageController? messagePageController;
   final MessagePageScaffoldContentBuilder pageBuilder;
 
-  /// A key that's bound to the outermost widget of the bottom sheet, which can be used to inspect
-  /// the size and location of the bottom sheet.
-  ///
-  /// This is useful, for example, so that an editor sheet can implement drag to expand/contract the
-  /// sheet. In that case, the caller should provide a [sheetKey] to this widget, AND also provide
-  /// that same `sheetKey` to the editor sheet where the dragging is implemented.
-  final GlobalKey? sheetKey;
   final Widget? shadowSheetBanner;
   final Widget editorSheet;
 
@@ -41,8 +33,6 @@ class _FloatingEditorPageScaffoldState extends State<FloatingEditorPageScaffold>
   @override
   void initState() {
     super.initState();
-    // SuperKeyboard.startLogging();
-
     _messagePageController = widget.messagePageController ?? MessagePageController();
   }
 
@@ -64,22 +54,11 @@ class _FloatingEditorPageScaffoldState extends State<FloatingEditorPageScaffold>
       _messagePageController.dispose();
     }
 
-    // SuperKeyboard.stopLogging();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _buildMessagePageScaffold();
-    // return Stack(
-    //   children: [
-    //     widget.pageContent,
-    //     Positioned.fill(child: _buildMessagePageScaffold()),
-    //   ],
-    // );
-  }
-
-  Widget _buildMessagePageScaffold() {
     return MessagePageScaffold(
       controller: _messagePageController,
       bottomSheetMinimumTopGap: MediaQuery.viewPaddingOf(context).top,
@@ -101,11 +80,10 @@ class _FloatingEditorPageScaffoldState extends State<FloatingEditorPageScaffold>
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: KeyedSubtree(
-                key: widget.sheetKey,
+              child: FloatingChatBottomSheet(
                 child: BottomFloatingChatSheet(
                   messagePageController: _messagePageController,
-                  editor: widget.editorSheet,
+                  editorSheet: widget.editorSheet,
                   shadowSheetBanner: widget.shadowSheetBanner,
                   style: widget.style,
                 ),
@@ -121,5 +99,39 @@ class _FloatingEditorPageScaffoldState extends State<FloatingEditorPageScaffold>
         );
       },
     );
+  }
+}
+
+/// A marker widget that wraps the outermost boundary of the bottom sheet in a
+/// [FloatingEditorPageScaffold].
+///
+/// This widget can be accessed by descendants for the purpose of querying the size
+/// and global position of the floating sheet. This is useful, for example, when
+/// implementing drag behaviors to expand/collapse the bottom sheet. The part of the
+/// widget tree that contains the drag handle may not have access to the overall sheet.
+class FloatingChatBottomSheet extends StatefulWidget {
+  static BuildContext of(BuildContext context) =>
+      context.findAncestorStateOfType<_FloatingChatBottomSheetState>()!._sheetKey.currentContext!;
+
+  static BuildContext? maybeOf(BuildContext context) =>
+      context.findAncestorStateOfType<_FloatingChatBottomSheetState>()?._sheetKey.currentContext;
+
+  const FloatingChatBottomSheet({
+    super.key,
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<FloatingChatBottomSheet> createState() => _FloatingChatBottomSheetState();
+}
+
+class _FloatingChatBottomSheetState extends State<FloatingChatBottomSheet> {
+  final _sheetKey = GlobalKey(debugLabel: "FloatingChatBottomSheet");
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(key: _sheetKey, child: widget.child);
   }
 }
