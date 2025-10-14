@@ -35,8 +35,6 @@ class DefaultFloatingSuperChatPage extends StatefulWidget {
 class _DefaultFloatingSuperChatPageState extends State<DefaultFloatingSuperChatPage> {
   final _messagePageController = MessagePageController();
 
-  final _sheetKey = GlobalKey(debugLabel: 'FloatingSuperChatPage bottom sheet boundary');
-
   @override
   void dispose() {
     _messagePageController.dispose();
@@ -49,9 +47,7 @@ class _DefaultFloatingSuperChatPageState extends State<DefaultFloatingSuperChatP
     return FloatingEditorPageScaffold(
       messagePageController: _messagePageController,
       pageBuilder: widget.pageBuilder,
-      sheetKey: _sheetKey,
       editorSheet: DefaultFloatingEditorSheet(
-        sheetKey: _sheetKey,
         editor: widget.editor,
         messagePageController: _messagePageController,
         style: widget.style.editorSheet,
