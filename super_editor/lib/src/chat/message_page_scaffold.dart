@@ -25,6 +25,7 @@ class MessagePageScaffold extends RenderObjectWidget {
     required this.bottomSheetBuilder,
     this.bottomSheetMinimumTopGap = 200,
     this.bottomSheetMinimumHeight = 150,
+    this.bottomSheetCollapsedMaximumHeight = double.infinity,
   });
 
   final MessagePageController? controller;
@@ -47,6 +48,18 @@ class MessagePageScaffold extends RenderObjectWidget {
   /// height mode.
   final double bottomSheetMinimumHeight;
 
+  /// The maximum height that the bottom sheet can expand to, as the intrinsic height
+  /// of the content increases.
+  ///
+  /// E.g., The user starts with a single line of text and then starts inserting
+  /// newlines. As the user continues to add newlines, this height is where the sheet
+  /// stops growing taller.
+  ///
+  /// This height applies when the sheet is collapsed, i.e., not expanded. If the user
+  /// expands the sheet, then the maximum height of the sheet would be the maximum allowed
+  /// layout height, minus [bottomSheetMinimumTopGap].
+  final double bottomSheetCollapsedMaximumHeight;
+
   @override
   RenderObjectElement createElement() {
     return MessagePageElement(this);
@@ -59,6 +72,7 @@ class MessagePageScaffold extends RenderObjectWidget {
       controller,
       bottomSheetMinimumTopGap: bottomSheetMinimumTopGap,
       bottomSheetMinimumHeight: bottomSheetMinimumHeight,
+      bottomSheetCollapsedMaximumHeight: bottomSheetCollapsedMaximumHeight,
     );
   }
 
@@ -66,7 +80,8 @@ class MessagePageScaffold extends RenderObjectWidget {
   void updateRenderObject(BuildContext context, RenderMessagePageScaffold renderObject) {
     renderObject
       ..bottomSheetMinimumTopGap = bottomSheetMinimumTopGap
-      ..bottomSheetMinimumHeight = bottomSheetMinimumHeight;
+      ..bottomSheetMinimumHeight = bottomSheetMinimumHeight
+      ..bottomSheetCollapsedMaximumHeight = bottomSheetCollapsedMaximumHeight;
 
     if (controller != null) {
       renderObject.controller = controller!;
@@ -498,12 +513,6 @@ class MessagePageElement extends RenderObjectElement {
   }
 
   @override
-  void forgetChild(Element child) {
-    print("MessagePageScaffold - forgetChild: $child");
-    super.forgetChild(child);
-  }
-
-  @override
   void visitChildren(ElementVisitor visitor) {
     if (_bottomSheet != null) {
       visitor(_bottomSheet!);
@@ -582,8 +591,10 @@ class RenderMessagePageScaffold extends RenderBox {
     MessagePageController? controller, {
     required double bottomSheetMinimumTopGap,
     required double bottomSheetMinimumHeight,
+    required double bottomSheetCollapsedMaximumHeight,
   })  : _bottomSheetMinimumTopGap = bottomSheetMinimumTopGap,
-        _bottomSheetMinimumHeight = bottomSheetMinimumHeight {
+        _bottomSheetMinimumHeight = bottomSheetMinimumHeight,
+        _bottomSheetCollapsedMaximumHeight = bottomSheetCollapsedMaximumHeight {
     _controller = controller ?? MessagePageController();
     _attachToController();
   }
@@ -710,10 +721,11 @@ class RenderMessagePageScaffold extends RenderBox {
   }
 
   void _onDragEnd() {
-    _isExpandingOrCollapsing = true;
+    print("_onDragEnd()");
     _velocityStopwatch.stop();
 
     final velocity = _velocityTracker.getVelocityEstimate()?.pixelsPerSecond.dy ?? 0;
+    print(" - velocity: $velocity");
 
     _startBottomSheetHeightSimulation(velocity: velocity);
   }
@@ -725,7 +737,7 @@ class RenderMessagePageScaffold extends RenderBox {
 
     final minimizedHeight = switch (_controller.collapsedMode) {
       MessagePageSheetCollapsedMode.preview => _previewHeight,
-      MessagePageSheetCollapsedMode.intrinsic => _intrinsicHeight,
+      MessagePageSheetCollapsedMode.intrinsic => min(_intrinsicHeight, _bottomSheetCollapsedMaximumHeight),
     };
 
     _controller.desiredSheetMode = velocity.abs() > 500 //
@@ -749,18 +761,34 @@ class RenderMessagePageScaffold extends RenderBox {
   void _updateBottomSheetHeightSimulation({
     required double velocity,
   }) {
-    _ticker.stop();
-
     final minimizedHeight = switch (_controller.collapsedMode) {
       MessagePageSheetCollapsedMode.preview => _previewHeight,
-      MessagePageSheetCollapsedMode.intrinsic => _intrinsicHeight,
+      MessagePageSheetCollapsedMode.intrinsic => min(_intrinsicHeight, _bottomSheetCollapsedMaximumHeight),
     };
 
     _controller.isSliding = true;
 
     final startHeight = _bottomSheet!.size.height;
     _simulationGoalMode = _controller.desiredSheetMode;
-    _simulationGoalHeight = _simulationGoalMode! == MessagePageSheetMode.expanded ? _expandedHeight : minimizedHeight;
+    final newSimulationGoalHeight =
+        _simulationGoalMode! == MessagePageSheetMode.expanded ? _expandedHeight : minimizedHeight;
+    if ((newSimulationGoalHeight - startHeight).abs() < 1) {
+      // We're already at the destination. Fizzle.
+      _animatedHeight = newSimulationGoalHeight;
+      _animatedVelocity = 0;
+      _ticker.stop();
+      print("Not animating - we're already at destination");
+      return;
+    }
+    if (newSimulationGoalHeight == _simulationGoalHeight) {
+      // We're already simulating to this height. We short-circuit when the goal
+      // hasn't changed so that we don't get rapidly oscillating simulation artifacts.
+      return;
+    }
+    _simulationGoalHeight = newSimulationGoalHeight;
+    _isExpandingOrCollapsing = true;
+
+    _ticker.stop();
 
     messagePageLayoutLog.info('Creating expand/collapse simulation:');
     messagePageLayoutLog.info(
@@ -773,6 +801,8 @@ class RenderMessagePageScaffold extends RenderBox {
     );
     messagePageLayoutLog.info(' - Final height: $_simulationGoalHeight');
     messagePageLayoutLog.info(' - Initial velocity: $velocity');
+    print(
+        "Starting simulation. Start height: $startHeight, Goal height: $_simulationGoalHeight, Initial velocity: $velocity");
     _simulation = SpringSimulation(
       const SpringDescription(
         mass: 1,
@@ -781,7 +811,10 @@ class RenderMessagePageScaffold extends RenderBox {
       ),
       startHeight, // Start value
       _simulationGoalHeight!, // End value
-      velocity, // Initial velocity
+      // Invert velocity because we measured velocity moving down the screen, but we
+      // want to apply velocity to the height of the sheet. A positive screen velocity
+      // corresponds to a negative sheet height velocity.
+      -velocity, // Initial velocity.
     );
 
     _ticker.start();
@@ -831,7 +864,32 @@ class RenderMessagePageScaffold extends RenderBox {
   }
 
   double _bottomSheetMinimumHeight;
+
+  set bottomSheetMaximumHeight(double newValue) {
+    if (newValue == _bottomSheetMaximumHeight) {
+      return;
+    }
+
+    _bottomSheetMaximumHeight = newValue;
+
+    // FIXME: Only invalidate layout if this change impacts the current rendering.
+    markNeedsLayout();
+  }
+
   double _bottomSheetMaximumHeight = double.infinity;
+
+  set bottomSheetCollapsedMaximumHeight(double newValue) {
+    if (newValue == _bottomSheetCollapsedMaximumHeight) {
+      return;
+    }
+
+    _bottomSheetCollapsedMaximumHeight = newValue;
+
+    // FIXME: Only invalidate layout if this change impacts the current rendering.
+    markNeedsLayout();
+  }
+
+  double _bottomSheetCollapsedMaximumHeight = double.infinity;
 
   /// Whether this render object's layout information or its content
   /// layout information is dirty.
@@ -857,8 +915,9 @@ class RenderMessagePageScaffold extends RenderBox {
 
   void _onExpandCollapseTick(Duration elapsedTime) {
     final seconds = elapsedTime.inMilliseconds / 1000;
-    _animatedHeight = _simulation!.x(seconds);
+    _animatedHeight = _simulation!.x(seconds).clamp(_bottomSheetMinimumHeight, _bottomSheetMaximumHeight);
     _animatedVelocity = _simulation!.dx(seconds);
+    print("Tick - time: $seconds s. New height: $_animatedHeight. New velocity: $_animatedVelocity");
 
     if (_simulation!.isDone(seconds)) {
       _ticker.stop();
@@ -994,8 +1053,7 @@ class RenderMessagePageScaffold extends RenderBox {
     messagePageLayoutLog.info(
       "Measuring the bottom sheet's intrinsic height",
     );
-    // Do a throw-away layout pass to get the intrinsic height of the bottom
-    // sheet, bounded within its min/max height.
+    // Do a throw-away layout pass to get the intrinsic height of the bottom sheet.
     _intrinsicHeight = _calculateBoundedIntrinsicHeight(
       constraints.copyWith(minHeight: 0),
     );
@@ -1010,6 +1068,7 @@ class RenderMessagePageScaffold extends RenderBox {
       MessagePageSheetCollapsedMode.intrinsic => _intrinsicHeight,
     };
 
+    // Max height depends on whether we're collapsed or expanded.
     final bottomSheetConstraints = constraints.copyWith(
       minHeight: minimizedHeight,
       maxHeight: _bottomSheetMaximumHeight,
@@ -1035,11 +1094,17 @@ class RenderMessagePageScaffold extends RenderBox {
         _updateBottomSheetHeightSimulation(velocity: _animatedVelocity);
       }
 
+      final minimumHeight = min(
+          _controller.collapsedMode == MessagePageSheetCollapsedMode.preview ? _previewHeight : _intrinsicHeight,
+          _bottomSheetCollapsedMaximumHeight);
+      final animatedHeight = _animatedHeight.clamp(minimumHeight, _bottomSheetMaximumHeight);
+      print(
+          "Animating: $_simulationGoalMode\n - Desired sheet mode: ${_controller.desiredSheetMode}\n - Collapsed mode? ${_controller.collapsedMode}, preview height: $_previewHeight\n - Goal height: $_simulationGoalHeight\n - Animated height: $_animatedHeight\n - Collapsed max height: $_bottomSheetCollapsedMaximumHeight\n - Min height: $minimumHeight, Max height: $_bottomSheetMaximumHeight\n - Clamped height: $animatedHeight");
       _bottomSheet!.layout(
         bottomSheetConstraints.copyWith(
-          minHeight: max(_animatedHeight - 1, 0),
+          minHeight: max(animatedHeight - 1, 0),
           // ^ prevent a layout boundary
-          maxHeight: _animatedHeight,
+          maxHeight: animatedHeight,
         ),
         parentUsesSize: true,
       );
@@ -1048,7 +1113,8 @@ class RenderMessagePageScaffold extends RenderBox {
       messagePageLayoutLog.info(
         ' - drag height: $_desiredDragHeight, minimized height: $minimizedHeight',
       );
-      final strictHeight = _desiredDragHeight!.clamp(minimizedHeight, _bottomSheetMaximumHeight);
+      final minimumHeight = min(minimizedHeight, _bottomSheetCollapsedMaximumHeight);
+      final strictHeight = _desiredDragHeight!.clamp(minimumHeight, _bottomSheetMaximumHeight);
 
       messagePageLayoutLog.info(' - bounded drag height: $strictHeight');
       _bottomSheet!.layout(
@@ -1077,7 +1143,11 @@ class RenderMessagePageScaffold extends RenderBox {
       messagePageLayoutLog.info('>>>>>>>> Minimized');
       messagePageLayoutLog.info('Running standard editor layout with constraints: $bottomSheetConstraints');
       _bottomSheet!.layout(
-        bottomSheetConstraints,
+        // bottomSheetConstraints,
+        bottomSheetConstraints.copyWith(
+          minHeight: 0,
+          maxHeight: _bottomSheetCollapsedMaximumHeight,
+        ),
         parentUsesSize: true,
       );
     }
@@ -1085,6 +1155,7 @@ class RenderMessagePageScaffold extends RenderBox {
     (_bottomSheet!.parentData! as BoxParentData).offset = Offset(0, size.height - _bottomSheet!.size.height);
     _bottomSheetNeedsLayout = false;
     messagePageLayoutLog.info('Bottom sheet height: ${_bottomSheet!.size.height}');
+    print("Bottom sheet final height: ${_bottomSheet!.size.height} (${_controller.collapsedMode})");
 
     // Now that we know the size of the message editor, build the content based
     // on the bottom spacing needed to push above the editor.
