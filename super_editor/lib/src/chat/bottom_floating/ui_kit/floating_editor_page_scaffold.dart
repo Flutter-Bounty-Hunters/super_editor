@@ -62,8 +62,8 @@ class _FloatingEditorPageScaffoldState extends State<FloatingEditorPageScaffold>
     return MessagePageScaffold(
       controller: _messagePageController,
       bottomSheetMinimumTopGap: MediaQuery.viewPaddingOf(context).top,
-      bottomSheetMinimumHeight: 148,
-      bottomSheetCollapsedMaximumHeight: 650,
+      bottomSheetMinimumHeight: widget.style.margin.top,
+      bottomSheetCollapsedMaximumHeight: widget.style.collapsedMaximumHeight,
       contentBuilder: (contentContext, bottomSpacing) {
         return MediaQuery.removePadding(
           context: contentContext,

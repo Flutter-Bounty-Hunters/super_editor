@@ -46,18 +46,29 @@ class FloatingEditorStyle {
   const FloatingEditorStyle({
     this.margin = const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     this.borderRadius = const Radius.circular(28),
-    this.shadow = const FloatingEditorShadow(),
+    // TODO: Remove keyboard height from any of our calculations, which should reduce this number to something closer to 250 or 300.
+    this.collapsedMaximumHeight = 650,
     this.shadowSheetBackground = Colors.grey,
     this.shadowSheetPadding = const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
+    this.shadow = const FloatingEditorShadow(),
     this.editorSheetBackground = Colors.white,
   });
 
   final EdgeInsets margin;
   final Radius borderRadius;
-  final FloatingEditorShadow shadow;
+
+  /// The maximum height the bottom sheet can grow, as the user enters more lines of content,
+  /// before it stops growing and starts scrolling.
+  ///
+  /// This height applies to the sheet when its "collapsed", i.e., when it's not "expanded". The
+  /// sheet includes an "expanded" mode, which is typically triggered by the user dragging the
+  /// sheet up. When expanded, the sheet always takes up all available vertical space. When
+  /// not expanded, this height is as tall as the sheet can grow.
+  final double collapsedMaximumHeight;
 
   final Color shadowSheetBackground;
   final EdgeInsets shadowSheetPadding;
+  final FloatingEditorShadow shadow;
 
   final Color editorSheetBackground;
 
