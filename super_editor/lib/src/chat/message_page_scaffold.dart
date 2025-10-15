@@ -776,6 +776,8 @@ class RenderMessagePageScaffold extends RenderBox {
       // We're already at the destination. Fizzle.
       _animatedHeight = newSimulationGoalHeight;
       _animatedVelocity = 0;
+      _isExpandingOrCollapsing = false;
+      _desiredDragHeight = null;
       _ticker.stop();
       print("Not animating - we're already at destination");
       return;
@@ -1109,6 +1111,7 @@ class RenderMessagePageScaffold extends RenderBox {
         parentUsesSize: true,
       );
     } else if (isDragging) {
+      print("Laying out while dragging");
       messagePageLayoutLog.info('>>>>>>>> User dragging');
       messagePageLayoutLog.info(
         ' - drag height: $_desiredDragHeight, minimized height: $minimizedHeight',
@@ -1126,6 +1129,7 @@ class RenderMessagePageScaffold extends RenderBox {
         parentUsesSize: true,
       );
     } else if (_controller.desiredSheetMode == MessagePageSheetMode.expanded) {
+      print("Doing expanded height layout");
       messagePageLayoutLog.info('>>>>>>>> Stationary expanded');
       messagePageLayoutLog.info(
         'Running layout and forcing editor height to the max: $_expandedHeight',
@@ -1140,6 +1144,7 @@ class RenderMessagePageScaffold extends RenderBox {
         parentUsesSize: true,
       );
     } else {
+      print("Doing intrinsic height layout");
       messagePageLayoutLog.info('>>>>>>>> Minimized');
       messagePageLayoutLog.info('Running standard editor layout with constraints: $bottomSheetConstraints');
       _bottomSheet!.layout(
@@ -1152,6 +1157,7 @@ class RenderMessagePageScaffold extends RenderBox {
       );
     }
 
+    print("Scaffold full height: ${size.height}");
     (_bottomSheet!.parentData! as BoxParentData).offset = Offset(0, size.height - _bottomSheet!.size.height);
     _bottomSheetNeedsLayout = false;
     messagePageLayoutLog.info('Bottom sheet height: ${_bottomSheet!.size.height}');
@@ -1253,6 +1259,9 @@ class RenderMessagePageScaffold extends RenderBox {
       messagePagePaintLog.info(
         'Painting message editor - y-offset: ${size.height - _bottomSheet!.size.height}',
       );
+      print("Painting bottom sheet at: ${offset + (_bottomSheet!.parentData! as BoxParentData).offset}");
+      print(" - scaffold offset: $offset");
+      print(" - bottom sheet local offset: ${(_bottomSheet!.parentData! as BoxParentData).offset}");
       context.paintChild(
         _bottomSheet!,
         offset + (_bottomSheet!.parentData! as BoxParentData).offset,

@@ -92,6 +92,7 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   double _dragTouchOffsetFromIndicator = 0;
 
   void _onVerticalDragStart(DragStartDetails details) {
+    print("Drag handle start: ${details.globalPosition}");
     _dragTouchOffsetFromIndicator = _dragFingerOffsetFromIndicator(details.globalPosition);
 
     widget.messagePageController.onDragStart(
@@ -100,16 +101,19 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
+    print("Drag handle update: ${details.globalPosition}");
     widget.messagePageController.onDragUpdate(
       details.globalPosition.dy - _dragIndicatorOffsetFromTop - _dragTouchOffsetFromIndicator,
     );
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
+    print("Drag handle end.");
     widget.messagePageController.onDragEnd();
   }
 
   void _onVerticalDragCancel() {
+    print("Drag handle cancel.");
     widget.messagePageController.onDragEnd();
   }
 
