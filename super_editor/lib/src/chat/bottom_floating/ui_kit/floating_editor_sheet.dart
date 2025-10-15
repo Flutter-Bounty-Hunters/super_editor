@@ -46,6 +46,7 @@ class FloatingEditorStyle {
   const FloatingEditorStyle({
     this.margin = const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     this.borderRadius = const Radius.circular(28),
+    this.collapsedMinimumHeight = 0,
     // TODO: Remove keyboard height from any of our calculations, which should reduce this number to something closer to 250 or 300.
     this.collapsedMaximumHeight = 650,
     this.shadowSheetBackground = Colors.grey,
@@ -56,6 +57,10 @@ class FloatingEditorStyle {
 
   final EdgeInsets margin;
   final Radius borderRadius;
+
+  /// The shortest that the sheet can be, even if the intrinsic height of the content
+  /// within the sheet is shorter than this.
+  final double collapsedMinimumHeight;
 
   /// The maximum height the bottom sheet can grow, as the user enters more lines of content,
   /// before it stops growing and starts scrolling.
