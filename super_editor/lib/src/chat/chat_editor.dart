@@ -344,8 +344,10 @@ class SuperEditorFocusOnTap extends StatelessWidget {
           listenable: editor.composer.selectionNotifier,
           builder: (context, child) {
             final shouldControlTap = editor.composer.selection == null || !editorFocusNode.hasFocus;
+            print("Is SuperEditorFocusOnTap waiting for a tap? $shouldControlTap");
+
             return GestureDetector(
-              onTap: editor.composer.selection == null || !editorFocusNode.hasFocus ? _selectEditor : null,
+              onTap: shouldControlTap ? _selectEditor : null,
               behavior: HitTestBehavior.opaque,
               child: IgnorePointer(
                 ignoring: shouldControlTap,
@@ -363,6 +365,7 @@ class SuperEditorFocusOnTap extends StatelessWidget {
   }
 
   void _selectEditor() {
+    print("Tap on editor, giving focus");
     editorFocusNode.requestFocus();
 
     final endNode = editor.document.last;

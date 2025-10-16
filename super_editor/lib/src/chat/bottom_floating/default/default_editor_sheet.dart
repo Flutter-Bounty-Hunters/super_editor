@@ -13,9 +13,7 @@ import 'package:super_editor/src/infrastructure/keyboard_panel_scaffold.dart';
 /// A super ellipse sheet, which contains a drag handle, editor, and toolbar.
 ///
 /// This sheet can optionally be composed into a larger sheet, which includes a shadow
-/// sheet. In that case, a [sheetKey] must be provided which is attached to the outermost
-/// boundary of the whole sheet. The whole sheet boundary is used to enforce a max and min
-/// height for the sheet as the user drags it.
+/// sheet.
 class DefaultFloatingEditorSheet extends StatefulWidget {
   const DefaultFloatingEditorSheet({
     super.key,
