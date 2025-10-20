@@ -36,9 +36,10 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     super.key,
     this.editorFocusNode,
     required this.editor,
-    required this.messagePageController,
+    required this.pageController,
     this.scrollController,
     this.softwareKeyboardController,
+    this.isImeConnected,
   });
 
   /// Optional [FocusNode], which is attached to the internal [SuperEditor].
@@ -56,7 +57,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
   /// [SuperChatEditor] requires a [MessagePageController] to monitor when the message page scaffold goes into
   /// and out of "preview" mode. For example, whenever we're in "preview" mode, the internal [SuperEditor] is
   /// forced to scroll to the top and stay there.
-  final MessagePageController messagePageController;
+  final MessagePageController pageController;
 
   /// The scroll controller attached to the internal [SuperEditor].
   ///
@@ -75,6 +76,10 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
   /// When not provided, a [SoftwareKeyboardController] is created internally and given to the [SuperEditor].
   final SoftwareKeyboardController? softwareKeyboardController;
 
+  /// Shared knowledge about whether the IME is currently connected to Super Editor - Super Editor
+  /// sets this value, and other clients can read it.
+  final ValueNotifier<bool>? isImeConnected;
+
   @override
   State<SuperChatEditor<PanelType>> createState() => _SuperChatEditorState<PanelType>();
 }
@@ -84,24 +89,26 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
   late FocusNode _editorFocusNode;
 
   late ScrollController _scrollController;
-  late KeyboardPanelController<PanelType> _keyboardPanelController;
-  final _isImeConnected = ValueNotifier(false);
+  // late KeyboardPanelController<PanelType> _keyboardPanelController;
+  late ValueNotifier<bool> _isImeConnected;
 
   @override
   void initState() {
+    print("Initializing new chat editor...");
     super.initState();
 
     _editorFocusNode = widget.editorFocusNode ?? FocusNode();
 
     _scrollController = widget.scrollController ?? ScrollController();
 
-    _keyboardPanelController = KeyboardPanelController(
-      widget.softwareKeyboardController ?? SoftwareKeyboardController(),
-    );
+    // _keyboardPanelController = KeyboardPanelController(
+    //   widget.softwareKeyboardController ?? SoftwareKeyboardController(),
+    // );
 
-    widget.messagePageController.addListener(_onMessagePageControllerChange);
+    widget.pageController.addListener(_onPageControllerChange);
 
-    _isImeConnected.addListener(_onImeConnectionChange);
+    _isImeConnected = (widget.isImeConnected ?? ValueNotifier(false)) //
+      ..addListener(_onImeConnectionChange);
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardChange);
   }
@@ -125,37 +132,57 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
       _scrollController = widget.scrollController ?? ScrollController();
     }
 
-    if (widget.messagePageController != oldWidget.messagePageController) {
-      oldWidget.messagePageController.removeListener(_onMessagePageControllerChange);
-      widget.messagePageController.addListener(_onMessagePageControllerChange);
+    if (widget.pageController != oldWidget.pageController) {
+      oldWidget.pageController.removeListener(_onPageControllerChange);
+      widget.pageController.addListener(_onPageControllerChange);
     }
 
-    if (widget.softwareKeyboardController != oldWidget.softwareKeyboardController) {
-      _keyboardPanelController.dispose();
-      _keyboardPanelController = KeyboardPanelController(
-        widget.softwareKeyboardController ?? SoftwareKeyboardController(),
-      );
+    // if (widget.softwareKeyboardController != oldWidget.softwareKeyboardController) {
+    //   _keyboardPanelController.dispose();
+    //   _keyboardPanelController = KeyboardPanelController(
+    //     widget.softwareKeyboardController ?? SoftwareKeyboardController(),
+    //   );
+    // }
+    //
+    if (widget.isImeConnected != oldWidget.isImeConnected) {
+      _isImeConnected.removeListener(_onImeConnectionChange);
+      if (oldWidget.isImeConnected == null) {
+        _isImeConnected.dispose();
+      }
+
+      _isImeConnected = (widget.isImeConnected ?? ValueNotifier(false)) //
+        ..addListener(_onImeConnectionChange);
     }
   }
 
   @override
   void dispose() {
+    print("Disposing chat editor...");
     SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardChange);
+
+    _isImeConnected.removeListener(_onImeConnectionChange);
+    if (widget.isImeConnected == null) {
+      print("Disposing _isImeConnected");
+      _isImeConnected.dispose();
+    }
+
+    widget.pageController.removeListener(_onPageControllerChange);
 
     if (widget.scrollController == null) {
       _scrollController.dispose();
     }
 
-    widget.messagePageController.removeListener(_onMessagePageControllerChange);
-
-    _keyboardPanelController.dispose();
-    _isImeConnected.dispose();
+    // _keyboardPanelController.dispose();
+    // _isImeConnected.dispose();
 
     if (widget.editorFocusNode == null) {
+      print("Disposing _editorFocusNode");
       _editorFocusNode.dispose();
     }
 
     super.dispose();
+
+    print("Done with chat editor disposal");
   }
 
   void _onKeyboardChange() {
@@ -171,17 +198,24 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     // focus so that our app state synchronizes with the closed IME connection.
     final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
     if (_isImeConnected.value && (keyboardState == KeyboardState.closing || keyboardState == KeyboardState.closed)) {
-      _editorFocusNode.unfocus();
+      // print("UNFOCUSING EDITOR BECAUSE KEYBOARD IS CLOSED");
+      // _editorFocusNode.unfocus();
     }
   }
 
   void _onImeConnectionChange() {
-    widget.messagePageController.collapsedMode =
+    print("_onImeConnectionChange() - is IME connected? ${_isImeConnected.value}");
+    print("${StackTrace.current}");
+    widget.pageController.collapsedMode =
         _isImeConnected.value ? MessagePageSheetCollapsedMode.intrinsic : MessagePageSheetCollapsedMode.preview;
   }
 
-  void _onMessagePageControllerChange() {
-    if (widget.messagePageController.isPreview) {
+  void _onPageControllerChange() {
+    print("_onPageControllerChange() - _scrollController: ${_scrollController.hashCode}");
+    // TODO: I added _scrollController.hashClients because we were crashing in the floating chat
+    //       demo when pressing the "close keyboard" button on the toolbar. But I don't know why
+    //       we lost our scrolling client when we pressed the close button.
+    if (widget.pageController.isPreview && _scrollController.hasClients) {
       // Always scroll the editor to the top when in preview mode.
       _scrollController.position.jumpTo(0);
     }
@@ -189,40 +223,66 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardPanelScaffold(
-      controller: _keyboardPanelController,
-      isImeConnected: _isImeConnected,
-      toolbarBuilder: (BuildContext context, PanelType? openPanel) {
-        return const SizedBox();
-      },
-      keyboardPanelBuilder: (BuildContext context, PanelType? openPanel) {
-        return const SizedBox();
-      },
-      contentBuilder: (BuildContext context, PanelType? openPanel) {
-        return SuperEditorFocusOnTap(
-          editorFocusNode: _editorFocusNode,
+    print("chat_editor.dart - building with _scrollController: ${_scrollController.hashCode}");
+    return SuperEditorFocusOnTap(
+      editorFocusNode: _editorFocusNode,
+      editor: widget.editor,
+      child: SuperEditorDryLayout(
+        controller: widget.scrollController,
+        superEditor: SuperEditor(
+          key: _editorKey,
+          focusNode: _editorFocusNode,
           editor: widget.editor,
-          child: SuperEditorDryLayout(
-            controller: widget.scrollController,
-            superEditor: SuperEditor(
-              key: _editorKey,
-              focusNode: _editorFocusNode,
-              editor: widget.editor,
-              softwareKeyboardController: widget.softwareKeyboardController,
-              isImeConnected: _isImeConnected,
-              imePolicies: const SuperEditorImePolicies(),
-              selectionPolicies: const SuperEditorSelectionPolicies(),
-              shrinkWrap: false,
-              stylesheet: _chatStylesheet,
-              componentBuilders: const [
-                HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-                ...defaultComponentBuilders,
-              ],
-            ),
-          ),
-        );
-      },
+          scrollController: _scrollController,
+          softwareKeyboardController: widget.softwareKeyboardController,
+          isImeConnected: _isImeConnected,
+          imePolicies: const SuperEditorImePolicies(),
+          selectionPolicies: const SuperEditorSelectionPolicies(),
+          shrinkWrap: false,
+          stylesheet: _chatStylesheet,
+          componentBuilders: const [
+            HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+            ...defaultComponentBuilders,
+          ],
+        ),
+      ),
     );
+
+    // return KeyboardPanelScaffold<PanelType>(
+    //   controller: _keyboardPanelController,
+    //   isImeConnected: _isImeConnected,
+    //   toolbarBuilder: (BuildContext context, PanelType? openPanel) {
+    //     return const SizedBox();
+    //   },
+    //   keyboardPanelBuilder: (BuildContext context, PanelType? openPanel) {
+    //     return const SizedBox();
+    //   },
+    //   contentBuilder: (BuildContext context, PanelType? openPanel) {
+    //     return SuperEditorFocusOnTap(
+    //       editorFocusNode: _editorFocusNode,
+    //       editor: widget.editor,
+    //       child: SuperEditorDryLayout(
+    //         controller: widget.scrollController,
+    //         superEditor: SuperEditor(
+    //           key: _editorKey,
+    //           focusNode: _editorFocusNode,
+    //           editor: widget.editor,
+    //           scrollController: _scrollController,
+    //           softwareKeyboardController: widget.softwareKeyboardController,
+    //           isImeConnected: _isImeConnected,
+    //           imePolicies: const SuperEditorImePolicies(),
+    //           selectionPolicies: const SuperEditorSelectionPolicies(),
+    //           shrinkWrap: false,
+    //           stylesheet: _chatStylesheet,
+    //           componentBuilders: const [
+    //             HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+    //             ...defaultComponentBuilders,
+    //           ],
+    //         ),
+    //       ),
+    //     );
+    //   },
+    // );
   }
 }
 

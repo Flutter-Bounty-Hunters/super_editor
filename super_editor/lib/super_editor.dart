@@ -20,7 +20,6 @@ export 'src/chat/bottom_floating/default/default_editor_toolbar.dart';
 export 'src/chat/bottom_floating/default/default_floating_super_chat.dart';
 export 'src/chat/bottom_floating/ui_kit/floating_editor_page_scaffold.dart';
 export 'src/chat/bottom_floating/ui_kit/floating_editor_sheet.dart';
-export 'src/chat/bottom_floating/floating_super_chat.dart';
 export 'src/chat/chat_editor.dart';
 export 'src/chat/message_page_scaffold.dart';
 

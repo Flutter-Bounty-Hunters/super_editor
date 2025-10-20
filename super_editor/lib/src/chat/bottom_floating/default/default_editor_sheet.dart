@@ -8,7 +8,6 @@ import 'package:super_editor/src/chat/chat_editor.dart';
 import 'package:super_editor/src/chat/message_page_scaffold.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/document_ime/document_input_ime.dart';
-import 'package:super_editor/src/infrastructure/keyboard_panel_scaffold.dart';
 
 /// A super ellipse sheet, which contains a drag handle, editor, and toolbar.
 ///
@@ -159,9 +158,7 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
                 borderRadius: BorderRadius.all(widget.style.borderRadius),
               ),
             ),
-            child: KeyboardScaffoldSafeArea(
-              child: child,
-            ),
+            child: child,
           ),
         ),
       ),
@@ -235,7 +232,7 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
             key: _editorKey,
             editorFocusNode: _editorFocusNode,
             editor: widget.editor,
-            messagePageController: widget.messagePageController,
+            pageController: widget.messagePageController,
             scrollController: _scrollController,
             softwareKeyboardController: _softwareKeyboardController,
           ),
