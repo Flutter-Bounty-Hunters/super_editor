@@ -1,7 +1,7 @@
 import 'package:example_chat/floating_chat_editor_demo/fake_chat_thread.dart';
 import 'package:example_chat/floating_chat_editor_demo/floating_editor_toolbar.dart';
 import 'package:flutter/material.dart';
-import 'package:super_editor/super_editor.dart';
+import 'package:super_editor/super_editor.dart' hide AttachmentButton;
 
 /// A floating chat page demo, which uses custom a custom editor sheet material, a custom
 /// visual editor, and a custom editor toolbar.
@@ -13,11 +13,13 @@ class FloatingChatEditorBuilderDemo extends StatefulWidget {
 }
 
 class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilderDemo> {
-  final _messagePageController = MessagePageController();
+  late final FloatingEditorPageController<_MessageEditingPanels> _pageController;
 
   final _editorFocusNode = FocusNode(debugLabel: "chat editor");
   late final Editor _editor;
   final _softwareKeyboardController = SoftwareKeyboardController();
+
+  final _isImeConnected = ValueNotifier(false);
 
   var _showShadowSheetBanner = false;
 
@@ -29,11 +31,15 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
       document: MutableDocument.empty(),
       composer: MutableDocumentComposer(),
     );
+
+    _pageController = FloatingEditorPageController(_softwareKeyboardController);
   }
 
   @override
   void dispose() {
-    _messagePageController.dispose();
+    _isImeConnected.dispose();
+
+    _pageController.dispose();
 
     _editorFocusNode.dispose();
     _editor.dispose();
@@ -44,11 +50,19 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
   @override
   Widget build(BuildContext context) {
     return Material(
-      child: FloatingSuperChatPageBuilder(
-        messagePageController: _messagePageController,
-        pageBuilder: (context, bottomSpacing) => _ChatPage(appBar: _buildAppBar()),
+      child: FloatingEditorPageScaffold<_MessageEditingPanels>(
+        pageController: _pageController,
+        pageBuilder: (context, pageGeometry) {
+          return _ChatPage(
+            appBar: _buildAppBar(),
+            scrollPadding: EdgeInsets.only(bottom: pageGeometry.bottomSafeArea),
+          );
+        },
         editorSheet: _buildEditorSheet(),
-        shadowSheetBanner: _showShadowSheetBanner ? _buildBanner() : null,
+        keyboardPanelBuilder: _buildKeyboardPanel,
+        style: FloatingEditorStyle(
+          margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
+        ),
       ),
     );
   }
@@ -56,13 +70,11 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
   Widget _buildEditorSheet() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.only(left: 14, right: 14, top: 8, bottom: 14),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildBanner(),
-          const SizedBox(height: 16),
           _buildEditor(),
           _maybeBuildToolbar(),
         ],
@@ -72,7 +84,7 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
 
   Widget _buildBanner() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.only(left: 14, right: 14, top: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: Colors.grey.shade300,
@@ -102,25 +114,104 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
   }
 
   Widget _buildEditor() {
-    return SuperChatEditor(
-      editorFocusNode: _editorFocusNode,
-      editor: _editor,
-      messagePageController: _messagePageController,
-      softwareKeyboardController: _softwareKeyboardController,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          _maybeBuildPreviewAttachmentButton(),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: SuperChatEditor(
+                editorFocusNode: _editorFocusNode,
+                editor: _editor,
+                pageController: _pageController,
+                softwareKeyboardController: _softwareKeyboardController,
+                isImeConnected: _isImeConnected,
+              ),
+            ),
+          ),
+          _maybeBuildPreviewDictationButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _maybeBuildPreviewAttachmentButton() {
+    return ListenableBuilder(
+      listenable: _editorFocusNode,
+      builder: (context, child) {
+        if (_editorFocusNode.hasFocus) {
+          return SizedBox();
+        }
+
+        return AttachmentButton(
+          onPressed: () {
+            _editorFocusNode.requestFocus();
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _pageController.showKeyboardPanel(_MessageEditingPanels.slashCommandPanel);
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Widget _maybeBuildPreviewDictationButton() {
+    return ListenableBuilder(
+      listenable: _editorFocusNode,
+      builder: (context, child) {
+        if (_editorFocusNode.hasFocus) {
+          return SizedBox();
+        }
+
+        return FloatingToolbarIconButton(
+          icon: Icons.multitrack_audio,
+          onPressed: () {},
+        );
+      },
     );
   }
 
   Widget _maybeBuildToolbar() {
     return ListenableBuilder(
-      listenable: _editorFocusNode,
+      listenable: Listenable.merge([_editorFocusNode, _pageController]),
       builder: (context, child) {
         if (!_editorFocusNode.hasFocus) {
           return const SizedBox();
         }
 
-        return FloatingEditorToolbar(softwareKeyboardController: _softwareKeyboardController);
+        print("Building FloatingEditorToolbar - open panel: ${_pageController.openPanel}");
+        return FloatingEditorToolbar(
+          onAttachPressed: () {
+            _pageController.toggleKeyboardPanel(_MessageEditingPanels.slashCommandPanel);
+          },
+          isTextColorActivated: _pageController.openPanel == _MessageEditingPanels.textColorPanel,
+          onTextColorPressed: () {
+            _pageController.toggleKeyboardPanel(_MessageEditingPanels.textColorPanel);
+          },
+          isBackgroundColorActivated: _pageController.openPanel == _MessageEditingPanels.backgroundColorPanel,
+          onBackgroundColorPressed: () {
+            _pageController.toggleKeyboardPanel(_MessageEditingPanels.backgroundColorPanel);
+          },
+          onCloseKeyboardPressed: () {
+            _pageController.closeKeyboardAndPanel();
+          },
+        );
       },
     );
+  }
+
+  Widget _buildKeyboardPanel(BuildContext context, _MessageEditingPanels openPanel) {
+    switch (openPanel) {
+      case _MessageEditingPanels.slashCommandPanel:
+        return _SlashCommandPanel();
+      case _MessageEditingPanels.textColorPanel:
+        return _TextColorPanel();
+      case _MessageEditingPanels.backgroundColorPanel:
+        return _BackgroundColorPanel();
+    }
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -145,9 +236,11 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
 class _ChatPage extends StatelessWidget {
   const _ChatPage({
     this.appBar,
+    this.scrollPadding = EdgeInsets.zero,
   });
 
   final PreferredSizeWidget? appBar;
+  final EdgeInsets scrollPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -163,121 +256,43 @@ class _ChatPage extends StatelessWidget {
       backgroundColor: Colors.white,
       body: ColoredBox(
         color: Colors.white,
-        child: FakeChatThread(),
+        child: FakeChatThread(
+          scrollPadding: scrollPadding,
+        ),
       ),
     );
   }
 }
 
-// /// A demo of the floating chat page that adjusts available configurations, including a
-// /// custom editor widget and a custom toolbar widget.
-// class FloatingChatEditorConfiguredDemo extends StatefulWidget {
-//   const FloatingChatEditorConfiguredDemo({super.key});
-//
-//   @override
-//   State<FloatingChatEditorConfiguredDemo> createState() => _FloatingChatEditorConfiguredDemoState();
-// }
-//
-// class _FloatingChatEditorConfiguredDemoState extends State<FloatingChatEditorConfiguredDemo> {
-//   late final Editor _editor;
-//   final _softwareKeyboardController = SoftwareKeyboardController();
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//
-//     _editor = createDefaultDocumentEditor(
-//       document: MutableDocument.empty(),
-//       composer: MutableDocumentComposer(),
-//     );
-//   }
-//
-//   @override
-//   void dispose() {
-//     _editor.dispose();
-//
-//     super.dispose();
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Material(
-//       child: SuperChatPage.floating(
-//         pageBuilder: (context, bottomSpacing) => _ChatPage(),
-//         editor: _editor,
-//         softwareKeyboardController: _softwareKeyboardController,
-//         editorBuilder: (context, editor) {
-//           return _CustomEditor(
-//             editor: _editor,
-//           );
-//         },
-//         toolbarBuilder: (context, editor) {
-//           return _CustomToolbar(
-//             editor: _editor,
-//             softwareKeyboardController: _softwareKeyboardController,
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }
-//
-// class _CustomEditor extends StatefulWidget {
-//   const _CustomEditor({
-//     required this.editor,
-//   });
-//
-//   final Editor editor;
-//
-//   @override
-//   State<_CustomEditor> createState() => _CustomEditorState();
-// }
-//
-// class _CustomEditorState extends State<_CustomEditor> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return const Placeholder();
-//   }
-// }
-//
-// class _CustomToolbar extends StatefulWidget {
-//   const _CustomToolbar({
-//     required this.editor,
-//     required this.softwareKeyboardController,
-//   });
-//
-//   final Editor editor;
-//   final SoftwareKeyboardController softwareKeyboardController;
-//
-//   @override
-//   State<_CustomToolbar> createState() => _CustomToolbarState();
-// }
-//
-// class _CustomToolbarState extends State<_CustomToolbar> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return const Placeholder();
-//   }
-// }
-//
-// class _ChatPage extends StatelessWidget {
-//   const _ChatPage();
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text("Floating Editor"),
-//         backgroundColor: Colors.white,
-//         elevation: 16,
-//       ),
-//       extendBodyBehindAppBar: true,
-//       resizeToAvoidBottomInset: false,
-//       backgroundColor: Colors.white,
-//       body: ColoredBox(
-//         color: Colors.white,
-//         child: FakeChatThread(),
-//       ),
-//     );
-//   }
-// }
+enum _MessageEditingPanels {
+  slashCommandPanel,
+  textColorPanel,
+  backgroundColorPanel;
+}
+
+class _SlashCommandPanel extends StatelessWidget {
+  const _SlashCommandPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(color: Colors.blue);
+  }
+}
+
+class _TextColorPanel extends StatelessWidget {
+  const _TextColorPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(color: Colors.red);
+  }
+}
+
+class _BackgroundColorPanel extends StatelessWidget {
+  const _BackgroundColorPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(color: Colors.green);
+  }
+}

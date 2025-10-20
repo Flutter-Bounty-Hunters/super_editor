@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/bottom_floating/default/default_editor_sheet.dart';
 import 'package:super_editor/src/chat/bottom_floating/ui_kit/floating_editor_page_scaffold.dart';
 import 'package:super_editor/src/chat/bottom_floating/ui_kit/floating_editor_sheet.dart';
-import 'package:super_editor/src/chat/message_page_scaffold.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_input_ime.dart';
 
 /// The standard/default floating chat page.
 ///
@@ -20,7 +20,7 @@ class DefaultFloatingSuperChatPage extends StatefulWidget {
     this.style = const FloatingEditorStyle(),
   });
 
-  final MessagePageScaffoldContentBuilder pageBuilder;
+  final FloatingEditorContentBuilder pageBuilder;
 
   final Editor editor;
 
@@ -33,23 +33,29 @@ class DefaultFloatingSuperChatPage extends StatefulWidget {
 }
 
 class _DefaultFloatingSuperChatPageState extends State<DefaultFloatingSuperChatPage> {
-  final _messagePageController = MessagePageController();
+  final _softwareKeyboardController = SoftwareKeyboardController();
+  late final FloatingEditorPageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = FloatingEditorPageController(_softwareKeyboardController);
+  }
 
   @override
   void dispose() {
-    _messagePageController.dispose();
-
+    _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return FloatingEditorPageScaffold(
-      messagePageController: _messagePageController,
+      pageController: _pageController,
       pageBuilder: widget.pageBuilder,
       editorSheet: DefaultFloatingEditorSheet(
         editor: widget.editor,
-        messagePageController: _messagePageController,
+        messagePageController: _pageController,
         style: widget.style.editorSheet,
       ),
       shadowSheetBanner: widget.shadowSheetBanner,
