@@ -447,7 +447,14 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
       // Close panel.
       _wantsToShowKeyboardPanel = false;
       _activePanel = null;
-      _panelHeightController.reverse();
+
+      if (!_wantsToShowSoftwareKeyboard) {
+        // We don't want the panel or the keyboard, so animate the panel down.
+        _panelHeightController.reverse();
+      } else {
+        // We want the keyboard to replace the panel. Wait for keyboard to
+        // raise before closing the panel. This is handled elsewhere.
+      }
 
       // Open the keyboard.
       _softwareKeyboardController!.open(viewId: View.of(context).viewId);
