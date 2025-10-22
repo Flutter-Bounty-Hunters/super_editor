@@ -373,6 +373,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// Shows the software keyboard, if it's hidden.
   @override
   void showSoftwareKeyboard() {
+    print("showSoftwareKeyboard()");
     setState(() {
       _wantsToShowKeyboardPanel = false;
       _wantsToShowSoftwareKeyboard = true;
@@ -386,6 +387,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// Hides (doesn't close) the software keyboard, if it's open.
   @override
   void hideSoftwareKeyboard() {
+    print("hideSoftwareKeyboard()");
     setState(() {
       _wantsToShowSoftwareKeyboard = false;
       _softwareKeyboardController!.hide();
@@ -411,18 +413,21 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// software keyboard, if it's open.
   @override
   void showKeyboardPanel(PanelType panel) {
+    print("showKeyboardPanel() - $panel");
     setState(() {
       _wantsToShowKeyboardPanel = true;
       _wantsToShowSoftwareKeyboard = false;
       _activePanel = panel;
 
       if (SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
+        print("Keyboard is open - jumping panel to full height");
         // The keyboard is fully open. We'd like for the panel to immediately
         // appear behind the keyboard as it closes, so that we don't have a
         // bunch of jumping around for the widgets mounted to the top of the
         // keyboard.
         _panelHeightController.value = 1.0;
       } else {
+        print("Keyboard isn't open - animating panel up");
         _panelHeightController.forward();
       }
 
@@ -454,6 +459,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// it's open, and fully closes the keyboard (IME) connection.
   @override
   void closeKeyboardAndPanel() {
+    print("closeKeyboardAndPanel()");
     setState(() {
       _wantsToShowKeyboardPanel = false;
       _wantsToShowSoftwareKeyboard = false;
@@ -462,8 +468,10 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         // The height animation is already at zero, so reversing it won't trigger
         // the dismissal callback. Therefore, we need to null about the active panel, ourselves.
         _activePanel = null;
+        print("Panel is already closed - null'ing out the acive panel");
       } else {
         // Note: The _activePanel will be null'ed out when the reverse is complete.
+        print("Animating panel down");
         _panelHeightController.reverse();
       }
 
@@ -486,6 +494,8 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// Updates our local cache of the current bottom window insets, which we assume reflects
   /// the current software keyboard height.
   void _updateKeyboardHeightForCurrentViewInsets() {
+    print("_updateKeyboardHeightForCurrentViewInsets()");
+    print(" - keyboard state: ${SuperKeyboard.instance.mobileGeometry.value.keyboardState}");
     final newBottomInset = _getCurrentKeyboardHeight();
 
     switch (SuperKeyboard.instance.mobileGeometry.value.keyboardState) {
@@ -520,6 +530,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         if (!wantsToShowKeyboardPanel) {
           // Now that the keyboard is fully closed, and we don't want a panel, close the panel
           // in case it happens to be open.
+          print("Animating panel closed");
           _panelHeightController.reverse();
         }
 
@@ -551,6 +562,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
           // For example, at the time of writing this, iOS doesn't report keyboard height
           // when opening and closing. In that case, this controller will remain at `1.0`
           // until the keyboard is fully closed.
+          print("Setting panel height to match keyboard as keyboard closes");
           _panelHeightController
             ..stop()
             ..value = newBottomInset / _bestGuessMaxKeyboardHeight;
