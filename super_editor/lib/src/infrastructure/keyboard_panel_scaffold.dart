@@ -281,8 +281,10 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   }
 
   void _onPanelHeightChange() {
+    print("_onPanelHeightChange()");
     _updateSafeArea();
     _currentBottomSpacing.value = max(_panelHeight.value, _currentKeyboardHeight);
+    print(" - new bottom spacing (max of panel and keyboard): ${_currentBottomSpacing.value}");
   }
 
   @override
@@ -579,6 +581,8 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     _currentKeyboardHeight = newBottomInset;
     _currentBottomSpacing.value = max(_panelHeight.value, _currentKeyboardHeight);
     print("Current bottom spacing (max of panel and keyboard): ${_currentBottomSpacing.value}");
+    print(" - current keyboard height: $_currentKeyboardHeight");
+    print(" - current panel height: ${_panelHeight.value}");
 
     setState(() {
       // Re-build with the various property changes we made above.
