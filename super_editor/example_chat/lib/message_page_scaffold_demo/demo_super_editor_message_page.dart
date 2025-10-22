@@ -142,22 +142,22 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
             id: Editor.createNodeId(),
             text: AttributedText("message"),
           ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("It's tall for quick"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("testing of"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("intrinsic height that"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("exceeds available space"),
-          ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("It's tall for quick"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("testing of"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("intrinsic height that"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("exceeds available space"),
+          // ),
         ],
       ),
       composer: MutableDocumentComposer(),
@@ -373,7 +373,7 @@ class _ChatEditorState extends State<_ChatEditor> {
     // focus so that our app state synchronizes with the closed IME connection.
     final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
     if (_isImeConnected.value && (keyboardState == KeyboardState.closing || keyboardState == KeyboardState.closed)) {
-      _editorFocusNode.unfocus();
+      // _editorFocusNode.unfocus();
     }
   }
 
@@ -394,6 +394,32 @@ class _ChatEditorState extends State<_ChatEditor> {
     return KeyboardPanelScaffold(
       controller: _keyboardPanelController,
       isImeConnected: _isImeConnected,
+      contentBuilder: (BuildContext context, _Panel? openPanel) {
+        return SizedBox(
+          child: SuperEditorFocusOnTap(
+            editorFocusNode: _editorFocusNode,
+            editor: widget.editor,
+            child: SuperEditorDryLayout(
+              controller: widget.scrollController,
+              superEditor: SuperEditor(
+                key: _editorKey,
+                focusNode: _editorFocusNode,
+                editor: widget.editor,
+                softwareKeyboardController: _softwareKeyboardController,
+                isImeConnected: _isImeConnected,
+                imePolicies: SuperEditorImePolicies(),
+                selectionPolicies: SuperEditorSelectionPolicies(),
+                shrinkWrap: false,
+                stylesheet: _chatStylesheet,
+                componentBuilders: [
+                  const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+                  ...defaultComponentBuilders,
+                ],
+              ),
+            ),
+          ),
+        );
+      },
       toolbarBuilder: (BuildContext context, _Panel? openPanel) {
         return Container(
           width: double.infinity,
@@ -402,6 +428,16 @@ class _ChatEditorState extends State<_ChatEditor> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
+              GestureDetector(
+                onTap: () {
+                  if (!_keyboardPanelController.isKeyboardPanelOpen) {
+                    _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
+                  } else {
+                    _keyboardPanelController.showSoftwareKeyboard();
+                  }
+                },
+                child: Icon(Icons.add),
+              ),
               Spacer(),
               GestureDetector(
                 onTap: () {
@@ -414,31 +450,11 @@ class _ChatEditorState extends State<_ChatEditor> {
         );
       },
       keyboardPanelBuilder: (BuildContext context, _Panel? openPanel) {
-        return SizedBox();
-      },
-      contentBuilder: (BuildContext context, _Panel? openPanel) {
-        return SuperEditorFocusOnTap(
-          editorFocusNode: _editorFocusNode,
-          editor: widget.editor,
-          child: SuperEditorDryLayout(
-            controller: widget.scrollController,
-            superEditor: SuperEditor(
-              key: _editorKey,
-              focusNode: _editorFocusNode,
-              editor: widget.editor,
-              softwareKeyboardController: _softwareKeyboardController,
-              isImeConnected: _isImeConnected,
-              imePolicies: SuperEditorImePolicies(),
-              selectionPolicies: SuperEditorSelectionPolicies(),
-              shrinkWrap: false,
-              stylesheet: _chatStylesheet,
-              componentBuilders: [
-                const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-                ...defaultComponentBuilders,
-              ],
-            ),
-          ),
-        );
+        if (openPanel == null) {
+          return SizedBox();
+        }
+
+        return Container(width: double.infinity, height: 300, color: Colors.red);
       },
     );
   }
