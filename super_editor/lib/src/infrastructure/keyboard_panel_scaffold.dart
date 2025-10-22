@@ -578,6 +578,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
     _currentKeyboardHeight = newBottomInset;
     _currentBottomSpacing.value = max(_panelHeight.value, _currentKeyboardHeight);
+    print("Current bottom spacing (max of panel and keyboard): ${_currentBottomSpacing.value}");
 
     setState(() {
       // Re-build with the various property changes we made above.
