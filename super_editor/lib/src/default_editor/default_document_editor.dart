@@ -15,15 +15,15 @@ import 'common_editor_operations.dart';
 import 'default_document_editor_reactions.dart';
 
 Editor createDefaultDocumentEditor({
-  required MutableDocument document,
-  required MutableDocumentComposer composer,
+  MutableDocument? document,
+  MutableDocumentComposer? composer,
   HistoryGroupingPolicy historyGroupingPolicy = defaultMergePolicy,
   bool isHistoryEnabled = false,
 }) {
   final editor = Editor(
     editables: {
-      Editor.documentKey: document,
-      Editor.composerKey: composer,
+      Editor.documentKey: document ?? MutableDocument.empty(),
+      Editor.composerKey: composer ?? MutableDocumentComposer(),
     },
     requestHandlers: List.from(defaultRequestHandlers),
     historyGroupingPolicy: historyGroupingPolicy,

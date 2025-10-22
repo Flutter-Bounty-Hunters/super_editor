@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 
@@ -13,7 +14,7 @@ class ImeFocusPolicy extends StatefulWidget {
   const ImeFocusPolicy({
     Key? key,
     this.focusNode,
-    required this.imeConnection,
+    required this.inputId,
     required this.imeClientFactory,
     required this.imeConfiguration,
     this.openImeOnPrimaryFocusGain = true,
@@ -27,8 +28,10 @@ class ImeFocusPolicy extends StatefulWidget {
   /// on this widget's [closeImeOnPrimaryFocusLost] policy.
   final FocusNode? focusNode;
 
+  final SuperImeInput inputId;
+
   /// The connection between this app and the platform Input Method Engine (IME).
-  final ValueNotifier<TextInputConnection?> imeConnection;
+  // final ValueNotifier<TextInputConnection?> imeConnection;
 
   /// Factory method that creates a [TextInputClient], which is used to
   /// attach to the platform IME based on this widget's policy.
@@ -96,18 +99,19 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     bool shouldOpenIme = false;
     if (_focusNode.hasPrimaryFocus &&
         widget.openImeOnPrimaryFocusGain &&
-        (widget.imeConnection.value == null || !widget.imeConnection.value!.attached)) {
+        !SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
       editorPoliciesLog
           .info("[${widget.runtimeType}] - Document editor gained primary focus. Opening an IME connection.");
       shouldOpenIme = true;
     } else if (!_focusNode.hasPrimaryFocus &&
         _focusNode.hasFocus &&
         widget.openImeOnNonPrimaryFocusGain &&
-        (widget.imeConnection.value == null || !widget.imeConnection.value!.attached)) {
+        !SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
       editorPoliciesLog
           .info("[${widget.runtimeType}] - Document editor gained non-primary focus. Opening an IME connection.");
       shouldOpenIme = true;
     }
+
     if (shouldOpenIme) {
       WidgetsBinding.instance.runAsSoonAsPossible(() {
         if (!mounted) {
@@ -115,10 +119,12 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
         }
 
         editorImeLog.finer("[${widget.runtimeType}] - creating new TextInputConnection to IME");
-        widget.imeConnection.value = TextInput.attach(
+        SuperIme.instance.openConnection(
+          widget.inputId,
           widget.imeClientFactory(),
           widget.imeConfiguration,
-        )..show();
+          showKeyboard: true,
+        );
       }, debugLabel: 'Open IME Connection on Primary Focus Change');
     }
 
@@ -131,9 +137,9 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
       editorPoliciesLog.info("[${widget.runtimeType}] - Document editor lost all focus. Closing the IME connection.");
       shouldCloseIme = true;
     }
+
     if (shouldCloseIme) {
-      widget.imeConnection.value?.close();
-      widget.imeConnection.value = null;
+      SuperIme.instance.clearConnection(widget.inputId);
     }
   }
 
@@ -157,7 +163,7 @@ class DocumentSelectionOpenAndCloseImePolicy extends StatefulWidget {
     this.isEnabled = true,
     required this.editor,
     required this.selection,
-    required this.imeConnection,
+    required this.inputId,
     required this.imeClientFactory,
     required this.imeConfiguration,
     this.openKeyboardOnSelectionChange = true,
@@ -187,8 +193,10 @@ class DocumentSelectionOpenAndCloseImePolicy extends StatefulWidget {
   /// The document editor's current selection.
   final ValueListenable<DocumentSelection?> selection;
 
+  final SuperImeInput inputId;
+
   /// The current connection from this app to the platform IME.
-  final ValueNotifier<TextInputConnection?> imeConnection;
+  // final ValueNotifier<TextInputConnection?> imeConnection;
 
   /// Factory method that creates a [TextInputClient], which is used to
   /// attach to the platform IME based on this widget's selection policy.
@@ -251,8 +259,8 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   void initState() {
     super.initState();
 
-    _wasAttached = widget.imeConnection.value?.attached ?? false;
-    widget.imeConnection.addListener(_onConnectionChange);
+    _wasAttached = SuperIme.instance.isInputAttachedToOS(widget.inputId);
+    SuperIme.instance.addListener(_onConnectionChange);
 
     widget.focusNode.addListener(_onFocusChange);
 
@@ -279,10 +287,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       _onSelectionChange();
     }
 
-    if (widget.imeConnection != oldWidget.imeConnection) {
-      oldWidget.imeConnection.removeListener(_onConnectionChange);
-      widget.imeConnection.addListener(_onConnectionChange);
-
+    if (widget.inputId != oldWidget.inputId) {
       onNextFrame((_) {
         // We switched IME connection references, which means we may have switched
         // from one with a connection to one without a connection, or vis-a-versa.
@@ -300,7 +305,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   void dispose() {
     widget.focusNode.removeListener(_onFocusChange);
     widget.selection.removeListener(_onSelectionChange);
-    widget.imeConnection.removeListener(_onConnectionChange);
+    SuperIme.instance.removeListener(_onConnectionChange);
     super.dispose();
   }
 
@@ -331,31 +336,42 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
     if (widget.selection.value != null && widget.focusNode.hasPrimaryFocus && widget.openKeyboardOnSelectionChange) {
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
-      if (widget.imeConnection.value == null || !widget.imeConnection.value!.attached) {
+      // if (widget.imeConnection.value == null || !widget.imeConnection.value!.attached) {
+      if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
+            return;
+          }
+          // Ensure we didn't lose ownership across frame boundaries.
+          if (!SuperIme.instance.isOwner(widget.inputId)) {
+            return;
+          }
+          // Ensure that a connection wasn't opened between frames.
+          if (SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
             return;
           }
 
           editorPoliciesLog
               .info("[${widget.runtimeType}] - opening the IME keyboard because the document selection changed");
           editorImeConnectionLog.finer("[${widget.runtimeType}] - creating new TextInputConnection to IME");
-          widget.imeConnection.value = TextInput.attach(
+          SuperIme.instance.openConnection(
+            widget.inputId,
             widget.imeClientFactory(),
             widget.imeConfiguration,
-          )..show();
+            showKeyboard: true,
+          );
         }, debugLabel: 'Open IME Connection on Selection Change');
       } else {
-        widget.imeConnection.value!.show();
+        SuperIme.instance.getImeConnectionForOwner(widget.inputId)!.show();
       }
-    } else if (widget.imeConnection.value != null &&
+    } else if (SuperIme.instance.isInputAttachedToOS(widget.inputId) &&
         widget.selection.value == null &&
         widget.closeKeyboardOnSelectionLost) {
       // There's no document selection, and our policy wants the keyboard to be
       // closed whenever the editor loses its selection. Close the keyboard.
       editorPoliciesLog
           .info("[${widget.runtimeType}] - closing the IME keyboard because the document selection was cleared");
-      widget.imeConnection.value!.close();
+      SuperIme.instance.clearConnection(widget.inputId);
     }
   }
 
@@ -366,7 +382,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
     _clearSelectionIfDesired();
 
-    _wasAttached = widget.imeConnection.value?.attached ?? false;
+    _wasAttached = SuperIme.instance.isInputAttachedToOS(widget.inputId);
   }
 
   void _clearSelectionIfDesired() {
@@ -380,7 +396,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       return;
     }
 
-    if (!_wasAttached || (widget.imeConnection.value?.attached ?? false)) {
+    if (!_wasAttached || SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
       // We didn't go from closed to open. Our policy doesn't apply.
 
       return;
