@@ -13,7 +13,7 @@ class SuperIme with ChangeNotifier {
 
   SuperIme._();
 
-  SuperImeInput? _owner;
+  SuperImeInputId? _owner;
   TextInputConnection? _imeConnection;
 
   /// Returns `true` if [SuperIme] currently holds a Flutter [TextInputConnection]
@@ -32,11 +32,11 @@ class SuperIme with ChangeNotifier {
 
   /// Returns `true` if the given [input] is the current owner of the shared IME,
   /// and the shared IME is currently attached to the OS.
-  bool isInputAttachedToOS(SuperImeInput input) => _owner == input && isAttachedToOS;
+  bool isInputAttachedToOS(SuperImeInputId input) => _owner == input && isAttachedToOS;
 
   /// If [owner] is the current IME owner, returns the shared [TextInputConnection], or `null` if
   /// no such connection currently exists, or if the [owner] isn't actually the owner.
-  TextInputConnection? getImeConnectionForOwner(SuperImeInput owner) {
+  TextInputConnection? getImeConnectionForOwner(SuperImeInputId owner) {
     if (owner != _owner) {
       return null;
     }
@@ -49,7 +49,7 @@ class SuperIme with ChangeNotifier {
   ///
   /// The opened IME connection is available via [getImeConnectionForOwner].
   void openConnection(
-    SuperImeInput ownerInputId,
+    SuperImeInputId ownerInputId,
     TextInputClient client,
     TextInputConfiguration configuration, {
     bool showKeyboard = false,
@@ -78,7 +78,7 @@ class SuperIme with ChangeNotifier {
 
   /// If the given [ownerInputId] is the current owner, then the current input connection
   /// is closed, and the connection null'ed out.
-  void clearConnection(SuperImeInput ownerInputId) {
+  void clearConnection(SuperImeInputId ownerInputId) {
     if (!isOwner(ownerInputId)) {
       return;
     }
@@ -89,14 +89,14 @@ class SuperIme with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Returns `true` if a [SuperImeInput] has claimed ownership of the shared IME.
+  /// Returns `true` if a [SuperImeInputId] has claimed ownership of the shared IME.
   ///
   /// The existence of an owner doesn't imply the existence of an [imeConnection]. It's the
   /// owner's job to open and close [imeConnection]s, as needed.
   bool get isOwned => _owner != null;
 
   /// Returns true if the given [inputId] is the current owner of the shared IME.
-  bool isOwner(SuperImeInput? inputId) => _owner == inputId;
+  bool isOwner(SuperImeInputId? inputId) => _owner == inputId;
 
   /// Takes ownership of the shared IME.
   ///
@@ -107,7 +107,7 @@ class SuperIme with ChangeNotifier {
   /// One owner cannot prevent another owner from taking ownership. This mechanism is not
   /// a security feature, it's a convenience feature for different areas of code to work
   /// together around the fact that only a single IME connection exists per app.
-  void takeOwnership(SuperImeInput newOwnerInputId) {
+  void takeOwnership(SuperImeInputId newOwnerInputId) {
     if (_owner == newOwnerInputId) {
       return;
     }
@@ -126,7 +126,7 @@ class SuperIme with ChangeNotifier {
   /// throws away the connection, forcing the next owner to create a new connection,
   /// and then open it. To prevent this, pass `false` for [clearConnectionOnRelease].
   void releaseOwnership(
-    SuperImeInput ownerInputId, {
+    SuperImeInputId ownerInputId, {
     bool clearConnectionOnRelease = true,
   }) {
     if (_owner != ownerInputId) {
@@ -147,20 +147,21 @@ class SuperIme with ChangeNotifier {
 /// This class is just a composite ID, which is registered with [SuperIme] to
 /// claim ownership over the IME. See [role] and [instance] for their individual
 /// meaning.
-class SuperImeInput {
-  SuperImeInput({
+class SuperImeInputId {
+  SuperImeInputId({
     required this.role,
     required this.instance,
   });
 
-  /// The role this owner is playing, regardless of which widget instance is the owner.
+  /// The role this owner is playing in the UI, or `null` if there's only a single
+  /// input widget in the whole widget tree.
   ///
-  /// If [role] is `null`, it indicates that the user believes there's only a single IME owner
-  /// in the entire widget tree, and therefore all owners should be treated as the same
-  /// owner.
+  /// It's fine to provide a [role] even if there's only one input in the widget tree.
   ///
-  /// The value for [role] can be anything a developer wants. The only thing that matter is
-  /// its uniqueness as compared to other input [role]s in the same app and same widget tree.
+  /// Examples of possible [role] values include things like "chat", "document", "journal", or
+  /// any other type of content that an input might exist to compose. This choice is up
+  /// to the developer and the only thing that matters is uniqueness, e.g., "chat" is different
+  /// from "journal".
   ///
   /// ### How `role` works
   /// The [role] is critical for dealing with `State` disposal and recreation when a
@@ -216,7 +217,7 @@ class SuperImeInput {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SuperImeInput && runtimeType == other.runtimeType && role == other.role && instance == other.instance;
+      other is SuperImeInputId && runtimeType == other.runtimeType && role == other.role && instance == other.instance;
 
   @override
   int get hashCode => role.hashCode ^ instance.hashCode;
