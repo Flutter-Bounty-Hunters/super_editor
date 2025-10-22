@@ -456,10 +456,10 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     setState(() {
       // Close panel.
       _wantsToShowKeyboardPanel = false;
-      _activePanel = null;
 
       if (!_wantsToShowSoftwareKeyboard) {
         // We don't want the panel or the keyboard, so animate the panel down.
+        // The active panel will be null'ed out when the animation is complete.
         print("Animating the keyboard panel down");
         _panelHeightController.reverse();
       } else {
