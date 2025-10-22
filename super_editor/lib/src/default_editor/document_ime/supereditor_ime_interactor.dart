@@ -159,8 +159,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   SuperEditorIosControlsController? _controlsController;
 
-  late SuperImeInput _myImeId;
-  // final _imeConnection = ValueNotifier<TextInputConnection?>(null);
+  late SuperImeInputId _myImeId;
   final _ownedImeConnection = ValueNotifier<TextInputConnection?>(null);
   late TextInputConfiguration _textInputConfiguration;
   late DocumentImeInputClient _documentImeClient;
@@ -181,7 +180,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     super.initState();
     _focusNode = (widget.focusNode ?? FocusNode());
 
-    _myImeId = SuperImeInput(role: widget.inputRole, instance: this);
+    _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
     SuperIme.instance.takeOwnership(_myImeId);
     SuperIme.instance.addListener(_onSharedImeChange);
     _setupDocumentImeInputClient();
@@ -218,7 +217,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       SuperIme.instance.releaseOwnership(_myImeId);
 
       // Create a new IME input ID and re-take IME ownership.
-      _myImeId = SuperImeInput(role: widget.inputRole, instance: this);
+      _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
       SuperIme.instance.takeOwnership(_myImeId);
     }
 
@@ -542,7 +541,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
             focusNode: _focusNode,
             editor: widget.editContext.editor,
             selection: widget.editContext.composer.selectionNotifier,
-            // imeConnection: _ownedImeConnection,
             inputId: _myImeId,
             imeClientFactory: () => _imeClient,
             imeConfiguration: _textInputConfiguration,
@@ -552,7 +550,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
             clearSelectionWhenImeConnectionCloses: widget.clearSelectionWhenImeConnectionCloses,
             child: ImeFocusPolicy(
               focusNode: _focusNode,
-              // imeConnection: _ownedImeConnection,
               inputId: _myImeId,
               imeClientFactory: () => _imeClient,
               imeConfiguration: _textInputConfiguration,

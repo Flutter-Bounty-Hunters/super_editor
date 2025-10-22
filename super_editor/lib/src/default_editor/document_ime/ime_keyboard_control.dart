@@ -23,7 +23,7 @@ class SoftwareKeyboardOpener extends StatefulWidget {
 
   final SoftwareKeyboardController? controller;
 
-  final SuperImeInput inputId;
+  final SuperImeInputId inputId;
 
   final TextInputClient Function() createImeClient;
 

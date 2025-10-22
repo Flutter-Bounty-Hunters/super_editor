@@ -28,10 +28,12 @@ class ImeFocusPolicy extends StatefulWidget {
   /// on this widget's [closeImeOnPrimaryFocusLost] policy.
   final FocusNode? focusNode;
 
-  final SuperImeInput inputId;
-
-  /// The connection between this app and the platform Input Method Engine (IME).
-  // final ValueNotifier<TextInputConnection?> imeConnection;
+  /// The input ID of the widget that owns this [ImeFocusPolicy].
+  ///
+  /// For example, this [ImeFocusPolicy] might be inside of a chat message
+  /// editor - this [inputId] would uniquely identify the chat message editor
+  /// vs any other input in the widget tree. It's used to manage IME ownership.
+  final SuperImeInputId inputId;
 
   /// Factory method that creates a [TextInputClient], which is used to
   /// attach to the platform IME based on this widget's policy.
@@ -193,10 +195,7 @@ class DocumentSelectionOpenAndCloseImePolicy extends StatefulWidget {
   /// The document editor's current selection.
   final ValueListenable<DocumentSelection?> selection;
 
-  final SuperImeInput inputId;
-
-  /// The current connection from this app to the platform IME.
-  // final ValueNotifier<TextInputConnection?> imeConnection;
+  final SuperImeInputId inputId;
 
   /// Factory method that creates a [TextInputClient], which is used to
   /// attach to the platform IME based on this widget's selection policy.
@@ -336,7 +335,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
     if (widget.selection.value != null && widget.focusNode.hasPrimaryFocus && widget.openKeyboardOnSelectionChange) {
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
-      // if (widget.imeConnection.value == null || !widget.imeConnection.value!.attached) {
       if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
