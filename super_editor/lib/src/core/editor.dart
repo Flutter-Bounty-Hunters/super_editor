@@ -1,15 +1,14 @@
-import 'dart:math';
+import 'dart:math' hide log;
 
 import 'package:attributed_text/attributed_text.dart';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
+import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:uuid/uuid.dart';
-
-import 'document.dart';
-import 'document_composer.dart';
 
 /// Editor for a document editing experience.
 ///
@@ -188,6 +187,11 @@ class Editor implements RequestDispatcher {
       return;
     }
 
+    assert(
+      _activeChangeList != null,
+      "Tried to end a transaction but the active change list is null. It should never be null during a transaction.",
+    );
+
     if (_transaction!.commands.isNotEmpty && isHistoryEnabled) {
       if (_history.isEmpty) {
         // Add this transaction onto the history stack.
@@ -224,11 +228,18 @@ class Editor implements RequestDispatcher {
     _isInTransaction = false;
     _isImplicitTransaction = false;
     _transaction = null;
+    _activeCommandCount = 0;
 
-    // Note: The transaction isn't fully considered over until after the reactions run.
-    // This is because the reactions need access to the change list from the previous
-    // transaction.
-    _onTransactionEnd();
+    // Note: We need to pass the changes to the `Editable`s when we report the end of
+    //       a transaction, but we also need to null out the active change list before we
+    //       do that, because the transaction is officially over. We hold on to the active
+    //       list locally, and then null out the shared active list.
+    final changeList = _activeChangeList!;
+    _activeChangeList = null;
+
+    for (final editable in context._resources.values) {
+      editable.onTransactionEnd(changeList);
+    }
 
     editorEditsLog.info("Finished transaction");
   }
@@ -281,9 +292,9 @@ class Editor implements RequestDispatcher {
 
     if (_activeCommandCount == 1 && _isImplicitTransaction && !_isReacting) {
       endTransaction();
+    } else {
+      _activeCommandCount -= 1;
     }
-
-    _activeCommandCount -= 1;
   }
 
   EditCommand _findCommandForRequest(EditRequest request) {
@@ -324,14 +335,6 @@ class Editor implements RequestDispatcher {
     for (final editable in context._resources.values) {
       editable.onTransactionStart();
     }
-  }
-
-  void _onTransactionEnd() {
-    for (final editable in context._resources.values) {
-      editable.onTransactionEnd(_activeChangeList!);
-    }
-
-    _activeChangeList = null;
   }
 
   void _reactToChanges() {

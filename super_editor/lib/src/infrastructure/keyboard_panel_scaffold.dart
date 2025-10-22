@@ -160,8 +160,11 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardGeometryChange);
 
-    _overlayPortalController.show();
     onNextFrame((_) {
+      // Wait until next frame to show overlay portal because it can't handle `show()`
+      // during a build operation.
+      _overlayPortalController.show();
+
       // Do initial safe area report to our ancestor keyboard safe area widget,
       // after we've added our UI to the overlay portal.
       _updateSafeArea();

@@ -259,8 +259,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
   late MutableDocumentComposer _composer2;
   late Editor _docEditor2;
 
-  late Document _activeDocument;
-  late DocumentComposer _activeComposer;
   late Editor _activeDocumentEditor;
 
   @override
@@ -274,13 +272,14 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
     _composer2 = widget.composer2 ?? MutableDocumentComposer();
     _docEditor2 = createDefaultDocumentEditor(document: _doc2, composer: _composer2);
 
-    _activeDocument = _doc1;
-    _activeComposer = _composer1;
     _activeDocumentEditor = _docEditor1;
   }
 
   @override
   void dispose() {
+    _docEditor1.dispose();
+    _docEditor2.dispose();
+
     super.dispose();
   }
 
@@ -293,6 +292,9 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
             _buildDocSelector(),
             Expanded(
               child: SuperEditor(
+                // Note: We give this `SuperEditor` the "global" input role because even though
+                //       we're switching its backing `Editor`, we aren't switching between visibly
+                //       different `SuperEditor`s.
                 editor: _activeDocumentEditor,
                 stylesheet: defaultStylesheet.copyWith(
                   documentPadding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
@@ -313,8 +315,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
           key: const ValueKey("Editor1"),
           onPressed: () {
             setState(() {
-              _activeDocument = _doc1;
-              _activeComposer = _composer1;
               _activeDocumentEditor = _docEditor1;
             });
           },
@@ -325,8 +325,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
           key: const ValueKey("Editor2"),
           onPressed: () {
             setState(() {
-              _activeDocument = _doc2;
-              _activeComposer = _composer2;
               _activeDocumentEditor = _docEditor2;
             });
           },
