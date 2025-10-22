@@ -381,6 +381,15 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
       _wantsToShowSoftwareKeyboard = true;
       _softwareKeyboardController!.open(viewId: View.of(context).viewId);
 
+      if (_panelHeightController.value == 1.0 &&
+          SuperKeyboard.instance.mobileGeometry.value.keyboardState != KeyboardState.open) {
+        // If the user called hideKeyboardPanel() just before calling this method then the panel
+        // will animate down even though we don't want it to. It's currently still at 100% so we've
+        // cause it in time to stop it from animating down.
+        print("STOPPING PANEL HEIGHT ANIMATION BEFORE IT STARTS");
+        _panelHeightController.stop();
+      }
+
       // Notify delegate listeners.
       notifyListeners();
     });
@@ -443,6 +452,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   /// Hides the keyboard panel, if it's open.
   @override
   void hideKeyboardPanel() {
+    print("hideKeyboardPanel()");
     setState(() {
       // Close panel.
       _wantsToShowKeyboardPanel = false;
@@ -450,6 +460,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
       if (!_wantsToShowSoftwareKeyboard) {
         // We don't want the panel or the keyboard, so animate the panel down.
+        print("Animating the keyboard panel down");
         _panelHeightController.reverse();
       } else {
         // We want the keyboard to replace the panel. Wait for keyboard to
