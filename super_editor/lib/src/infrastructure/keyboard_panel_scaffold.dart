@@ -488,7 +488,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     // The user wants to close both the software keyboard and the keyboard panel,
     // but the software keyboard is already closed. Animate the keyboard panel height
     // down to zero.
-    _panelHeightController.reverse(from: 1.0);
+    _panelHeightController.reverse();
   }
 
   /// Updates our local cache of the current bottom window insets, which we assume reflects
@@ -515,6 +515,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
           // this if the keyboard fully opens. Otherwise, this state probably
           // represents a rapid toggle between the keyboard and a panel. In that case,
           // leave the panel alone.
+          print("Keyboard is open and we don't want a panel. Jumping panel to zero.");
           _panelHeightController.value = 0;
           _wantsToShowKeyboardPanel = false;
           _activePanel = null;
@@ -655,6 +656,8 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         // region between the top of the software keyboard and the bottom of the above-keyboard panel.
         (wantsToShowSoftwareKeyboard &&
             SuperKeyboard.instance.mobileGeometry.value.keyboardState != KeyboardState.open);
+
+    print("Build() - should show keyboard panel? $shouldShowKeyboardPanel");
 
     assert(() {
       keyboardPanelLog.fine('''
