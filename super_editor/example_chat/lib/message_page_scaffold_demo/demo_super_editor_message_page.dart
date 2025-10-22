@@ -395,29 +395,45 @@ class _ChatEditorState extends State<_ChatEditor> {
       controller: _keyboardPanelController,
       isImeConnected: _isImeConnected,
       contentBuilder: (BuildContext context, _Panel? openPanel) {
-        return SizedBox(
-          child: SuperEditorFocusOnTap(
-            editorFocusNode: _editorFocusNode,
-            editor: widget.editor,
-            child: SuperEditorDryLayout(
-              controller: widget.scrollController,
-              superEditor: SuperEditor(
-                key: _editorKey,
-                focusNode: _editorFocusNode,
-                editor: widget.editor,
-                softwareKeyboardController: _softwareKeyboardController,
-                isImeConnected: _isImeConnected,
-                imePolicies: SuperEditorImePolicies(),
-                selectionPolicies: SuperEditorSelectionPolicies(),
-                shrinkWrap: false,
-                stylesheet: _chatStylesheet,
-                componentBuilders: [
-                  const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-                  ...defaultComponentBuilders,
-                ],
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ListenableBuilder(
+              listenable: _editorFocusNode,
+              builder: (context, child) {
+                if (_editorFocusNode.hasFocus) {
+                  return const SizedBox();
+                }
+
+                return child!;
+              },
+              child: IconButton(
+                onPressed: () {
+                  _editorFocusNode.requestFocus();
+
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // We wait for the end of the frame to show the panel because giving
+                    // focus to the editor will first cause the keyboard to show. If we
+                    // opened the panel immediately then it would be covered by the keyboard.
+                    _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
+                  });
+                },
+                icon: Icon(Icons.add),
               ),
             ),
-          ),
+            Expanded(child: _buildEditor()),
+            ListenableBuilder(
+              listenable: _editorFocusNode,
+              builder: (context, child) {
+                if (_editorFocusNode.hasFocus) {
+                  return const SizedBox();
+                }
+
+                return child!;
+              },
+              child: IconButton(onPressed: () {}, icon: Icon(Icons.multitrack_audio)),
+            ),
+          ],
         );
       },
       toolbarBuilder: (BuildContext context, _Panel? openPanel) {
@@ -456,6 +472,31 @@ class _ChatEditorState extends State<_ChatEditor> {
 
         return Container(width: double.infinity, height: 300, color: Colors.red);
       },
+    );
+  }
+
+  Widget _buildEditor() {
+    return SuperEditorFocusOnTap(
+      editorFocusNode: _editorFocusNode,
+      editor: widget.editor,
+      child: SuperEditorDryLayout(
+        controller: widget.scrollController,
+        superEditor: SuperEditor(
+          key: _editorKey,
+          focusNode: _editorFocusNode,
+          editor: widget.editor,
+          softwareKeyboardController: _softwareKeyboardController,
+          isImeConnected: _isImeConnected,
+          imePolicies: SuperEditorImePolicies(),
+          selectionPolicies: SuperEditorSelectionPolicies(),
+          shrinkWrap: false,
+          stylesheet: _chatStylesheet,
+          componentBuilders: [
+            const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+            ...defaultComponentBuilders,
+          ],
+        ),
+      ),
     );
   }
 }

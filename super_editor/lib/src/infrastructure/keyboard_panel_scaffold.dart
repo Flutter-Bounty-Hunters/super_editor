@@ -41,7 +41,7 @@ class KeyboardPanelScaffold<PanelType> extends StatefulWidget {
     required this.isImeConnected,
     required this.toolbarBuilder,
     required this.keyboardPanelBuilder,
-    this.fallbackPanelHeight = 250,
+    this.fallbackPanelHeight = 340,
     required this.contentBuilder,
     this.bypassMediaQuery = false,
   });
