@@ -151,11 +151,13 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     bool shouldCloseIme = false;
-    if (!_focusNode.hasPrimaryFocus && widget.closeImeOnPrimaryFocusLost) {
+    if (!_focusNode.hasPrimaryFocus && widget.closeImeOnPrimaryFocusLost && SuperIme.instance.isOwner(widget.inputId)) {
       editorPoliciesLog
           .info("[${widget.runtimeType}] - Document editor lost primary focus. Closing the IME connection.");
       shouldCloseIme = true;
-    } else if (!_focusNode.hasFocus && widget.closeImeOnNonPrimaryFocusLost) {
+    } else if (!_focusNode.hasFocus &&
+        widget.closeImeOnNonPrimaryFocusLost &&
+        SuperIme.instance.isOwner(widget.inputId)) {
       editorPoliciesLog.info("[${widget.runtimeType}] - Document editor lost all focus. Closing the IME connection.");
       shouldCloseIme = true;
     }

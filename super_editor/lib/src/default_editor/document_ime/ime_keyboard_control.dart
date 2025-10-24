@@ -77,33 +77,41 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   void open({
     required int viewId,
   }) {
-    print("SoftwareKeyboardOpener - open()");
-    if (!_ownsIme) {
-      print("Can't open because we don't have IME ownership");
-      editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
-      return;
-    }
+    // Wait until end of frame to try to open the keyboard so that all IME ownership
+    // changes have time to finish, and we can check if we're the final owner.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("SoftwareKeyboardOpener - open()");
+      if (!_ownsIme) {
+        print("Can't open because we don't have IME ownership");
+        editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
+        return;
+      }
 
-    print("Opening IME connection and showing keyboard");
-    editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
-    SuperIme.instance.openConnection(
-      widget.inputId,
-      widget.createImeClient(),
-      widget.createImeConfiguration(),
-      showKeyboard: true,
-    );
+      print("Opening IME connection and showing keyboard");
+      editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
+      SuperIme.instance.openConnection(
+        widget.inputId,
+        widget.createImeClient(),
+        widget.createImeConfiguration(),
+        showKeyboard: true,
+      );
+    });
   }
 
   @override
   void hide() {
-    print("SoftwareKeyboardOpener - hide()");
-    if (!_ownsIme) {
-      print("Can't hide because we don't own the IME");
-      editorImeLog.info("[SoftwareKeyboard] - tried to hide keyboard, but we don't own IME (${widget.inputId})");
-      return;
-    }
+    // Wait until end of frame to try to hide the keyboard so that all IME ownership
+    // changes have time to finish, and we can check if we're the final owner.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("SoftwareKeyboardOpener - hide()");
+      if (!_ownsIme) {
+        print("Can't hide because we don't own the IME");
+        editorImeLog.info("[SoftwareKeyboard] - tried to hide keyboard, but we don't own IME (${widget.inputId})");
+        return;
+      }
 
-    SystemChannels.textInput.invokeListMethod("TextInput.hide");
+      SystemChannels.textInput.invokeListMethod("TextInput.hide");
+    });
   }
 
   @override
