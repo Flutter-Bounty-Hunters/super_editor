@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -155,6 +156,84 @@ class SuperEditorImeInteractor extends StatefulWidget {
 
 @visibleForTesting
 class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> implements ImeInputOwner {
+  static bool _willCheckUniqueInputsNextFrame = false;
+
+  static final _registeredInputsThisFrame = <(SuperImeInputId inputId, StackTrace stacktrace)>[];
+
+  /// Ensures that there are no other inputs with the same [inputId] at the end of the current
+  /// Flutter frame.
+  ///
+  /// At the end of the frame, if 2+ inputs registered with the same [SuperImeInputId.role],
+  /// an exception is thrown, which includes the stack traces for each of those registrations,
+  /// so that developers can debug why it happened.
+  ///
+  /// [SuperEditorImeInteractor]s should call this method in `build()` as a defensive check that
+  /// an app never ends up with 2+ inputs that report the same role. This is especially important
+  /// in apps where an input is given a `null` role, thus expecting to be the only input in the
+  /// widget tree at a given moment in time.
+  ///
+  /// It's critical that this method be called from `build()` rather than a lifecycle
+  /// method like `initState()` or `dispose()`, because its completely legal for two inputs to
+  /// have the same role during those lifecycle methods. Specifically, when an input widget gets
+  /// re-parented in the widget tree, there will simultaneously be one of those inputs running
+  /// initialization, while the other input runs disposal. For that brief period of time, we actually
+  /// expect two input widgets with the same role. But by the time `build()` runs, there should
+  /// only be one widget per role.
+  static void _ensureUniqueInputOnBuild(SuperImeInputId inputId) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    _registeredInputsThisFrame.add((inputId, StackTrace.current));
+
+    if (!_willCheckUniqueInputsNextFrame) {
+      _willCheckUniqueInputsNextFrame = true;
+      WidgetsBinding.instance.addPostFrameCallback(_verifyUniqueInputs);
+    }
+  }
+
+  static void _verifyUniqueInputs(Duration _) {
+    // Clear flag so the next time the "ensure" method is called, we''
+    // register another post frame callback.
+    _willCheckUniqueInputsNextFrame = false;
+
+    final inputsByRole = <String?, List<(SuperImeInputId, StackTrace)>>{};
+
+    for (final input in _registeredInputsThisFrame) {
+      inputsByRole[input.$1.role] ??= [];
+      inputsByRole[input.$1.role]!.add(input);
+    }
+
+    // Clear the frame input registration for the next frame.
+    _registeredInputsThisFrame.clear();
+
+    final duplicates = <(SuperImeInputId, StackTrace)>[];
+    for (final entry in inputsByRole.entries) {
+      if (entry.value.length < 2) {
+        // No duplicate inputs here.
+        continue;
+      }
+
+      duplicates.addAll(entry.value);
+    }
+
+    if (duplicates.isEmpty) {
+      // No duplicate inputs anywhere this frame. All good. We're done.
+      return;
+    }
+
+    // We found some number of duplicates. Write them all out to an exception message.
+    throw Exception([
+      "Found ${duplicates.length} duplicate input IDs this frame:",
+      for (final input in duplicates) ...[
+        "Input: ${input.$1.role} (${input.$1.instance})",
+        "This duplicate input was built at this moment:",
+        input.$2,
+        "------ END OF ${input.$1.role} (${input.$1.instance}) ----",
+      ],
+    ].join("\n"));
+  }
+
   late FocusNode _focusNode;
 
   SuperEditorIosControlsController? _controlsController;
@@ -528,6 +607,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   @override
   Widget build(BuildContext context) {
+    _ensureUniqueInputOnBuild(_myImeId);
+
     return SuperEditorImeDebugVisuals(
       imeConnection: _ownedImeConnection,
       child: IntentBlocker(
