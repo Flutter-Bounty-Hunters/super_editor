@@ -114,7 +114,7 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
       print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
       print(" - open on primary gain? ${widget.openImeOnPrimaryFocusGain}");
       print(" - open on non-primary gain? ${widget.openImeOnNonPrimaryFocusGain}");
-      print(" - are we already attached? ${!SuperIme.instance.isInputAttachedToOS(widget.inputId)}");
+      print(" - are we already attached? ${SuperIme.instance.isInputAttachedToOS(widget.inputId)}");
     }
 
     bool shouldOpenIme = false;
