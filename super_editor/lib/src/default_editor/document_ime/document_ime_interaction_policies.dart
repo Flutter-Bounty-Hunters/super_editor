@@ -77,6 +77,13 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   void initState() {
     super.initState();
     _focusNode = (widget.focusNode ?? FocusNode())..addListener(_onFocusChange);
+
+    // Sync the keyboard with initial focus status. Do this at the end of the
+    // frame just to make sure that any downstream code that runs when we open/close
+    // the IME doesn't blow up by calling setState() during the build process.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onFocusChange();
+    });
   }
 
   @override
@@ -98,8 +105,10 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   }
 
   void _onFocusChange() {
+    print("IME interaction policies - _onFocusChange()");
     if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
       // We have focus but we don't own the IME. Take it over.
+      print("Taking ownership of ime on focus: ${widget.inputId}");
       SuperIme.instance.takeOwnership(widget.inputId);
     }
 
@@ -120,6 +129,7 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     if (shouldOpenIme) {
+      print("Opening the IME now or on next frame, due to focus change");
       WidgetsBinding.instance.runAsSoonAsPossible(() {
         if (!mounted) {
           return;
@@ -146,6 +156,7 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     if (shouldCloseIme) {
+      print("Closing IME due to no focus");
       SuperIme.instance
         ..clearConnection(widget.inputId)
         ..releaseOwnership(widget.inputId);
