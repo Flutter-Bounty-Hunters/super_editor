@@ -77,11 +77,14 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   void open({
     required int viewId,
   }) {
+    print("SoftwareKeyboardOpener - open()");
     if (!_ownsIme) {
+      print("Can't open because we don't have IME ownership");
       editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
       return;
     }
 
+    print("Opening IME connection and showing keyboard");
     editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
     SuperIme.instance.openConnection(
       widget.inputId,
@@ -93,7 +96,9 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
 
   @override
   void hide() {
+    print("SoftwareKeyboardOpener - hide()");
     if (!_ownsIme) {
+      print("Can't hide because we don't own the IME");
       editorImeLog.info("[SoftwareKeyboard] - tried to hide keyboard, but we don't own IME (${widget.inputId})");
       return;
     }
