@@ -166,23 +166,11 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   /// At the end of the frame, if 2+ inputs registered with the same [SuperImeInputId.role],
   /// an exception is thrown, which includes the stack traces for each of those registrations,
   /// so that developers can debug why it happened.
-  ///
-  /// [SuperEditorImeInteractor]s should call this method in `build()` as a defensive check that
-  /// an app never ends up with 2+ inputs that report the same role. This is especially important
-  /// in apps where an input is given a `null` role, thus expecting to be the only input in the
-  /// widget tree at a given moment in time.
-  ///
-  /// It's critical that this method be called from `build()` rather than a lifecycle
-  /// method like `initState()` or `dispose()`, because its completely legal for two inputs to
-  /// have the same role during those lifecycle methods. Specifically, when an input widget gets
-  /// re-parented in the widget tree, there will simultaneously be one of those inputs running
-  /// initialization, while the other input runs disposal. For that brief period of time, we actually
-  /// expect two input widgets with the same role. But by the time `build()` runs, there should
-  /// only be one widget per role.
-  static void _ensureUniqueInputOnBuild(SuperImeInputId inputId) {
+  static _registerInput(SuperImeInputId inputId) {
     if (!kDebugMode) {
       return;
     }
+    print("Register input: ${inputId.role}");
 
     _registeredInputsThisFrame.add((inputId, StackTrace.current));
 
@@ -192,7 +180,22 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
   }
 
+  static void _unregisterInput(SuperImeInputId inputId) {
+    print("Unregister input: $inputId");
+    final startLength = _registeredInputsThisFrame.length;
+    _registeredInputsThisFrame.removeWhere((entry) => entry.$1.instance == inputId.instance);
+
+    assert(
+      startLength != _registeredInputsThisFrame.length,
+      "An IME interactor tried to unregister itself with the global tracker, but we "
+      "didn't find it in the global tracker. Either it was never added, or it was "
+      "already removed. Either way, this is a programming mistake that needs to be "
+      "corrected by the caller.",
+    );
+  }
+
   static void _verifyUniqueInputs(Duration _) {
+    print("Running unique input verification");
     // Clear flag so the next time the "ensure" method is called, we''
     // register another post frame callback.
     _willCheckUniqueInputsNextFrame = false;
@@ -203,9 +206,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       inputsByRole[input.$1.role] ??= [];
       inputsByRole[input.$1.role]!.add(input);
     }
-
-    // Clear the frame input registration for the next frame.
-    _registeredInputsThisFrame.clear();
 
     final duplicates = <(SuperImeInputId, StackTrace)>[];
     for (final entry in inputsByRole.entries) {
@@ -260,7 +260,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     _focusNode = (widget.focusNode ?? FocusNode());
 
     _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
-    SuperIme.instance.takeOwnership(_myImeId);
+    _registerInput(_myImeId);
     SuperIme.instance.addListener(_onSharedImeChange);
     _setupDocumentImeInputClient();
 
@@ -291,12 +291,20 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   void didUpdateWidget(SuperEditorImeInteractor oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (widget.focusNode != oldWidget.focusNode) {
+      if (oldWidget.focusNode == null) {
+        _focusNode.dispose();
+      }
+    }
+
     if (widget.inputRole != oldWidget.inputRole) {
       // We changed roles. Release our previous claim to the shared IME.
       SuperIme.instance.releaseOwnership(_myImeId);
 
       // Create a new IME input ID and re-take IME ownership.
+      _unregisterInput(_myImeId);
       _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
+      _registerInput(_myImeId);
       SuperIme.instance.takeOwnership(_myImeId);
     }
 
@@ -330,15 +338,16 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       // in its `initState()` method.
       SuperIme.instance.releaseOwnership(_myImeId);
     }
+    _unregisterInput(_myImeId);
+
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
 
     // TODO: Only clear the client if we're still the owner.
     widget.imeOverrides?.client = null;
     _imeClient.client = null;
     _documentImeClient.dispose();
-
-    if (widget.focusNode == null) {
-      _focusNode.dispose();
-    }
 
     super.dispose();
   }
@@ -607,8 +616,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   @override
   Widget build(BuildContext context) {
-    _ensureUniqueInputOnBuild(_myImeId);
-
     return SuperEditorImeDebugVisuals(
       imeConnection: _ownedImeConnection,
       child: IntentBlocker(

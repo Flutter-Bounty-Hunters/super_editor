@@ -98,6 +98,11 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   }
 
   void _onFocusChange() {
+    if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
+      // We have focus but we don't own the IME. Take it over.
+      SuperIme.instance.takeOwnership(widget.inputId);
+    }
+
     bool shouldOpenIme = false;
     if (_focusNode.hasPrimaryFocus &&
         widget.openImeOnPrimaryFocusGain &&
@@ -141,7 +146,9 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     if (shouldCloseIme) {
-      SuperIme.instance.clearConnection(widget.inputId);
+      SuperIme.instance
+        ..clearConnection(widget.inputId)
+        ..releaseOwnership(widget.inputId);
     }
   }
 
