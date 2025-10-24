@@ -110,6 +110,11 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
       // We have focus but we don't own the IME. Take it over.
       print("Taking ownership of ime on focus: ${widget.inputId}");
       SuperIme.instance.takeOwnership(widget.inputId);
+      print("Now that we have ownership, here's the current state of things:");
+      print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
+      print(" - open on primary gain? ${widget.openImeOnPrimaryFocusGain}");
+      print(" - open on non-primary gain? ${widget.openImeOnNonPrimaryFocusGain}");
+      print(" - are we already attached? ${!SuperIme.instance.isInputAttachedToOS(widget.inputId)}");
     }
 
     bool shouldOpenIme = false;
