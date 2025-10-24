@@ -1402,8 +1402,9 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
   @override
   void initState() {
     super.initState();
-    _overlayController.show();
+
     widget.selection.addListener(_onSelectionChange);
+
     _collapsedHandleGestureDelegate = DocumentHandleGestureDelegate(
       onTap: _toggleToolbarOnCollapsedHandleTap,
       onPanStart: (details) => _onHandlePanStart(details, HandleType.collapsed),
@@ -1428,6 +1429,12 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.downstream),
       onPanCancel: () => _onHandlePanCancel(HandleType.downstream),
     );
+
+    onNextFrame((_) {
+      // Call `show()` at the end of the frame because calling during a build
+      // process blows up.
+      _overlayController.show();
+    });
   }
 
   @override
@@ -1437,7 +1444,6 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
     _controlsController = SuperEditorAndroidControlsScope.rootOf(context);
     // TODO: Replace Cupertino aligner with a generic aligner because this code runs on Android.
     _toolbarAligner = CupertinoPopoverToolbarAligner();
-    widget.selection.addListener(_onSelectionChange);
   }
 
   @override

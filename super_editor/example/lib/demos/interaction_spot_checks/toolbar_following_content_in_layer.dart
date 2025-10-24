@@ -29,7 +29,10 @@ class _ToolbarFollowingContentInLayerState extends State<ToolbarFollowingContent
   void initState() {
     super.initState();
 
-    _overlayPortalController.show();
+    // Can't call `show` during build or Flutter blows up.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _overlayPortalController.show();
+    });
   }
 
   @override

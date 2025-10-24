@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_keyboard/super_keyboard.dart';
@@ -12,19 +14,45 @@ class SuperEditorMessagePageDemo extends StatefulWidget {
 }
 
 class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo> {
-  final _messagePageController = MessagePageController();
-
   @override
   void initState() {
     super.initState();
 
-    SuperKeyboard.startLogging();
+    // SuperKeyboard.startLogging();
   }
 
   @override
   void dispose() {
-    SuperKeyboard.stopLogging();
+    // SuperKeyboard.stopLogging();
 
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ChatPage(
+      inputRole: "Home",
+    );
+  }
+}
+
+class _ChatPage extends StatefulWidget {
+  const _ChatPage({
+    required this.inputRole,
+  });
+
+  final String inputRole;
+
+  @override
+  State<_ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<_ChatPage> {
+  final _messagePageController = MessagePageController();
+
+  @override
+  void dispose() {
+    _messagePageController.dispose();
     super.dispose();
   }
 
@@ -61,6 +89,7 @@ class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo>
       bottomSheetBuilder: (messageContext) {
         return _EditorBottomSheet(
           messagePageController: _messagePageController,
+          inputRole: widget.inputRole,
         );
       },
     );
@@ -97,6 +126,20 @@ class _ChatThread extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.5),
             child: ListTile(
               title: Text("Item $index"),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return Scaffold(
+                        resizeToAvoidBottomInset: false,
+                        body: _ChatPage(
+                          inputRole: "Subpage-${Random().nextInt(1000)}",
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -109,9 +152,11 @@ class _ChatThread extends StatelessWidget {
 class _EditorBottomSheet extends StatefulWidget {
   const _EditorBottomSheet({
     required this.messagePageController,
+    required this.inputRole,
   });
 
   final MessagePageController messagePageController;
+  final String inputRole;
 
   @override
   State<_EditorBottomSheet> createState() => _EditorBottomSheetState();
@@ -142,22 +187,22 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
             id: Editor.createNodeId(),
             text: AttributedText("message"),
           ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("It's tall for quick"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("testing of"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("intrinsic height that"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("exceeds available space"),
-          ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("It's tall for quick"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("testing of"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("intrinsic height that"),
+          // ),
+          // ParagraphNode(
+          //   id: Editor.createNodeId(),
+          //   text: AttributedText("exceeds available space"),
+          // ),
         ],
       ),
       composer: MutableDocumentComposer(),
@@ -256,6 +301,7 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
         child: _ChatEditor(
           key: _editorKey,
           editor: _editor,
+          inputRole: widget.inputRole,
           messagePageController: widget.messagePageController,
           scrollController: _scrollController,
         ),
@@ -302,11 +348,13 @@ class _ChatEditor extends StatefulWidget {
   const _ChatEditor({
     super.key,
     required this.editor,
+    required this.inputRole,
     required this.messagePageController,
     required this.scrollController,
   });
 
   final Editor editor;
+  final String inputRole;
   final MessagePageController messagePageController;
   final ScrollController scrollController;
 
@@ -373,7 +421,7 @@ class _ChatEditorState extends State<_ChatEditor> {
     // focus so that our app state synchronizes with the closed IME connection.
     final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
     if (_isImeConnected.value && (keyboardState == KeyboardState.closing || keyboardState == KeyboardState.closed)) {
-      _editorFocusNode.unfocus();
+      // _editorFocusNode.unfocus();
     }
   }
 
@@ -394,6 +442,48 @@ class _ChatEditorState extends State<_ChatEditor> {
     return KeyboardPanelScaffold(
       controller: _keyboardPanelController,
       isImeConnected: _isImeConnected,
+      contentBuilder: (BuildContext context, _Panel? openPanel) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ListenableBuilder(
+              listenable: _editorFocusNode,
+              builder: (context, child) {
+                if (_editorFocusNode.hasFocus) {
+                  return const SizedBox();
+                }
+
+                return child!;
+              },
+              child: IconButton(
+                onPressed: () {
+                  _editorFocusNode.requestFocus();
+
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // We wait for the end of the frame to show the panel because giving
+                    // focus to the editor will first cause the keyboard to show. If we
+                    // opened the panel immediately then it would be covered by the keyboard.
+                    _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
+                  });
+                },
+                icon: Icon(Icons.add),
+              ),
+            ),
+            Expanded(child: _buildEditor()),
+            ListenableBuilder(
+              listenable: _editorFocusNode,
+              builder: (context, child) {
+                if (_editorFocusNode.hasFocus) {
+                  return const SizedBox();
+                }
+
+                return child!;
+              },
+              child: IconButton(onPressed: () {}, icon: Icon(Icons.multitrack_audio)),
+            ),
+          ],
+        );
+      },
       toolbarBuilder: (BuildContext context, _Panel? openPanel) {
         return Container(
           width: double.infinity,
@@ -402,6 +492,18 @@ class _ChatEditorState extends State<_ChatEditor> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
+              GestureDetector(
+                onTap: () {
+                  if (!_keyboardPanelController.isKeyboardPanelOpen) {
+                    _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
+                  } else {
+                    // This line is here to debug an issue in ClickUp
+                    _keyboardPanelController.hideKeyboardPanel();
+                    _keyboardPanelController.showSoftwareKeyboard();
+                  }
+                },
+                child: Icon(Icons.add),
+              ),
               Spacer(),
               GestureDetector(
                 onTap: () {
@@ -414,32 +516,38 @@ class _ChatEditorState extends State<_ChatEditor> {
         );
       },
       keyboardPanelBuilder: (BuildContext context, _Panel? openPanel) {
-        return SizedBox();
+        if (openPanel == null) {
+          return SizedBox();
+        }
+
+        return Container(width: double.infinity, height: 300, color: Colors.red);
       },
-      contentBuilder: (BuildContext context, _Panel? openPanel) {
-        return SuperEditorFocusOnTap(
-          editorFocusNode: _editorFocusNode,
+    );
+  }
+
+  Widget _buildEditor() {
+    return SuperEditorFocusOnTap(
+      editorFocusNode: _editorFocusNode,
+      editor: widget.editor,
+      child: SuperEditorDryLayout(
+        controller: widget.scrollController,
+        superEditor: SuperEditor(
+          key: _editorKey,
+          focusNode: _editorFocusNode,
           editor: widget.editor,
-          child: SuperEditorDryLayout(
-            controller: widget.scrollController,
-            superEditor: SuperEditor(
-              key: _editorKey,
-              focusNode: _editorFocusNode,
-              editor: widget.editor,
-              softwareKeyboardController: _softwareKeyboardController,
-              isImeConnected: _isImeConnected,
-              imePolicies: SuperEditorImePolicies(),
-              selectionPolicies: SuperEditorSelectionPolicies(),
-              shrinkWrap: false,
-              stylesheet: _chatStylesheet,
-              componentBuilders: [
-                const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-                ...defaultComponentBuilders,
-              ],
-            ),
-          ),
-        );
-      },
+          inputRole: widget.inputRole,
+          softwareKeyboardController: _softwareKeyboardController,
+          isImeConnected: _isImeConnected,
+          imePolicies: SuperEditorImePolicies(),
+          selectionPolicies: SuperEditorSelectionPolicies(),
+          shrinkWrap: false,
+          stylesheet: _chatStylesheet,
+          componentBuilders: [
+            const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+            ...defaultComponentBuilders,
+          ],
+        ),
+      ),
     );
   }
 }
