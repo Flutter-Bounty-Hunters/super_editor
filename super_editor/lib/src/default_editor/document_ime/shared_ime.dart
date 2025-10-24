@@ -68,6 +68,7 @@ class SuperIme with ChangeNotifier {
       _imeConnection = null;
     }
 
+    print("Opening IME connection for $ownerInputId");
     _imeConnection ??= TextInput.attach(client, configuration);
     if (showKeyboard) {
       _imeConnection!.show();
@@ -83,6 +84,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    print("Clearing IME connection for $ownerInputId");
     _imeConnection?.close();
     _imeConnection = null;
 
@@ -112,6 +114,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    print("Taking IME ownership: $newOwnerInputId");
     _owner = newOwnerInputId;
 
     notifyListeners();
@@ -133,6 +136,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    print("Releasing IME ownership: $ownerInputId");
     if (clearConnectionOnRelease) {
       clearConnection(ownerInputId);
     }

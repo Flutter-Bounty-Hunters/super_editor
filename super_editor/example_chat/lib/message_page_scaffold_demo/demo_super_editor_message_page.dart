@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_keyboard/super_keyboard.dart';
@@ -12,8 +14,6 @@ class SuperEditorMessagePageDemo extends StatefulWidget {
 }
 
 class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo> {
-  final _messagePageController = MessagePageController();
-
   @override
   void initState() {
     super.initState();
@@ -25,6 +25,34 @@ class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo>
   void dispose() {
     SKLog.stopLogging();
 
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ChatPage(
+      inputRole: "Home",
+    );
+  }
+}
+
+class _ChatPage extends StatefulWidget {
+  const _ChatPage({
+    required this.inputRole,
+  });
+
+  final String inputRole;
+
+  @override
+  State<_ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<_ChatPage> {
+  final _messagePageController = MessagePageController();
+
+  @override
+  void dispose() {
+    _messagePageController.dispose();
     super.dispose();
   }
 
@@ -61,6 +89,7 @@ class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo>
       bottomSheetBuilder: (messageContext) {
         return _EditorBottomSheet(
           messagePageController: _messagePageController,
+          inputRole: widget.inputRole,
         );
       },
     );
@@ -97,6 +126,20 @@ class _ChatThread extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.5),
             child: ListTile(
               title: Text("Item $index"),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return Scaffold(
+                        resizeToAvoidBottomInset: false,
+                        body: _ChatPage(
+                          inputRole: "Subpage-${Random().nextInt(1000)}",
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -109,9 +152,11 @@ class _ChatThread extends StatelessWidget {
 class _EditorBottomSheet extends StatefulWidget {
   const _EditorBottomSheet({
     required this.messagePageController,
+    required this.inputRole,
   });
 
   final MessagePageController messagePageController;
+  final String inputRole;
 
   @override
   State<_EditorBottomSheet> createState() => _EditorBottomSheetState();
@@ -256,6 +301,7 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
         child: _ChatEditor(
           key: _editorKey,
           editor: _editor,
+          inputRole: widget.inputRole,
           messagePageController: widget.messagePageController,
           scrollController: _scrollController,
         ),
@@ -302,11 +348,13 @@ class _ChatEditor extends StatefulWidget {
   const _ChatEditor({
     super.key,
     required this.editor,
+    required this.inputRole,
     required this.messagePageController,
     required this.scrollController,
   });
 
   final Editor editor;
+  final String inputRole;
   final MessagePageController messagePageController;
   final ScrollController scrollController;
 
@@ -449,6 +497,8 @@ class _ChatEditorState extends State<_ChatEditor> {
                   if (!_keyboardPanelController.isKeyboardPanelOpen) {
                     _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
                   } else {
+                    // This line is here to debug an issue in ClickUp
+                    _keyboardPanelController.hideKeyboardPanel();
                     _keyboardPanelController.showSoftwareKeyboard();
                   }
                 },
@@ -485,6 +535,7 @@ class _ChatEditorState extends State<_ChatEditor> {
           key: _editorKey,
           focusNode: _editorFocusNode,
           editor: widget.editor,
+          inputRole: widget.inputRole,
           softwareKeyboardController: _softwareKeyboardController,
           isImeConnected: _isImeConnected,
           imePolicies: SuperEditorImePolicies(),
