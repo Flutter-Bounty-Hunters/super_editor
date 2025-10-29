@@ -229,10 +229,7 @@ class ColorPickerPopoverModal extends StatelessWidget {
             followerAnchor: Alignment.centerRight,
             offset: Offset(-24, 0),
           ),
-          boundary: ScreenFollowerBoundary(
-            screenSize: MediaQuery.sizeOf(context),
-            devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          ),
+          boundary: const ScreenFollowerBoundary(),
           child: CupertinoPopoverMenu(
             focalPoint: LeaderMenuFocalPoint(link: leaderLink),
             backgroundColor: const Color(0xFF111111),
