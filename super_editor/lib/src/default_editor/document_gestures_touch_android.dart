@@ -1373,6 +1373,7 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
 
 @visibleForTesting
 class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAndroidControlsOverlayManager> {
+  final _boundsKey = GlobalKey();
   final _overlayController = OverlayPortalController();
 
   SuperEditorAndroidControlsController? _controlsController;
@@ -1432,8 +1433,11 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
     super.didChangeDependencies();
 
     _controlsController = SuperEditorAndroidControlsScope.rootOf(context);
-    // TODO: Replace Cupertino aligner with a generic aligner because this code runs on Android.
-    _toolbarAligner = CupertinoPopoverToolbarAligner();
+    // TODO: Replace CupertinoPopoverToolbarAligner aligner with a generic aligner because this code runs on Android.
+    _toolbarAligner = CupertinoPopoverToolbarAligner(
+      toolbarVerticalOffsetAbove: 20,
+      toolbarVerticalOffsetBelow: 90,
+    );
     widget.selection.addListener(_onSelectionChange);
   }
 
@@ -1733,6 +1737,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
     return TapRegion(
       groupId: widget.tapRegionGroupId,
       child: Stack(
+        key: _boundsKey,
         children: [
           _buildMagnifierFocalPoint(),
           if (widget.showDebugPaint) //
@@ -1909,10 +1914,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       child: Follower.withAligner(
         link: _controlsController!.toolbarFocalPoint,
         aligner: _toolbarAligner,
-        boundary: ScreenFollowerBoundary(
-          screenSize: MediaQuery.sizeOf(context),
-          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-        ),
+        boundary: const ScreenFollowerBoundary(),
         child: _toolbarBuilder(context, DocumentKeys.mobileToolbar, _controlsController!.toolbarFocalPoint),
       ),
     );
@@ -1977,10 +1979,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       offset: Offset(0, -54 * devicePixelRatio),
       leaderAnchor: Alignment.center,
       followerAnchor: Alignment.center,
-      boundary: ScreenFollowerBoundary(
-        screenSize: MediaQuery.sizeOf(context),
-        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-      ),
+      boundary: const ScreenFollowerBoundary(),
       child: AndroidMagnifyingGlass(
         key: magnifierKey,
         magnificationScale: 1.5,

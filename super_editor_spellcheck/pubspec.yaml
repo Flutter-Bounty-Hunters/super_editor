@@ -12,8 +12,8 @@ dependencies:
   collection: ^1.18.0
   flutter:
     sdk: flutter
-  follow_the_leader: ^0.0.4+8
-  overlord: ^0.0.3+5
+  follow_the_leader: ^0.5.1
+  overlord: ^0.4.2
   plugin_platform_interface: ^2.0.2
 
   super_editor: ^0.3.0-dev.15
