@@ -305,22 +305,18 @@ class _MessageTileState extends State<_MessageTile> {
   }
 
   Widget _buildMessageContent() {
-    return IntrinsicWidth(
-      child: IgnorePointer(
-        child: SuperEditorDryLayout(
-          superEditor: SuperReader(
-            editor: _editor,
-            documentLayoutKey: _documentLayoutKey,
-            stylesheet: defaultStylesheet.copyWith(
-              documentPadding: const EdgeInsets.symmetric(
-                horizontal: 10.0,
-                vertical: 0.0,
-              ),
-              selectedTextColorStrategy: makeSelectedTextBlack,
-              addRulesAfter: messageListStyles,
-              inlineTextStyler: _inlineStyler,
-            ),
+    return IgnorePointer(
+      child: SuperChatBubble(
+        editor: _editor,
+        documentLayoutKey: _documentLayoutKey,
+        stylesheet: defaultStylesheet.copyWith(
+          documentPadding: const EdgeInsets.symmetric(
+            horizontal: 10.0,
+            vertical: 0.0,
           ),
+          selectedTextColorStrategy: makeSelectedTextBlack,
+          addRulesAfter: messageListStyles,
+          inlineTextStyler: _inlineStyler,
         ),
       ),
     );
