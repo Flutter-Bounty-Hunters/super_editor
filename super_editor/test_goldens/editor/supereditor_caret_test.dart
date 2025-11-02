@@ -1,257 +1,387 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:golden_bricks/golden_bricks.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
 import '../../test/super_editor/supereditor_test_tools.dart';
-import '../test_tools_goldens.dart';
 
 void main() {
   group('SuperEditor > caret rendering >', () {
-    testGoldensOnMac('shows caret at right side of an image', (tester) async {
-      await _pumpCaretTestApp(tester);
+    testGoldenSceneOnMac('shows caret at right side of an image', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-image-caret-downstream-mac',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await _pumpCaretTestApp(tester, scaffold, decorator);
 
-      // Tap close to the right edge of the editor to place the caret
-      // downstream on the image.
-      await tester.tapAt(
-        tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
-      );
-      await tester.pump();
-
-      await screenMatchesGolden(tester, 'super-editor-image-caret-downstream-mac');
+              // Tap close to the right edge of the editor to place the caret
+              // downstream on the image.
+              await tester.tapAt(
+                tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
+              );
+              await tester.pump();
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOniOS('shows caret at right side of an image', (tester) async {
-      await _pumpCaretTestApp(tester);
+    testGoldenSceneOnIOS('shows caret at right side of an image', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-image-caret-downstream-ios',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await _pumpCaretTestApp(tester, scaffold, decorator);
 
-      // Tap close to the right edge of the editor to place the caret
-      // downstream on the image.
-      await tester.tapAt(
-        tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
-      );
-      await tester.pump();
-
-      await screenMatchesGolden(tester, 'super-editor-image-caret-downstream-ios');
+              // Tap close to the right edge of the editor to place the caret
+              // downstream on the image.
+              await tester.tapAt(
+                tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
+              );
+              await tester.pump();
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOnAndroid(
+    testGoldenSceneOnAndroid(
       'shows caret at right side of an image',
       (tester) async {
-        await _pumpCaretTestApp(tester);
+        await Gallery(
+          tester,
+          sceneName: 'goldens/super-editor-image-caret-downstream-android',
+          layout: SceneLayout.column,
+        )
+            .itemFromPumper(
+              id: "1",
+              description: 'SuperEditor',
+              pumper: (tester, scaffold, decorator) async {
+                await _pumpCaretTestApp(tester, scaffold, decorator);
 
-        // Tap close to the right edge of the editor to place the caret
-        // downstream on the image.
-        await tester.tapAt(
-          tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
-        );
-        await tester.pumpAndSettle();
-
-        await screenMatchesGolden(tester, 'super-editor-image-caret-downstream-android');
+                // Tap close to the right edge of the editor to place the caret
+                // downstream on the image.
+                await tester.tapAt(
+                  tester.getTopRight(find.byType(SuperEditor)) + const Offset(-20, 20),
+                );
+                await tester.pump();
+              },
+            )
+            .renderOrCompareGolden();
       },
-      // TODO: find out why this test fails on CI only.
-      skip: true,
     );
 
-    testGoldensOnMac('shows caret at left side of an image', (tester) async {
-      await _pumpCaretTestApp(tester);
+    testGoldenSceneOnMac('shows caret at left side of an image', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-image-caret-upstream-mac',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await _pumpCaretTestApp(tester, scaffold, decorator);
 
-      // Tap close to the left edge of the editor to place the caret upstream
-      // on the image.
-      await tester.tapAt(
-        tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
-      );
-      await tester.pump();
-
-      await screenMatchesGolden(tester, 'super-editor-image-caret-upstream-mac');
+              // Tap close to the left edge of the editor to place the caret upstream
+              // on the image.
+              await tester.tapAt(
+                tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
+              );
+              await tester.pump();
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOniOS('shows caret at left side of an image', (tester) async {
-      await _pumpCaretTestApp(tester);
+    testGoldenSceneOnIOS('shows caret at left side of an image', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-image-caret-upstream-ios',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await _pumpCaretTestApp(tester, scaffold, decorator);
 
-      // Tap close to the left edge of the editor to place the caret upstream
-      // on the image.
-      await tester.tapAt(
-        tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
-      );
-      await tester.pump();
-
-      await screenMatchesGolden(tester, 'super-editor-image-caret-upstream-ios');
+              // Tap close to the left edge of the editor to place the caret upstream
+              // on the image.
+              await tester.tapAt(
+                tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
+              );
+              await tester.pump();
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOnAndroid(
+    testGoldenSceneOnAndroid(
       'shows caret at left side of an image',
       (tester) async {
-        await _pumpCaretTestApp(tester);
+        await Gallery(
+          tester,
+          sceneName: 'goldens/super-editor-image-caret-upstream-android',
+          layout: SceneLayout.column,
+        )
+            .itemFromPumper(
+              id: "1",
+              description: 'SuperEditor',
+              pumper: (tester, scaffold, decorator) async {
+                await _pumpCaretTestApp(tester, scaffold, decorator);
 
-        // Tap close to the left edge of the editor to place the caret upstream
-        // on the image.
-        await tester.tapAt(
-          tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
-        );
-        await tester.pump();
-
-        await screenMatchesGolden(tester, 'super-editor-image-caret-upstream-android');
+                // Tap close to the left edge of the editor to place the caret upstream
+                // on the image.
+                await tester.tapAt(
+                  tester.getTopLeft(find.byType(SuperEditor)) + const Offset(20, 20),
+                );
+                await tester.pump();
+              },
+            )
+            .renderOrCompareGolden();
       },
-      // TODO: find out why this test fails on CI only.
-      skip: true,
     );
 
-    testGoldensOniOS('allows customizing the caret width', (tester) async {
-      await tester //
-          .createDocument()
-          .withSingleParagraph()
-          .withIosCaretStyle(width: 4.0)
-          .pump();
+    testGoldenSceneOnIOS('allows customizing the caret width', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-ios-custom-caret-width',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await tester //
+                  .createDocument()
+                  .withSingleParagraph()
+                  .withIosCaretStyle(width: 4.0)
+                  .withEditorSize(const Size(600, 600))
+                  .withGalleryScaffold(scaffold, decorator)
+                  .pump();
 
-      // Place caret at "Lorem ip|sum"
-      await tester.placeCaretInParagraph('1', 8);
-
-      await screenMatchesGolden(tester, 'super-editor-ios-custom-caret-width');
+              // Place caret at "Lorem ip|sum"
+              await tester.placeCaretInParagraph('1', 8);
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOniOS('allows customizing the expanded handle width', (tester) async {
-      await tester //
-          .createDocument()
-          .withSingleParagraph()
-          .withIosCaretStyle(width: 4.0)
-          .pump();
+    testGoldenSceneOnIOS('allows customizing the expanded handle width', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-ios-custom-handle-width',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await tester //
+                  .createDocument()
+                  .withSingleParagraph()
+                  .withIosCaretStyle(width: 4.0)
+                  .withEditorSize(const Size(600, 600))
+                  .withGalleryScaffold(scaffold, decorator)
+                  .pump();
 
-      // Double tap to select the word ipsum.
-      await tester.doubleTapInParagraph('1', 8);
-
-      await screenMatchesGolden(tester, 'super-editor-ios-custom-handle-width');
+              // Double tap to select the word ipsum.
+              await tester.doubleTapInParagraph('1', 8);
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOniOS('allows customizing the expanded handle ball diameter', (tester) async {
-      await tester //
-          .createDocument()
-          .withSingleParagraph()
-          .withIosCaretStyle(handleBallDiameter: 16.0)
-          .pump();
+    testGoldenSceneOnIOS('allows customizing the expanded handle ball diameter', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-ios-custom-handle-ball-diameter',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await tester //
+                  .createDocument()
+                  .withSingleParagraph()
+                  .withIosCaretStyle(handleBallDiameter: 16.0)
+                  .withEditorSize(const Size(600, 600))
+                  .withGalleryScaffold(scaffold, decorator)
+                  .pump();
 
-      // Double tap to select the word ipsum.
-      await tester.doubleTapInParagraph('1', 8);
-
-      await screenMatchesGolden(tester, 'super-editor-ios-custom-handle-ball-diameter');
+              // Double tap to select the word ipsum.
+              await tester.doubleTapInParagraph('1', 8);
+            },
+          )
+          .renderOrCompareGolden();
     });
 
-    testGoldensOnAndroid('allows customizing the caret width', (tester) async {
-      await tester //
-          .createDocument()
-          .withSingleParagraph()
-          .withAndroidCaretStyle(width: 4)
-          .pump();
+    testGoldenSceneOnAndroid('allows customizing the caret width', (tester) async {
+      await Gallery(
+        tester,
+        sceneName: 'goldens/super-editor-android-custom-caret-width',
+        layout: SceneLayout.column,
+      )
+          .itemFromPumper(
+            id: "1",
+            description: 'SuperEditor',
+            pumper: (tester, scaffold, decorator) async {
+              await tester //
+                  .createDocument()
+                  .withSingleParagraph()
+                  .withAndroidCaretStyle(width: 4)
+                  .withEditorSize(const Size(600, 600))
+                  .withGalleryScaffold(scaffold, decorator)
+                  .pump();
 
-      // Place caret at "Lorem ip|sum"
-      await tester.placeCaretInParagraph('1', 8);
-
-      await screenMatchesGolden(tester, 'super-editor-android-custom-caret-width');
+              // Place caret at "Lorem ip|sum"
+              await tester.placeCaretInParagraph('1', 8);
+            },
+          )
+          .renderOrCompareGolden();
     });
 
     group('phone rotation updates caret position', () {
       const screenSizePortrait = Size(400.0, 800.0);
       const screenSizeLandscape = Size(800.0, 400);
 
-      testGoldensOniOS('from portrait to landscape', (tester) async {
+      testGoldenSceneOnIOS('from portrait to landscape', (tester) async {
         tester.view
           ..devicePixelRatio = 1.0
           ..platformDispatcher.textScaleFactorTestValue = 1.0
           ..physicalSize = screenSizePortrait;
         addTearDown(() => tester.platformDispatcher.clearAllTestValues());
 
-        final context = await _pumpTestAppWithGoldenBricksFont(tester);
+        await FilmStrip(tester)
+            .setup((tester) async {
+              final context = await _pumpTestAppWithGoldenBricksFont(tester);
 
-        // Place caret at "adipiscing elit|.". In portrait mode, this character
-        // is displayed on the second line. In landscape mode, it's displayed
-        // on the first line.
-        await tester.placeCaretInParagraph(context.document.first.id, 54);
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-portrait-landscape-before-ios');
-
-        // Make the window wider, pushing the caret text position up a line.
-        tester.view.physicalSize = screenSizeLandscape;
-        await tester.pumpAndSettle();
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-portrait-landscape-after-ios');
+              // Place caret at "adipiscing elit|.". In portrait mode, this character
+              // is displayed on the second line. In landscape mode, it's displayed
+              // on the first line.
+              await tester.placeCaretInParagraph(context.document.first.id, 54);
+            })
+            .takePhoto(find.byType(SuperEditor), "portrait")
+            .modifyScene((tester, testContext) async {
+              // Make the window wider, pushing the caret text position up a line.
+              tester.view.physicalSize = screenSizeLandscape;
+              await tester.pumpAndSettle();
+            })
+            .takePhoto(find.byType(SuperEditor), "landscape")
+            .renderOrCompareGolden(
+              goldenName: "super-editor-caret-rotation-portrait-landscape-ios",
+              layout: SceneLayout.column,
+            );
       });
 
-      testGoldensOnAndroid('from portrait to landscape', (tester) async {
+      testGoldenSceneOnAndroid('from portrait to landscape', (tester) async {
         tester.view
           ..devicePixelRatio = 1.0
           ..platformDispatcher.textScaleFactorTestValue = 1.0
           ..physicalSize = screenSizePortrait;
         addTearDown(() => tester.platformDispatcher.clearAllTestValues());
 
-        final context = await _pumpTestAppWithGoldenBricksFont(tester);
+        await FilmStrip(tester)
+            .setup((tester) async {
+              final context = await _pumpTestAppWithGoldenBricksFont(tester);
 
-        // Place caret at "adipiscing elit|.". In portrait mode, this character
-        // is displayed on the second line. In landscape mode, it's displayed
-        // on the first line.
-        await tester.placeCaretInParagraph(context.document.first.id, 54);
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-portrait-landscape-before-android');
-
-        // Make the window wider, pushing the caret text position up a line.
-        tester.view.physicalSize = screenSizeLandscape;
-        await tester.pumpAndSettle();
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-portrait-landscape-after-android');
-      }, skip: true);
-
-      testGoldensOniOS('from landscape to portrait', (tester) async {
-        tester.view
-          ..devicePixelRatio = 1.0
-          ..platformDispatcher.textScaleFactorTestValue = 1.0
-          ..physicalSize = screenSizeLandscape;
-        addTearDown(() => tester.platformDispatcher.clearAllTestValues());
-
-        final context = await _pumpTestAppWithGoldenBricksFont(tester);
-
-        // Place caret at "adipiscing elit|.". In portrait mode, this character
-        // is displayed on the second line. In landscape mode, it's displayed
-        // on the first line.
-        await tester.placeCaretInParagraph(context.document.first.id, 54);
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-landscape-portrait-before-ios');
-
-        // Make the window thiner, pushing the caret text position down a line.
-        tester.view.physicalSize = screenSizePortrait;
-        await tester.pumpAndSettle();
-
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-landscape-portrait-after-ios');
+              // Place caret at "adipiscing elit|.". In portrait mode, this character
+              // is displayed on the second line. In landscape mode, it's displayed
+              // on the first line.
+              await tester.placeCaretInParagraph(context.document.first.id, 54);
+            })
+            .takePhoto(find.byType(SuperEditor), "portrait")
+            .modifyScene((tester, testContext) async {
+              // Make the window wider, pushing the caret text position up a line.
+              tester.view.physicalSize = screenSizeLandscape;
+              await tester.pumpAndSettle();
+            })
+            .takePhoto(find.byType(SuperEditor), "landscape")
+            .renderOrCompareGolden(
+              goldenName: "super-editor-caret-rotation-portrait-landscape-android",
+              layout: SceneLayout.column,
+            );
       });
 
-      testGoldensOnAndroid('from landscape to portrait', (tester) async {
+      testGoldenSceneOnIOS('from landscape to portrait', (tester) async {
         tester.view
           ..devicePixelRatio = 1.0
           ..platformDispatcher.textScaleFactorTestValue = 1.0
           ..physicalSize = screenSizeLandscape;
         addTearDown(() => tester.platformDispatcher.clearAllTestValues());
 
-        final context = await _pumpTestAppWithGoldenBricksFont(tester);
+        await FilmStrip(tester)
+            .setup((tester) async {
+              final context = await _pumpTestAppWithGoldenBricksFont(tester);
 
-        // Place caret at "adipiscing elit|.". In portrait mode, this character
-        // is displayed on the second line. In landscape mode, it's displayed
-        // on the first line.
-        await tester.placeCaretInParagraph(context.document.first.id, 54);
+              // Place caret at "adipiscing elit|.". In portrait mode, this character
+              // is displayed on the second line. In landscape mode, it's displayed
+              // on the first line.
+              await tester.placeCaretInParagraph(context.document.first.id, 54);
+            })
+            .takePhoto(find.byType(SuperEditor), "portrait")
+            .modifyScene((tester, testContext) async {
+              // Make the window thiner, pushing the caret text position down a line.
+              tester.view.physicalSize = screenSizePortrait;
+              await tester.pumpAndSettle();
+            })
+            .takePhoto(find.byType(SuperEditor), "landscape")
+            .renderOrCompareGolden(
+              goldenName: "super-editor-caret-rotation-landscape-portrait-ios",
+              layout: SceneLayout.column,
+            );
+      });
 
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-landscape-portrait-before-android');
+      testGoldenSceneOnAndroid('from landscape to portrait', (tester) async {
+        tester.view
+          ..devicePixelRatio = 1.0
+          ..platformDispatcher.textScaleFactorTestValue = 1.0
+          ..physicalSize = screenSizeLandscape;
+        addTearDown(() => tester.platformDispatcher.clearAllTestValues());
 
-        // Make the window thiner, pushing the caret text position down a line.
-        tester.view.physicalSize = screenSizePortrait;
-        await tester.pumpAndSettle();
+        await FilmStrip(tester)
+            .setup((tester) async {
+              final context = await _pumpTestAppWithGoldenBricksFont(tester);
 
-        await screenMatchesGolden(tester, 'super-editor-caret-rotation-landscape-portrait-after-android');
-      }, skip: true);
+              // Place caret at "adipiscing elit|.". In portrait mode, this character
+              // is displayed on the second line. In landscape mode, it's displayed
+              // on the first line.
+              await tester.placeCaretInParagraph(context.document.first.id, 54);
+            })
+            .takePhoto(find.byType(SuperEditor), "portrait")
+            .modifyScene((tester, testContext) async {
+              // Make the window thiner, pushing the caret text position down a line.
+              tester.view.physicalSize = screenSizePortrait;
+              await tester.pumpAndSettle();
+            })
+            .takePhoto(find.byType(SuperEditor), "landscape")
+            .renderOrCompareGolden(
+              goldenName: "super-editor-caret-rotation-landscape-portrait-android'",
+              layout: SceneLayout.column,
+            );
+      });
     });
   });
 }
 
-// Pumps an editor with a single image that takes all the available width.
-Future<void> _pumpCaretTestApp(WidgetTester tester) async {
-  await tester //
+Future<void> _pumpCaretTestApp(
+  WidgetTester tester,
+  GalleryItemScaffold scaffold,
+  GalleryItemDecorator? decorator,
+) {
+  return tester //
       .createDocument()
       .withCustomContent(
         MutableDocument(
@@ -266,6 +396,7 @@ Future<void> _pumpCaretTestApp(WidgetTester tester) async {
           ],
         ),
       )
+      .withEditorSize(const Size(600, 600))
       .withCaretStyle(
         caretStyle: const CaretStyle(color: Colors.red),
       )
@@ -282,13 +413,15 @@ Future<void> _pumpCaretTestApp(WidgetTester tester) async {
         ]),
       )
       .withAddedComponents(
-    [
-      const FakeImageComponentBuilder(
-        size: Size(double.infinity, 100),
-        fillColor: Colors.yellow,
-      ),
-    ],
-  ).pump();
+        [
+          const FakeImageComponentBuilder(
+            size: Size(double.infinity, 100),
+            fillColor: Colors.yellow,
+          ),
+        ],
+      )
+      .withGalleryScaffold(scaffold, decorator)
+      .pump();
 }
 
 /// Pumps a widget tree with a [SuperEditor] styled with the Golden Bricks font
