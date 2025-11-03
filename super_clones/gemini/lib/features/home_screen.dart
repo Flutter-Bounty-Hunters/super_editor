@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:gemini/infrastructure/bottom_sheet_chat_scaffold.dart';
 import 'package:gemini/infrastructure/theme.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +13,59 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final apiKey = const String.fromEnvironment("GEMINI_API_KEY");
+
+  late final GenerativeModel model;
+  late final ChatSession chat;
+
+  final _conversation = <String>[];
+  String? _generatingResponse;
+
+  @override
+  void initState() {
+    super.initState();
+
+    model = GenerativeModel(model: "gemini-2.5-flash", apiKey: apiKey);
+    chat = model.startChat();
+
+    Future.delayed(const Duration(seconds: 1)).then((_) {
+      _askQuestion("Very concisely describe Star Wars Unlimited");
+    });
+
+    Future.delayed(const Duration(seconds: 10)).then((_) {
+      _askQuestion("Explain the aspects");
+    });
+  }
+
+  Future<void> _askQuestion(String prompt) async {
+    try {
+      final responseStream = chat.sendMessageStream(Content.text(prompt));
+      final responseBuffer = StringBuffer();
+      await for (final chunk in responseStream) {
+        if (!mounted) {
+          return;
+        }
+
+        print("Chunk: ${chunk.text}");
+        responseBuffer.write(chunk.text);
+        setState(() {
+          _generatingResponse = responseBuffer.toString();
+        });
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _conversation.add(responseBuffer.toString());
+        _generatingResponse = null;
+      });
+    } catch (e) {
+      print("Error asking AI: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,16 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBodyBehindAppBar: true,
       body: BottomSheetChatScaffold(
         contentBuilder: (context, keyboardAndBottomSheetHeight) {
-          return Column(
-            children: [
-              Expanded(
-                child: OverflowBox(
-                  child: HomePage(), //
-                ),
-              ),
-              // Push up above the bottom sheet, minus some bleed over space.
-              SizedBox(height: max(keyboardAndBottomSheetHeight - 48, 0)),
-            ],
+          return HomePage(
+            conversation: _conversation,
+            generatingResponse: _generatingResponse,
+            keyboardAndBottomSheetHeight: keyboardAndBottomSheetHeight,
           );
         },
       ),
@@ -63,14 +111,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-      backgroundColor: Colors.transparent,
+      backgroundColor: windowBackgroundColor,
+      scrolledUnderElevation: 0,
       centerTitle: true,
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    required this.conversation,
+    this.generatingResponse,
+    required this.keyboardAndBottomSheetHeight,
+  });
+
+  final List<String> conversation;
+  final String? generatingResponse;
+
+  final double keyboardAndBottomSheetHeight;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -87,6 +146,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    print("Building Home Page with generated response: ${widget.generatingResponse}");
     return Focus(
       focusNode: _pageFocusNode,
       child: GestureDetector(
@@ -96,7 +156,20 @@ class _HomePageState extends State<HomePage> {
           _pageFocusNode.requestFocus();
         },
         behavior: HitTestBehavior.translucent,
-        child: Center(
+        child: _hasConversationStarted
+            ? _buildConversation() //
+            : _buildWelcome(),
+      ),
+    );
+  }
+
+  bool get _hasConversationStarted => widget.conversation.isNotEmpty || widget.generatingResponse != null;
+
+  Widget _buildWelcome() {
+    return OverflowBox(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: widget.keyboardAndBottomSheetHeight),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             spacing: 32,
@@ -122,6 +195,30 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildConversation() {
+    return Column(
+      children: [
+        Expanded(
+          child: OverflowBox(
+            child: ListView.builder(
+              itemCount: widget.conversation.length + (widget.generatingResponse != null ? 1 : 0),
+              itemBuilder: (context, index) {
+                final text = index >= widget.conversation.length
+                    ? widget.generatingResponse!
+                    : widget.conversation[index];
+
+                return Padding(padding: const EdgeInsets.all(24), child: Text(text));
+              },
+            ), //
+          ),
+        ),
+        // Push up above the bottom sheet, minus some bleed over space becuase of
+        // rounded corners on the bottom sheet.
+        SizedBox(height: max(widget.keyboardAndBottomSheetHeight - 48, 0)),
+      ],
     );
   }
 }
