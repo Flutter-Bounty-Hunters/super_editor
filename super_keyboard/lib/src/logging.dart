@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:logging/logging.dart';
 
 /// Loggers for Super Keyboard, which can be activated by log level and by focal
@@ -8,14 +10,26 @@ abstract class SKLog {
   static final ios = Logger("super_keyboard.ios");
   static final android = Logger("super_keyboard.android");
 
+  static StreamSubscription<LogRecord>? _logRecordSubscription;
+
   static void startLogging([Level level = Level.ALL, LogPrinter? printer]) {
+    if (_logRecordSubscription != null) {
+      _logRecordSubscription!.cancel();
+      _logRecordSubscription = null;
+    }
+
     hierarchicalLoggingEnabled = true;
     superKeyboard.level = level;
-    superKeyboard.onRecord.listen(printer ?? defaultLogPrinter);
+    _logRecordSubscription = superKeyboard.onRecord.listen(printer ?? defaultLogPrinter);
   }
 
   static void stopLogging() {
     superKeyboard.level = Level.OFF;
+
+    if (_logRecordSubscription != null) {
+      _logRecordSubscription!.cancel();
+      _logRecordSubscription = null;
+    }
   }
 }
 
