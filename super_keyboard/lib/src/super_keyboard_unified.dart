@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:logging/logging.dart';
 import 'package:super_keyboard/src/keyboard.dart';
+import 'package:super_keyboard/src/logging.dart';
 import 'package:super_keyboard/src/super_keyboard_android.dart';
 import 'package:super_keyboard/src/super_keyboard_ios.dart';
 
@@ -58,32 +58,17 @@ class SuperKeyboard {
   @visibleForTesting
   static set testInstance(SuperKeyboard? testInstance) => _instance = testInstance;
 
-  static final log = Logger("super_keyboard");
-
-  static void startLogging([Level level = Level.ALL]) {
-    hierarchicalLoggingEnabled = true;
-    log.level = level;
-    log.onRecord.listen((record) {
-      // ignore: avoid_print
-      print('${record.level.name}: ${record.time.toLogTime()}: ${record.message}');
-    });
-  }
-
-  static void stopLogging() {
-    log.level = Level.OFF;
-  }
-
   SuperKeyboard._() {
     _init();
   }
 
   void _init() {
-    log.info("Initializing SuperKeyboard");
+    SKLog.unified.info("Initializing SuperKeyboard");
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      log.fine("SuperKeyboard - Initializing for iOS");
+      SKLog.unified.fine("SuperKeyboard - Initializing for iOS");
       SuperKeyboardIOS.instance.geometry.addListener(_onIOSWindowGeometryChange);
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      log.fine("SuperKeyboard - Initializing for Android");
+      SKLog.unified.fine("SuperKeyboard - Initializing for Android");
       SuperKeyboardAndroid.instance.geometry.addListener(_onAndroidWindowGeometryChange);
     }
   }
@@ -94,10 +79,19 @@ class SuperKeyboard {
   /// by [startLogging].
   Future<void> enablePlatformLogging(bool isEnabled) async {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      log.fine("SuperKeyboard - Tried to start logging for iOS, but it's not implemented yet.");
+      SKLog.unified.fine("SuperKeyboard - ${isEnabled ? "Enabling" : "Disabling"} logs for iOS.");
+      if (isEnabled) {
+        await SuperKeyboardIOS.instance.enablePlatformLogging(sendPlatformLogsToDart: true);
+      } else {
+        await SuperKeyboardIOS.instance.disablePlatformLogging();
+      }
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      log.fine("SuperKeyboard - ${isEnabled ? "Enabling" : "Disabling"} logs for Android.");
-      await SuperKeyboardAndroid.instance.enablePlatformLogging(isEnabled);
+      SKLog.unified.fine("SuperKeyboard - ${isEnabled ? "Enabling" : "Disabling"} logs for Android.");
+      if (isEnabled) {
+        await SuperKeyboardAndroid.instance.enablePlatformLogging(sendPlatformLogsToDart: true);
+      } else {
+        await SuperKeyboardAndroid.instance.disablePlatformLogging();
+      }
     }
   }
 
@@ -110,30 +104,5 @@ class SuperKeyboard {
 
   void _onAndroidWindowGeometryChange() {
     _mobileGeometry.value = SuperKeyboardAndroid.instance.geometry.value;
-  }
-}
-
-extension on DateTime {
-  String toLogTime() {
-    String h = _twoDigits(hour);
-    String min = _twoDigits(minute);
-    String sec = _twoDigits(second);
-    String ms = _threeDigits(millisecond);
-    if (isUtc) {
-      return "$h:$min:$sec.$ms";
-    } else {
-      return "$h:$min:$sec.$ms";
-    }
-  }
-
-  String _threeDigits(int n) {
-    if (n >= 100) return "$n";
-    if (n >= 10) return "0$n";
-    return "00$n";
-  }
-
-  String _twoDigits(int n) {
-    if (n >= 10) return "$n";
-    return "0$n";
   }
 }

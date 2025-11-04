@@ -61,11 +61,12 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
     channel.setMethodCallHandler { call, result ->
       when (call.method) {
         "startLogging" -> {
-          SuperKeyboardLog.isLoggingEnabled = true
+          val forwardToDart = call.argument<Boolean?>("sendPlatformLogsToDart") ?: false
+          SuperKeyboardLog.enable(if (forwardToDart) channel else null)
           result.success(null)
         }
         "stopLogging" -> {
-          SuperKeyboardLog.isLoggingEnabled = false
+          SuperKeyboardLog.disable()
           result.success(null)
         }
         else -> result.notImplemented()
@@ -130,6 +131,7 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     SuperKeyboardLog.d("super_keyboard", "Detached from Flutter engine")
+    SuperKeyboardLog.disable()
     this.binding = null
   }
 
@@ -199,11 +201,13 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
           animation: WindowInsetsAnimationCompat
         ) {
           // Report whether the keyboard has fully opened or fully closed.
-          SuperKeyboardLog.v("super_keyboard", "Insets animation callback - onEnd - current keyboard state: $keyboardState")
+          SuperKeyboardLog.i("super_keyboard", "Insets animation callback - onEnd - current keyboard state: $keyboardState")
           if (keyboardState == KeyboardState.Opening) {
+            SuperKeyboardLog.i("super_keyboard", "Sending new keyboard state: open")
             keyboardState = KeyboardState.Open
             sendMessageKeyboardOpened()
           } else if (keyboardState == KeyboardState.Closing) {
+            SuperKeyboardLog.i("super_keyboard", "Sending new keyboard state: closing")
             keyboardState = KeyboardState.Closed
             sendMessageKeyboardClosed()
           }
