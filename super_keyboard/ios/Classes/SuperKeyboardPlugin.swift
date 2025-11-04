@@ -19,7 +19,6 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
   init(binaryMessenger: FlutterBinaryMessenger) {
     super.init()
 
-    print("IOS plugin init()")
     channel = FlutterMethodChannel(name: "super_keyboard_ios", binaryMessenger: binaryMessenger)
 
     // Register for keyboard notifications
