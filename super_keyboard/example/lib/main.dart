@@ -29,7 +29,7 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
 
   Future<void> initSuperKeyboard() async {
     if (_isFlutterLoggingEnabled) {
-      SuperKeyboard.startLogging();
+      SKLog.startLogging();
     }
   }
 
@@ -155,9 +155,9 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
               _isFlutterLoggingEnabled = newValue;
 
               if (_isFlutterLoggingEnabled) {
-                SuperKeyboard.startLogging();
+                SKLog.startLogging();
               } else {
-                SuperKeyboard.stopLogging();
+                SKLog.stopLogging();
               }
             });
           },
