@@ -48,7 +48,12 @@ dependencies:
   flutter_test_robots: ^0.0.24
   clock: ^1.1.1
 
-#dependency_overrides:
+dependency_overrides:
+  super_keyboard:
+    git:
+      url: https://github.com/flutter-bounty-hunters/super_editor
+      path: super_keyboard
+      ref: d3645b2c3a19bf4e7ec7619e2e8664fb3b0b3f61
 #  # Override to local mono-repo path so devs can test this repo
 #  # against changes that they're making to other mono-repo packages
 #  attributed_text:
