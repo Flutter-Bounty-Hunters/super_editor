@@ -62,7 +62,52 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
     let screenHeight = window.bounds.height
     let keyboardHeight = max(0, screenHeight - keyboardFrame.origin.y)
 
-    SuperKeyboardLog.log(message: "Keyboard did show - reporting keyboard height: \(keyboardHeight)")
+    SuperKeyboardLog.log(message: "Keyboard Did Show")
+    SuperKeyboardLog.log(message: "keyboardFrame property height: \(keyboardFrame.height)")
+    SuperKeyboardLog.log(message: "Calculated keyboard height: \(screenHeight) - \(keyboardFrame.origin.y) = \(keyboardHeight)")
+
+    if let keyboardBounds = notification.userInfo?["UIKeyboardBoundsUserInfoKey"] as? CGRect {
+      SuperKeyboardLog.log(message: "UIKeyboardBoundsUserInfoKey: \(String(describing: keyboardBounds))")
+      SuperKeyboardLog
+        .log(
+          message: "Bounds top: \(String(describing: keyboardBounds.minY)), bottom: \(String(describing: keyboardBounds.maxY))"
+        )
+      SuperKeyboardLog
+        .log(
+          message: "Bounds height: \(String(describing: keyboardBounds.height))"
+        )
+    }
+
+
+    if let frameBegin = notification.userInfo?["UIKeyboardFrameBeginUserInfoKey"] as? CGRect {
+      SuperKeyboardLog.log(message: "UIKeyboardFrameBeginUserInfoKey: \(String(describing: frameBegin))")
+      SuperKeyboardLog
+        .log(
+          message: "Frame begin top: \(String(describing: frameBegin.minY)), bottom: \(String(describing: frameBegin.maxY))"
+        )
+      SuperKeyboardLog
+        .log(
+          message: "Frame begin height: \(String(describing: frameBegin.height))"
+        )
+    }
+
+    if let frameEnd = notification.userInfo?["UIKeyboardFrameEndUserInfoKey"] as? CGRect {
+      SuperKeyboardLog.log(message: "UIKeyboardFrameEndUserInfoKey: \(String(describing: frameEnd))")
+      SuperKeyboardLog
+        .log(
+          message: "Frame end top: \(String(describing: frameEnd.minY)), bottom: \(String(describing: frameEnd.maxY))"
+        )
+      SuperKeyboardLog
+        .log(
+          message: "Frame end height: \(String(describing: frameEnd.height))"
+        )
+    }
+
+//    SuperKeyboardLog.log(message: "UIKeyboardCenterBeginUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardCenterBeginUserInfoKey"]))")
+//    SuperKeyboardLog.log(message: "UIKeyboardCenterEndUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardCenterEndUserInfoKey"]))")
+//    SuperKeyboardLog.log(message: "UIKeyboardAnimationCurveUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardAnimationCurveUserInfoKey"]))")
+//    SuperKeyboardLog.log(message: "UIKeyboardAnimationDurationUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardAnimationDurationUserInfoKey"]))")
+
     channel!.invokeMethod("keyboardDidShow", arguments: [
       "keyboardHeight": keyboardHeight
     ])
