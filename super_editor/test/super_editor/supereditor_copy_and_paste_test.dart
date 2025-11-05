@@ -7,6 +7,7 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
 import '../test_runners.dart';
+import '../test_tools.dart';
 import 'supereditor_test_tools.dart';
 
 void main() {
@@ -76,12 +77,13 @@ void main() {
       // end of the pasted text.
       final doc = testContext.document;
       expect(doc.nodeCount, 1);
-      expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(),
-          'This is some content in a paragraph');
-      final selection = testContext.composer.selection;
-      expect(selection, isNotNull);
-      expect(selection!.isCollapsed, isTrue);
-      expect((selection.base.nodePosition as TextNodePosition).offset, 24);
+      expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(), 'This is some content in a paragraph');
+      expect(testContext.composer.selection, selectionEquivalentTo(const DocumentSelection.collapsed(
+        position: DocumentPosition(
+          nodeId: '1',
+          nodePosition: TextNodePosition(offset: 24),
+        ),
+      )));
     });
 
 
