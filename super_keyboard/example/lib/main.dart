@@ -16,6 +16,8 @@ class SuperKeyboardDemoApp extends StatefulWidget {
 }
 
 class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
+  final _textFieldFocusNode = FocusNode(debugLabel: "demo-textfield");
+
   bool _closeOnOutsideTap = true;
   bool _isFlutterLoggingEnabled = false;
   bool _isPlatformLoggingEnabled = false;
@@ -31,6 +33,12 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
     if (_isFlutterLoggingEnabled) {
       SKLog.startLogging();
     }
+  }
+
+  @override
+  void dispose() {
+    _textFieldFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -61,6 +69,7 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
                 ),
                 const SizedBox(height: 48),
                 TextField(
+                  focusNode: _textFieldFocusNode,
                   decoration: const InputDecoration(
                     hintText: "Type some text",
                   ),
@@ -71,6 +80,18 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
                   },
                 ),
                 const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    print("Requesting text field focus");
+                    _textFieldFocusNode.requestFocus();
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      print("Unfocusing text field");
+                      _textFieldFocusNode.unfocus();
+                    });
+                  },
+                  child: const Text("Open/Close Rapidly"),
+                ),
                 _buildCloseOnFocusOption(),
                 _buildFlutterLoggingOption(),
                 _buildPlatformLoggingOption(),
