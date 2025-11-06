@@ -77,9 +77,6 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
     }
     SuperKeyboardLog.log(message: "Keyboard will change frame")
 
-    let visibleHeight = UIScreen.main.bounds.height - endFrame.origin.y
-    let keyboardVisible = endFrame.origin.y < UIScreen.main.bounds.height
-
     // Set the final keyboard frame and track its position during animation
     keyboardFrame = endFrame
     window = UIApplication.shared.windows.first
