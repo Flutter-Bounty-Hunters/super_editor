@@ -62,7 +62,9 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
     let screenHeight = window.bounds.height
     let keyboardHeight = max(0, screenHeight - keyboardFrame.origin.y)
 
-    SuperKeyboardLog.log(message: "Keyboard did show - reporting keyboard height: \(keyboardHeight)")
+    SuperKeyboardLog.log(message: "Keyboard Did Show")
+    SuperKeyboardLog.log(message: "Keyboard height: \(keyboardFrame.height)")
+
     channel!.invokeMethod("keyboardDidShow", arguments: [
       "keyboardHeight": keyboardHeight
     ])
@@ -73,6 +75,7 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
           let endFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
       return
     }
+    SuperKeyboardLog.log(message: "Keyboard will change frame")
 
     // Set the final keyboard frame and track its position during animation
     keyboardFrame = endFrame
@@ -87,7 +90,7 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
       keyboardType = .full
     }
 
-    SuperKeyboardLog.log(message: "Keyboard frame change - new target keyboard height: \(keyboardFrame.height)")
+    SuperKeyboardLog.log(message: "New target keyboard height: \(keyboardFrame.height)")
     channel!.invokeMethod("keyboardWillChangeFrame", arguments: [
       "keyboardType": keyboardType.description,
       "targetKeyboardHeight": keyboardFrame.height
@@ -97,7 +100,7 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
 //      startTrackingKeyboard(userInfo: userInfo)
 //    }
   }
-  
+
 //  private func startTrackingKeyboard(userInfo: [AnyHashable: Any]) {
 //    print("startTrackingKeyboard()")
 //    guard let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
