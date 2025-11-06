@@ -18,12 +18,12 @@ class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo>
   void initState() {
     super.initState();
 
-    SuperKeyboard.startLogging();
+    SKLog.startLogging();
   }
 
   @override
   void dispose() {
-    SuperKeyboard.stopLogging();
+    SKLog.stopLogging();
 
     super.dispose();
   }
