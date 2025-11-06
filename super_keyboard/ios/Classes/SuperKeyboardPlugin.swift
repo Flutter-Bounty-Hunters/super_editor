@@ -65,11 +65,6 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
     SuperKeyboardLog.log(message: "Keyboard Did Show")
     SuperKeyboardLog.log(message: "Keyboard height: \(keyboardFrame.height)")
 
-//    SuperKeyboardLog.log(message: "UIKeyboardCenterBeginUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardCenterBeginUserInfoKey"]))")
-//    SuperKeyboardLog.log(message: "UIKeyboardCenterEndUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardCenterEndUserInfoKey"]))")
-//    SuperKeyboardLog.log(message: "UIKeyboardAnimationCurveUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardAnimationCurveUserInfoKey"]))")
-//    SuperKeyboardLog.log(message: "UIKeyboardAnimationDurationUserInfoKey: \(String(describing: notification.userInfo?["UIKeyboardAnimationDurationUserInfoKey"]))")
-
     channel!.invokeMethod("keyboardDidShow", arguments: [
       "keyboardHeight": keyboardHeight
     ])
