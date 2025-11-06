@@ -38,6 +38,7 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   @override
   void initState() {
     super.initState();
+    print("SoftwareKeyboardOpener - initState()");
     widget.controller?.attach(this);
   }
 
@@ -58,7 +59,12 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
     // their `dispose()` methods. If we `detach()` right now, the
     // ancestor widgets would cause errors in their `dispose()` methods.
     WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
-      widget.controller?.detach();
+      // Check that we're still the delegate at the end of the frame, because
+      // some other widget may have replaced us as the delegate.
+      if (widget.controller?._delegate == this) {
+        print("Detaching from software keyboard controller");
+        widget.controller?.detach();
+      }
     });
     super.dispose();
   }
@@ -71,6 +77,7 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
     required int viewId,
   }) {
     editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
+    print("[SoftwareKeyboard] - showing keyboard");
     widget.imeConnection.value ??= TextInput.attach(widget.createImeClient(), widget.createImeConfiguration());
     widget.imeConnection.value!.show();
   }
@@ -83,6 +90,7 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   @override
   void close() {
     editorImeLog.info("[SoftwareKeyboard] - closing IME connection.");
+    print("[SoftwareKeyboard] - closing IME connection.");
     widget.imeConnection.value?.close();
     widget.imeConnection.value = null;
   }
