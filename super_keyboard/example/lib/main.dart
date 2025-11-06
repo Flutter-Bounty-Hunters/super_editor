@@ -82,10 +82,12 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
+                    // ignore: avoid_print
                     print("Requesting text field focus");
                     _textFieldFocusNode.requestFocus();
 
                     WidgetsBinding.instance.addPostFrameCallback((_) {
+                      // ignore: avoid_print
                       print("Unfocusing text field");
                       _textFieldFocusNode.unfocus();
                     });
