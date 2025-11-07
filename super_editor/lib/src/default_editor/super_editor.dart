@@ -682,6 +682,7 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   Widget build(BuildContext context) {
+    print("Building SuperEditor (state hash: $hashCode)");
     return _buildGestureControlsScope(
       // We add a Builder immediately beneath the gesture controls scope so that
       // all descendant widgets built within SuperEditor can access that scope.
