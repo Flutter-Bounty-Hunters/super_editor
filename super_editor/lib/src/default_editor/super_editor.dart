@@ -1169,13 +1169,21 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 /// from the plugin, so that the [SuperEditor] widget can pass those extensions as properties
 /// during a widget build.
 abstract class SuperEditorPlugin {
-  const SuperEditorPlugin();
+  SuperEditorPlugin();
+
+  @protected
+  int get attachCount => _attachCount;
+  int _attachCount = 0;
 
   /// Adds desired behaviors to the given [editor].
-  void attach(Editor editor) {}
+  void attach(Editor editor) {
+    _attachCount += 1;
+  }
 
   /// Removes behaviors from the given [editor], which were added in [attach].
-  void detach(Editor editor) {}
+  void detach(Editor editor) {
+    _attachCount -= 1;
+  }
 
   /// Additional [DocumentKeyboardAction]s that will be added to a given [SuperEditor] widget.
   List<DocumentKeyboardAction> get keyboardActions => [];
