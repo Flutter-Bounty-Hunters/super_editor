@@ -104,8 +104,11 @@ class StableTagPlugin extends SuperEditorPlugin {
     super.detach(editor);
 
     if (attachCount == 0) {
+      if (editor.context.findMaybe(StableTagPlugin.stableTagIndexKey) == tagIndex) {
+        editor.context.remove(StableTagPlugin.stableTagIndexKey);
+      }
+
       editor
-        ..context.remove(StableTagPlugin.stableTagIndexKey)
         ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
         ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
     }

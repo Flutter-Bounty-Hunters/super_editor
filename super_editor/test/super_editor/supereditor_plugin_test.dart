@@ -82,6 +82,72 @@ void main() {
       expect(resource2, isNotNull);
       expect(resource1, resource2);
     });
+
+    testWidgetsOnAllPlatforms(
+        'replaces context resources across SuperEditor widget recreation, when different plugin instances are provided',
+        (tester) async {
+      final pump1Key = GlobalKey(debugLabel: 'pump-1');
+      final plugin1 = _FakePlugin();
+
+      final pump2Key = GlobalKey(debugLabel: 'pump-2');
+      final plugin2 = _FakePlugin();
+
+      final editor = createDefaultDocumentEditor(
+        document: MutableDocument(
+          nodes: [
+            ParagraphNode(id: "1", text: AttributedText()),
+          ],
+        ),
+        composer: MutableDocumentComposer(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            key: pump1Key,
+            body: SuperEditor(
+              editor: editor,
+              plugins: {plugin1},
+            ),
+          ),
+        ),
+      );
+
+      // Grab the instance of the context resource that was added by
+      // the plugin. We want to make sure the instance doesn't disappear
+      // or get replaced.
+      expect(plugin1.attachCallCount, 1);
+      expect(plugin1.detachCallCount, 0);
+      final resource1 = editor.context.findMaybe(_FakePluginResource.key);
+      expect(resource1, isNotNull);
+
+      // Pump another widget tree to replace the existing Super Editor tree
+      // with another Super Editor tree (simulating something like a navigator
+      // replacing an entire subtree, including SuperEditor, but wanting to
+      // continue using the same backing editor and document).
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            key: pump2Key,
+            body: SuperEditor(
+              editor: editor,
+              plugins: {plugin2},
+            ),
+          ),
+        ),
+      );
+
+      // Grab the context resource again and ensure it's the same one as before.
+      expect(plugin1.attachCallCount, 1);
+      expect(plugin1.detachCallCount, 1);
+
+      expect(plugin2.attachCallCount, 1);
+      expect(plugin2.detachCallCount, 0);
+
+      final resource2 = editor.context.findMaybe(_FakePluginResource.key);
+      expect(resource2, isNotNull);
+      expect(resource1, isNot(resource2));
+    });
   });
 }
 
@@ -93,11 +159,14 @@ class _FakePlugin extends SuperEditorPlugin {
   int get detachCallCount => _detachCallCount;
   int _detachCallCount = 0;
 
+  final _fakeResource = _FakePluginResource();
+
   @override
   void attach(Editor editor) {
-    print("Attaching _FakePlugin");
+    print("Attaching _FakePlugin ($hashCode) - attachments: $attachCount");
     if (attachCount == 0) {
-      editor.context.put(_FakePluginResource.key, _FakePluginResource());
+      print(" - this is first attachment, adding resource to context");
+      editor.context.put(_FakePluginResource.key, _fakeResource);
     }
 
     _attachCallCount += 1;
@@ -107,9 +176,10 @@ class _FakePlugin extends SuperEditorPlugin {
 
   @override
   void detach(Editor editor) {
-    print("Detaching _FakePlugin");
+    print("Detaching _FakePlugin ($hashCode) - attachments: $attachCount");
     super.detach(editor);
-    if (attachCount == 0) {
+    if (attachCount == 0 && editor.context.findMaybe(_FakePluginResource.key) == _fakeResource) {
+      print(" - no more attachments, deleting resource from context");
       editor.context.remove(_FakePluginResource.key);
     }
 
