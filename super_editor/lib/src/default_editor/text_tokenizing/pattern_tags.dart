@@ -61,11 +61,15 @@ class PatternTagPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    editor
-      ..context.put(patternTagIndexKey, tagIndex)
-      ..reactionPipeline.insert(0, _patternTagReaction);
+    if (attachCount == 0) {
+      editor
+        ..context.put(patternTagIndexKey, tagIndex)
+        ..reactionPipeline.insert(0, _patternTagReaction);
 
-    _initializePatternTagIndex(editor);
+      _initializePatternTagIndex(editor);
+    }
+
+    super.attach(editor);
   }
 
   void _initializePatternTagIndex(Editor editor) {
@@ -95,9 +99,13 @@ class PatternTagPlugin extends SuperEditorPlugin {
 
   @override
   void detach(Editor editor) {
-    editor
-      ..context.remove(patternTagIndexKey)
-      ..reactionPipeline.remove(_patternTagReaction);
+    super.detach(editor);
+
+    if (attachCount == 0) {
+      editor
+        ..context.remove(patternTagIndexKey)
+        ..reactionPipeline.remove(_patternTagReaction);
+    }
   }
 }
 

@@ -86,18 +86,26 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    editor
-      ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
-      ..requestHandlers.insertAll(0, _requestHandlers)
-      ..reactionPipeline.insertAll(0, _reactions);
+    if (attachCount == 0) {
+      editor
+        ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
+        ..requestHandlers.insertAll(0, _requestHandlers)
+        ..reactionPipeline.insertAll(0, _reactions);
+    }
+
+    super.attach(editor);
   }
 
   @override
   void detach(Editor editor) {
-    editor
-      ..context.remove(StableTagPlugin.stableTagIndexKey)
-      ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
-      ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
+    super.detach(editor);
+
+    if (attachCount == 0) {
+      editor
+        ..context.remove(StableTagPlugin.stableTagIndexKey)
+        ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
+        ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
+    }
   }
 
   late final List<EditRequestHandler> _requestHandlers;
