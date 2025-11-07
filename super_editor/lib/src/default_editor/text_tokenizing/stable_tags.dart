@@ -86,6 +86,7 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
+    print("Attaching StableTagPlugin. Attach count: $attachCount");
     if (attachCount == 0) {
       editor
         ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
@@ -98,6 +99,7 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void detach(Editor editor) {
+    print("Detaching StableTagPlugin. Attach count: $attachCount");
     super.detach(editor);
 
     if (attachCount == 0) {
