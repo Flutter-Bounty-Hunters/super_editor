@@ -400,6 +400,8 @@ class SuperEditorState extends State<SuperEditor> {
   @visibleForTesting
   late SuperEditorContext editContext;
 
+  late DocumentLayoutEditable _documentLayoutEditable;
+
   List<ContentTapDelegate>? _contentTapHandlers;
 
   final _dragHandleAutoScroller = ValueNotifier<DragHandleAutoScroller?>(null);
@@ -429,6 +431,7 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   void initState() {
+    print("SuperEditor ($hashCode) - initState()");
     super.initState();
 
     if (widget.editor.maybeDocument == null) {
@@ -455,9 +458,10 @@ class SuperEditorState extends State<SuperEditor> {
 
     _isImeConnected = widget.isImeConnected ?? ValueNotifier(false);
 
+    _documentLayoutEditable = DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout);
     widget.editor.context.put(
       Editor.layoutKey,
-      DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout),
+      _documentLayoutEditable,
     );
 
     _createEditContext();
@@ -466,6 +470,7 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   void didUpdateWidget(SuperEditor oldWidget) {
+    print("SuperEditor ($hashCode) - didUpdateWidget()");
     super.didUpdateWidget(oldWidget);
 
     if (widget.focusNode != oldWidget.focusNode) {
@@ -494,10 +499,15 @@ class SuperEditorState extends State<SuperEditor> {
         plugin.detach(oldWidget.editor);
       }
 
-      oldWidget.editor.context.remove(Editor.layoutKey);
+      // Replace the old document layout `Editable` with a new one.
+      oldWidget.editor.context.remove(
+        Editor.layoutKey,
+        _documentLayoutEditable,
+      );
+      _documentLayoutEditable = DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout);
       widget.editor.context.put(
         Editor.layoutKey,
-        DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout),
+        _documentLayoutEditable,
       );
 
       _createEditContext();
@@ -541,7 +551,7 @@ class SuperEditorState extends State<SuperEditor> {
     _iosControlsController.dispose();
     _androidControlsController.dispose();
 
-    widget.editor.context.remove(Editor.layoutKey);
+    widget.editor.context.remove(Editor.layoutKey, _documentLayoutEditable);
 
     _focusNode.removeListener(_onFocusChange);
     if (widget.focusNode == null) {
@@ -553,6 +563,7 @@ class SuperEditorState extends State<SuperEditor> {
   }
 
   void _createEditContext() {
+    print("Creating edit context for Editor: ${widget.editor.hashCode}");
     if (_scroller != null) {
       _scroller!.dispose();
     }
@@ -1173,17 +1184,18 @@ abstract class SuperEditorPlugin {
   SuperEditorPlugin();
 
   @protected
-  int get attachCount => _attachCount;
-  int _attachCount = 0;
+  int attachCount(Editor editor) => _attachCount[editor] ?? 0;
+  final _attachCount = <Editor, int>{};
 
   /// Adds desired behaviors to the given [editor].
   void attach(Editor editor) {
-    _attachCount += 1;
+    _attachCount[editor] ??= 0;
+    _attachCount[editor] = _attachCount[editor]! + 1;
   }
 
   /// Removes behaviors from the given [editor], which were added in [attach].
   void detach(Editor editor) {
-    _attachCount -= 1;
+    _attachCount[editor] = _attachCount[editor]! - 1;
   }
 
   /// Additional [DocumentKeyboardAction]s that will be added to a given [SuperEditor] widget.
