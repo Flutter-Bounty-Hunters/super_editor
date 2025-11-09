@@ -68,10 +68,12 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   ValueListenable<IndexedTag?> get composingActionTag => _composingActionTag;
   final _composingActionTag = ValueNotifier<IndexedTag?>(null);
 
+  final _composingActionTagEditable = ComposingActionTag();
+
   @override
   void attach(Editor editor) {
     editor
-      ..context.put(_composingActionTagKey, ComposingActionTag())
+      ..context.put(_composingActionTagKey, _composingActionTagEditable)
       ..requestHandlers.insertAll(0, _requestHandlers)
       ..reactionPipeline.insertAll(0, _reactions);
   }
@@ -79,7 +81,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(_composingActionTagKey)
+      ..context.remove(_composingActionTagKey, _composingActionTagEditable)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
       ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
