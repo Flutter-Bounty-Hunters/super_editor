@@ -86,30 +86,20 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    print("Attaching StableTagPlugin (editor hash: ${editor.hashCode}). Attach count: $attachCount");
-    if (attachCount(editor) == 0) {
-      editor
-        ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
-        ..requestHandlers.insertAll(0, _requestHandlers)
-        ..reactionPipeline.insertAll(0, _reactions);
-    }
-
-    super.attach(editor);
-    print("After attachment, attach count: $attachCount");
+    print("Attaching StableTagPlugin (editor hash: ${editor.hashCode}).");
+    editor
+      ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
+      ..requestHandlers.insertAll(0, _requestHandlers)
+      ..reactionPipeline.insertAll(0, _reactions);
   }
 
   @override
   void detach(Editor editor) {
-    print("Detaching StableTagPlugin (editor hash: ${editor.hashCode}). Attach count: $attachCount");
-    super.detach(editor);
-
-    if (attachCount(editor) == 0) {
-      editor
-        ..context.remove(StableTagPlugin.stableTagIndexKey, tagIndex)
-        ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
-        ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
-    }
-    print("After detachment, attach count: $attachCount");
+    print("Detaching StableTagPlugin (editor hash: ${editor.hashCode}).");
+    editor
+      ..context.remove(StableTagPlugin.stableTagIndexKey, tagIndex)
+      ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
+      ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
 
   late final List<EditRequestHandler> _requestHandlers;

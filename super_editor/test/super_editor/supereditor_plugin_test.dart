@@ -75,9 +75,11 @@ void main() {
         ),
       );
 
-      // Grab the context resource again and ensure it's the same one as before.
-      expect(plugin.attachCallCount, 2);
-      expect(plugin.detachCallCount, 1);
+      // Since we retained the same `Editor` and the same plugin instance, across two
+      // different `SuperEditor` widgets, we expect that the plugin remained attached
+      // to the `Editor` the whole time, and the resource instance remained the same, too.
+      expect(plugin.attachCallCount, 1);
+      expect(plugin.detachCallCount, 0);
       final resource2 = editor.context.findMaybe(_FakePluginResource.key);
       expect(resource2, isNotNull);
       expect(resource1, resource2);
@@ -292,7 +294,7 @@ class _FakePlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    print("Attaching _FakePlugin ($hashCode) - attachments: $attachCount");
+    print("Attaching _FakePlugin ($hashCode)");
     // FIXME: The attach count handles re-ification for the same Editor, but
     // not when the SuperEditor re-ifies with a different Editor. Then the
     // attach count is `1` but we're not actually attached to that `Editor`.
@@ -302,27 +304,27 @@ class _FakePlugin extends SuperEditorPlugin {
     // the previous `Editor`.
     //
     // Can we temporarily be attached to 2 Editors?
-    if (attachCount(editor) == 0) {
-      print(" - this is first attachment, adding resource to context");
-      editor.context.put(_FakePluginResource.key, fakeResource);
-    }
+    // if (attachCount(editor) == 0) {
+    print(" - this is first attachment, adding resource to context");
+    editor.context.put(_FakePluginResource.key, fakeResource);
+    // }
 
     _attachCallCount += 1;
 
-    super.attach(editor);
+    // super.attach(editor);
   }
 
   @override
   void detach(Editor editor) {
-    print("Detaching _FakePlugin ($hashCode) - attachments: $attachCount");
-    super.detach(editor);
-    if (attachCount(editor) == 0) {
-      print(" - no more attachments, deleting resource from context: $fakeResource");
-      editor.context.remove(_FakePluginResource.key, fakeResource);
-    } else {
-      print(" - NOT removing the resource");
-    }
-
+    print("Detaching _FakePlugin ($hashCode)");
+    // super.detach(editor);
+    // if (attachCount(editor) == 0) {
+    print(" - no more attachments, deleting resource from context: $fakeResource");
+    editor.context.remove(_FakePluginResource.key, fakeResource);
+    // } else {
+    //   print(" - NOT removing the resource");
+    // }
+    //
     _detachCallCount += 1;
   }
 }

@@ -496,7 +496,7 @@ class SuperEditorState extends State<SuperEditor> {
 
     if (widget.editor != oldWidget.editor) {
       for (final plugin in oldWidget.plugins) {
-        plugin.detach(oldWidget.editor);
+        plugin._detachFromSuperEditor(oldWidget.editor);
       }
 
       // Replace the old document layout `Editable` with a new one.
@@ -545,7 +545,7 @@ class SuperEditorState extends State<SuperEditor> {
     }
 
     for (final plugin in widget.plugins) {
-      plugin.detach(widget.editor);
+      plugin._detachFromSuperEditor(widget.editor);
     }
 
     _iosControlsController.dispose();
@@ -585,7 +585,7 @@ class SuperEditorState extends State<SuperEditor> {
     );
 
     for (final plugin in widget.plugins) {
-      plugin.attach(widget.editor);
+      plugin._attachToSuperEditor(widget.editor);
     }
 
     // The ContentTapDelegate depends upon the EditContext. Recreate the
@@ -1183,20 +1183,40 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 abstract class SuperEditorPlugin {
   SuperEditorPlugin();
 
-  @protected
-  int attachCount(Editor editor) => _attachCount[editor] ?? 0;
+  // /// Returns the current number of `EditContext`s that this plugin is currently
+  // /// attached to for the given [editor].
+  // ///
+  // /// Over any prolonged period of time, this number should only be `1` or `0`.
+  // /// However, during widget tree recreation, the number might temporarily become `2`.
+  // /// Those cases are important because plugins need to ensure that they don't remove
+  // /// `Editable`s right after attaching and adding those `Editable`s.
+  // @protected
+  // int attachCount(Editor editor) => _attachCount[editor] ?? 0;
   final _attachCount = <Editor, int>{};
 
-  /// Adds desired behaviors to the given [editor].
-  void attach(Editor editor) {
+  void _attachToSuperEditor(Editor editor) {
     _attachCount[editor] ??= 0;
+
+    if (_attachCount[editor] == 0) {
+      attach(editor);
+    }
+
     _attachCount[editor] = _attachCount[editor]! + 1;
   }
 
-  /// Removes behaviors from the given [editor], which were added in [attach].
-  void detach(Editor editor) {
+  void _detachFromSuperEditor(Editor editor) {
     _attachCount[editor] = _attachCount[editor]! - 1;
+
+    if (_attachCount[editor] == 0) {
+      detach(editor);
+    }
   }
+
+  /// Adds desired behaviors to the given [editor].
+  void attach(Editor editor) {}
+
+  /// Removes behaviors from the given [editor], which were added in [attach].
+  void detach(Editor editor) {}
 
   /// Additional [DocumentKeyboardAction]s that will be added to a given [SuperEditor] widget.
   List<DocumentKeyboardAction> get keyboardActions => [];

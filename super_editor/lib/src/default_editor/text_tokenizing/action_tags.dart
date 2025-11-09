@@ -70,26 +70,18 @@ class ActionTagsPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    if (attachCount == 0) {
-      editor
-        ..context.put(_composingActionTagKey, ComposingActionTag())
-        ..requestHandlers.insertAll(0, _requestHandlers)
-        ..reactionPipeline.insertAll(0, _reactions);
-    }
-
-    super.attach(editor);
+    editor
+      ..context.put(_composingActionTagKey, ComposingActionTag())
+      ..requestHandlers.insertAll(0, _requestHandlers)
+      ..reactionPipeline.insertAll(0, _reactions);
   }
 
   @override
   void detach(Editor editor) {
-    super.detach(editor);
-
-    if (attachCount == 0) {
-      editor
-        ..context.remove(_composingActionTagKey)
-        ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
-        ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
-    }
+    editor
+      ..context.remove(_composingActionTagKey)
+      ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
+      ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
 
   late final List<EditRequestHandler> _requestHandlers;
