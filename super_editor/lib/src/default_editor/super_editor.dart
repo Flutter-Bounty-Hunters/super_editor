@@ -1179,6 +1179,15 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 abstract class SuperEditorPlugin {
   SuperEditorPlugin();
 
+  /// The reference count of the number of times [_attachToSuperEditor] was
+  /// called for each editor.
+  ///
+  /// This reference count is here due to order of operation nuances in Flutter's
+  /// widget tree rebuild process. If a [SuperEditor] subtree is replaced with a new
+  /// one (which happens a lot without carefully using `GlobalKey`s), then this
+  /// plugin will be told to attach before being told to detach. Without reference
+  /// counting, we would then run attach (NEW), followed by detach (OLD), and undo
+  /// the attachment we just ran.
   final _attachCount = <Editor, int>{};
 
   void _attachToSuperEditor(Editor editor) {

@@ -115,8 +115,8 @@ void main() {
         );
 
         // Grab the instance of the context resource that was added by
-        // the plugin. We want to make sure the instance doesn't disappear
-        // or get replaced.
+        // the plugin. We expect that this resource instance will change
+        // because the plugin will be replaced with a second plugin.
         expect(plugin1.attachCallCount, 1);
         expect(plugin1.detachCallCount, 0);
         final resource1 = editor.context.findMaybe(_FakePluginResource.key);
@@ -126,6 +126,8 @@ void main() {
         // with another Super Editor tree (simulating something like a navigator
         // replacing an entire subtree, including SuperEditor, but wanting to
         // continue using the same backing editor and document).
+        //
+        // Also replace one plugin with another instance of that plugin.
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -138,7 +140,8 @@ void main() {
           ),
         );
 
-        // Grab the context resource again and ensure it's the same one as before.
+        // Grab the context resource again and ensure the first plugin's resource
+        // was replaced by the second plugin's resource.
         expect(plugin1.attachCallCount, 1);
         expect(plugin1.detachCallCount, 1);
 
@@ -184,7 +187,8 @@ void main() {
           ),
         );
 
-        // Ensure the plugin attached itself.
+        // Ensure the plugin attached itself. Grab the resource because we expect
+        // it to the stay the same.
         expect(plugin.attachCallCount, 1);
         expect(plugin.detachCallCount, 0);
 
@@ -205,7 +209,7 @@ void main() {
         );
 
         // Ensure the plugin detached and re-attached when the `SuperEditor` rebuilt
-        // with a new `Editor`.
+        // with a new `Editor`. Ensure the same plugin resource is in the context.
         expect(plugin.attachCallCount, 2);
         expect(plugin.detachCallCount, 1);
 
@@ -248,7 +252,7 @@ void main() {
           ),
         );
 
-        // Ensure the plugin attached itself.
+        // Ensure the plugin attached itself. We expect the plugin resource to remain the same.
         expect(plugin.attachCallCount, 1);
         expect(plugin.detachCallCount, 0);
         final resource1 = editor1.context.findMaybe(_FakePluginResource.key);
@@ -267,7 +271,8 @@ void main() {
           ),
         );
 
-        // Ensure the plugin detached and re-attached.
+        // Ensure the plugin detached and re-attached, and the same resource is registered
+        // with the new editor context.
         expect(plugin.attachCallCount, 2);
         expect(plugin.detachCallCount, 1);
 
