@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:attributed_text/attributed_text.dart';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -824,8 +825,38 @@ class EditContext {
   /// Makes the given [editable] available as a resource under the given [id].
   void put(String id, Editable editable) => _resources[id] = editable;
 
-  /// Removes any resource in this context with the given [id].
-  void remove(String id) => _resources.remove(id);
+  /// Removes the given [editable] resource in this context with the given [id].
+  ///
+  /// The specific [editable] is needed so that plugins which are attached and detached
+  /// in quick succession, typically due to widget subtree replacements, don't accidentally
+  /// remove an [Editable] that was just added by a newly attached version of the same plugin.
+  ///
+  /// As of Nov, 2025, the [editable] is optional so as to avoid a wide-spread breaking
+  /// change. Eventually this [editable] will be required. This method prints a warning
+  /// if the [editable] isn't provided. Eventually we'll switch the warning to an `assert()`,
+  /// and then finally we'll make the [editable] a requirement.
+  void remove(String id, [Editable? editable]) {
+    if (editable == null) {
+      if (kDebugMode) {
+        print(
+            "WARNING: A change was made to EditContext.remove(). You should now pass the Editable you want to remove. This warning is here to help with migration before we make a breaking change. Update this now!");
+        print("${StackTrace.current}");
+
+        // Eventually we'll use this assert.
+        // assert(editable != null, "WARNING: A change was made to EditContext.remove(). You should now pass the Editable you want to remove. This warning is here to help with migration before we make a breaking change. Update this now!");
+      }
+
+      _resources.remove(id);
+    }
+
+    if (_resources[id] != editable) {
+      // The resource at this `id` isn't the expected `editable`. Fizzle.
+      return;
+    }
+
+    // The resource at this `id` IS the expected `editable`. Remove it.
+    _resources.remove(id);
+  }
 }
 
 /// Executes [EditCommand]s in the order in which they're queued.
