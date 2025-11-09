@@ -3,8 +3,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_selection.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/column_component.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -83,31 +82,25 @@ class DocumentImeSerializer {
       }
 
       final node = selectedNodes[i];
-      // FIXME: I think we need nodes to serialize themselves, so that a Banner, Table,
-      // etc can serialize. But document structure probably shouldn't depend on IME behavior,
-      // so we might want an interface for ImeSerializable. If that's implemented, we call it,
-      // and if it's not implemented, we do the "~" block representation.
-      if (node is! TextNode) {
-        final imeRange = TextRange(start: characterCount, end: characterCount + 1);
-        imeRangesToDocTextNodes[imeRange] = node.id;
-        docTextNodesToImeRanges[node.id] = imeRange;
-
-        buffer.write('~');
-        characterCount += 1;
-
-        continue;
+      String nodeImeText;
+      if (node is ImeNodeSerialization) {
+        nodeImeText = (node as ImeNodeSerialization).toImeText();
+      } else if (node is TextNode) {
+        nodeImeText = node.text.toPlainText();
+      } else {
+        nodeImeText = '~';
       }
 
       // Cache mappings between the IME text range and the document position
       // so that we can easily convert between the two, when requested.
-      final imeRange = TextRange(start: characterCount, end: characterCount + node.text.length);
-      editorImeLog.finer("IME range $imeRange -> text node content '${node.text.toPlainText()}'");
+      final imeRange = TextRange(start: characterCount, end: characterCount + nodeImeText.length);
+      editorImeLog.finer("IME range $imeRange -> text node content '$nodeImeText'");
       imeRangesToDocTextNodes[imeRange] = node.id;
       docTextNodesToImeRanges[node.id] = imeRange;
 
       // Concatenate this node's text with the previous nodes.
-      buffer.write(node.text.toPlainText());
-      characterCount += node.text.length;
+      buffer.write(nodeImeText);
+      characterCount += nodeImeText.length;
     }
 
     imeText = buffer.toString();
@@ -280,6 +273,11 @@ class DocumentImeSerializer {
             nodeId: imeRangesToDocTextNodes[range]!,
             nodePosition: TextNodePosition(offset: imePosition.offset - range.start),
           );
+        } else if (node is ImeNodeSerialization) {
+          return DocumentPosition(
+            nodeId: imeRangesToDocTextNodes[range]!,
+            nodePosition: (node as ImeNodeSerialization).nodePositionFromImeOffset(imePosition.offset - range.start),
+          );
         } else {
           if (imePosition.offset <= range.start) {
             // Return a position at the start of the node.
@@ -359,13 +357,7 @@ class DocumentImeSerializer {
       throw Exception("No such document position in the IME content: $docPosition");
     }
 
-    var nodePosition = docPosition.nodePosition;
-
-    // If the node position is a composite node, recursively dig into that position until
-    // we have a leaf-node position, such as a TextNodePosition or an UpstreamDownstreamNodePosition.
-    while (nodePosition is CompositeNodePosition) {
-      nodePosition = nodePosition.childNodePosition;
-    }
+    final nodePosition = docPosition.nodePosition;
 
     if (nodePosition is UpstreamDownstreamNodePosition) {
       if (nodePosition.affinity == TextAffinity.upstream) {
@@ -382,7 +374,13 @@ class DocumentImeSerializer {
     }
 
     if (nodePosition is TextNodePosition) {
-      return TextPosition(offset: imeRange.start + nodePosition.offset);
+      return TextPosition(offset: imeRange.start + (docPosition.nodePosition as TextNodePosition).offset);
+    } else {
+      final node = _doc.getNodeById(docPosition.nodeId)!;
+      if (node is ImeNodeSerialization) {
+        final imeOffset = (node as ImeNodeSerialization).imeOffsetFromNodePosition(nodePosition);
+        return TextPosition(offset: imeRange.start + imeOffset);
+      }
     }
 
     throw Exception("Super Editor doesn't know how to convert a $nodePosition into an IME-compatible selection");
