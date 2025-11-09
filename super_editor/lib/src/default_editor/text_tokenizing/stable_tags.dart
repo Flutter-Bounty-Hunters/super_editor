@@ -86,7 +86,6 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void attach(Editor editor) {
-    print("Attaching StableTagPlugin (editor hash: ${editor.hashCode}).");
     editor
       ..context.put(StableTagPlugin.stableTagIndexKey, tagIndex)
       ..requestHandlers.insertAll(0, _requestHandlers)
@@ -95,7 +94,6 @@ class StableTagPlugin extends SuperEditorPlugin {
 
   @override
   void detach(Editor editor) {
-    print("Detaching StableTagPlugin (editor hash: ${editor.hashCode}).");
     editor
       ..context.remove(StableTagPlugin.stableTagIndexKey, tagIndex)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))

@@ -431,7 +431,6 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   void initState() {
-    print("SuperEditor ($hashCode) - initState()");
     super.initState();
 
     if (widget.editor.maybeDocument == null) {
@@ -470,7 +469,6 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   void didUpdateWidget(SuperEditor oldWidget) {
-    print("SuperEditor ($hashCode) - didUpdateWidget()");
     super.didUpdateWidget(oldWidget);
 
     if (widget.focusNode != oldWidget.focusNode) {
@@ -563,7 +561,6 @@ class SuperEditorState extends State<SuperEditor> {
   }
 
   void _createEditContext() {
-    print("Creating edit context for Editor: ${widget.editor.hashCode}");
     if (_scroller != null) {
       _scroller!.dispose();
     }
@@ -693,7 +690,6 @@ class SuperEditorState extends State<SuperEditor> {
 
   @override
   Widget build(BuildContext context) {
-    print("Building SuperEditor (state hash: $hashCode)");
     return _buildGestureControlsScope(
       // We add a Builder immediately beneath the gesture controls scope so that
       // all descendant widgets built within SuperEditor can access that scope.
@@ -1183,15 +1179,6 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 abstract class SuperEditorPlugin {
   SuperEditorPlugin();
 
-  // /// Returns the current number of `EditContext`s that this plugin is currently
-  // /// attached to for the given [editor].
-  // ///
-  // /// Over any prolonged period of time, this number should only be `1` or `0`.
-  // /// However, during widget tree recreation, the number might temporarily become `2`.
-  // /// Those cases are important because plugins need to ensure that they don't remove
-  // /// `Editable`s right after attaching and adding those `Editable`s.
-  // @protected
-  // int attachCount(Editor editor) => _attachCount[editor] ?? 0;
   final _attachCount = <Editor, int>{};
 
   void _attachToSuperEditor(Editor editor) {
