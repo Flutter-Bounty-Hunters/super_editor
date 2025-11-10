@@ -213,7 +213,7 @@ class SpellingAndGrammarPlugin extends SuperEditorPlugin {
     _reaction.dispose();
     _contentTapHandler?.editor = null;
 
-    editor.context.remove(spellingErrorSuggestionsKey);
+    editor.context.remove(spellingErrorSuggestionsKey, _spellingErrorSuggestions);
     _spellingErrorSuggestions.clear();
   }
 }
