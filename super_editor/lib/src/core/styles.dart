@@ -3,7 +3,7 @@ import 'package:flutter/painting.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 
-import 'document.dart';
+import 'package:super_editor/src/core/document.dart';
 
 /// Stylesheet for styling content within a document.
 ///
@@ -17,6 +17,7 @@ class Stylesheet {
     required this.inlineTextStyler,
     this.inlineWidgetBuilders = const [],
     this.selectedTextColorStrategy,
+    this.inheritDefaultTextStyle = false,
   });
 
   /// Padding applied around the interior edge of the document.
@@ -36,6 +37,14 @@ class Stylesheet {
   /// The strategy that chooses the color for selected text.
   final SelectedTextColorStrategy? selectedTextColorStrategy;
 
+  /// Whether to inherit the default text style from the context.
+  ///
+  /// If `true` the [TextStyle] obtained from the [rules] will be merged with
+  /// the closest enclosing [DefaultTextStyle].
+  ///
+  /// Defaults to `false`.
+  final bool inheritDefaultTextStyle;
+
   /// Priority-order list of style rules.
   final List<StyleRule> rules;
 
@@ -44,6 +53,7 @@ class Stylesheet {
     AttributionStyleAdjuster? inlineTextStyler,
     InlineWidgetBuilderChain? inlineWidgetBuilders,
     SelectedTextColorStrategy? selectedTextColorStrategy,
+    bool? inheritDefaultTextStyle,
     List<StyleRule> addRulesBefore = const [],
     List<StyleRule>? rules,
     List<StyleRule> addRulesAfter = const [],
@@ -53,6 +63,7 @@ class Stylesheet {
       inlineTextStyler: inlineTextStyler ?? this.inlineTextStyler,
       inlineWidgetBuilders: inlineWidgetBuilders ?? this.inlineWidgetBuilders,
       selectedTextColorStrategy: selectedTextColorStrategy ?? this.selectedTextColorStrategy,
+      inheritDefaultTextStyle: inheritDefaultTextStyle ?? this.inheritDefaultTextStyle,
       rules: [
         ...addRulesBefore,
         ...(rules ?? this.rules),

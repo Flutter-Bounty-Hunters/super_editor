@@ -19,9 +19,9 @@ import 'package:super_editor/src/super_textfield/infrastructure/text_scrollview.
 import 'package:super_editor/src/super_textfield/input_method_engine/_ime_text_editing_controller.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../../infrastructure/_logging.dart';
-import '../metrics.dart';
-import '../styles.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
+import 'package:super_editor/src/super_textfield/metrics.dart';
+import 'package:super_editor/src/super_textfield/styles.dart';
 
 export '_caret.dart';
 
@@ -36,6 +36,7 @@ class SuperAndroidTextField extends StatefulWidget {
     this.textAlign,
     this.textStyleBuilder = defaultTextFieldStyleBuilder,
     this.inlineWidgetBuilders = const [],
+    this.inheritDefaultTextStyle = false,
     this.hintBehavior = HintBehavior.displayHintUntilFocus,
     this.hintBuilder,
     this.minLines,
@@ -76,6 +77,9 @@ class SuperAndroidTextField extends StatefulWidget {
 
   /// {@macro super_text_field_inline_widget_builders}
   final InlineWidgetBuilderChain inlineWidgetBuilders;
+
+  /// {@macro super_text_field_inherit_default_text_style}
+  final bool inheritDefaultTextStyle;
 
   /// Policy for when the hint should be displayed.
   final HintBehavior hintBehavior;
@@ -629,9 +633,20 @@ class SuperAndroidTextFieldState extends State<SuperAndroidTextField>
   }
 
   Widget _buildSelectableText() {
+    final defaultTextStyle = widget.inheritDefaultTextStyle ? DefaultTextStyle.of(context).style : null;
     final textSpan = _textEditingController.text.isNotEmpty
-        ? _textEditingController.text.computeInlineSpan(context, widget.textStyleBuilder, widget.inlineWidgetBuilders)
-        : TextSpan(text: "", style: widget.textStyleBuilder({}));
+        ? _textEditingController.text.computeInlineSpan(
+            context,
+            widget.textStyleBuilder,
+            widget.inlineWidgetBuilders,
+            defaultTextStyle: defaultTextStyle,
+          )
+        : TextSpan(
+            text: "",
+            style: defaultTextStyle != null
+                ? defaultTextStyle.merge(widget.textStyleBuilder({}))
+                : widget.textStyleBuilder({}),
+          );
 
     return Directionality(
       textDirection: _textDirection,

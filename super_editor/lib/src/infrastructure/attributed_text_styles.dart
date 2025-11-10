@@ -21,14 +21,23 @@ extension ComputeTextSpan on AttributedText {
   ///
   /// The given [inlineWidgetBuilders] interprets every placeholder `Object`
   /// and builds a corresponding inline widget.
+  ///
+  /// If [defaultTextStyle] is non-`null`, the [TextStyle] computed by [styleBuilder]
+  /// is applied on top of the [defaultTextStyle], taking priority.
   InlineSpan computeInlineSpan(
     BuildContext context,
     AttributionStyleBuilder styleBuilder,
-    InlineWidgetBuilderChain inlineWidgetBuilders,
-  ) {
+    InlineWidgetBuilderChain inlineWidgetBuilders, {
+    TextStyle? defaultTextStyle,
+  }) {
     if (isEmpty) {
       // There is no text and therefore no attributions.
-      return TextSpan(text: '', style: styleBuilder({}));
+      return TextSpan(
+        text: '',
+        style: defaultTextStyle != null //
+            ? defaultTextStyle.merge(styleBuilder({}))
+            : styleBuilder({}),
+      );
     }
 
     final inlineSpans = <InlineSpan>[];
@@ -36,7 +45,9 @@ extension ComputeTextSpan on AttributedText {
     final collapsedSpans = spans.collapseSpans(contentLength: length);
 
     for (final span in collapsedSpans) {
-      final textStyle = styleBuilder(span.attributions);
+      final textStyle = defaultTextStyle != null
+          ? defaultTextStyle.merge(styleBuilder(span.attributions))
+          : styleBuilder(span.attributions);
 
       // A single span might be divided in multiple inline spans if there are placeholders.
       // Keep track of the start of the current inline span.
