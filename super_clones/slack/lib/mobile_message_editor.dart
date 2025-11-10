@@ -265,7 +265,7 @@ class _MobileMessageEditorState extends State<MobileMessageEditor> {
             Expanded(
               child: Text(
                 widget.hintText,
-                style: _hintTextStyleBuilder(context),
+                style: _hintTextStyleBuilder(context, {}),
               ),
             ),
             IconButton(
@@ -364,9 +364,9 @@ class _ChatEditorState extends State<_ChatEditor> {
         shrinkWrap: false,
         stylesheet: messageEditorStylesheet,
         componentBuilders: [
-          HintComponentBuilder(
+          HintComponentBuilder.basic(
             widget.hintText,
-            _hintTextStyleBuilder,
+            hintStyleBuilder: _hintTextStyleBuilder,
           ),
           ...defaultComponentBuilders,
         ],
@@ -375,7 +375,7 @@ class _ChatEditorState extends State<_ChatEditor> {
   }
 }
 
-TextStyle _hintTextStyleBuilder(context) => TextStyle(
+TextStyle _hintTextStyleBuilder(BuildContext context, Set<Attribution> attributions) => TextStyle(
       fontSize: 14,
       color: Colors.grey,
     );
