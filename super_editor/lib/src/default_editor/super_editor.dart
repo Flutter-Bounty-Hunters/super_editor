@@ -416,6 +416,8 @@ class SuperEditorState extends State<SuperEditor> {
   @visibleForTesting
   late SuperEditorContext editContext;
 
+  late DocumentLayoutEditable _documentLayoutEditable;
+
   List<ContentTapDelegate>? _contentTapHandlers;
 
   final _dragHandleAutoScroller = ValueNotifier<DragHandleAutoScroller?>(null);
@@ -471,9 +473,10 @@ class SuperEditorState extends State<SuperEditor> {
 
     _isImeConnected = widget.isImeConnected ?? ValueNotifier(false);
 
+    _documentLayoutEditable = DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout);
     widget.editor.context.put(
       Editor.layoutKey,
-      DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout),
+      _documentLayoutEditable,
     );
 
     _createEditContext();
@@ -507,13 +510,18 @@ class SuperEditorState extends State<SuperEditor> {
 
     if (widget.editor != oldWidget.editor) {
       for (final plugin in oldWidget.plugins) {
-        plugin.detach(oldWidget.editor);
+        plugin._detachFromSuperEditor(oldWidget.editor);
       }
 
-      oldWidget.editor.context.remove(Editor.layoutKey);
+      // Replace the old document layout `Editable` with a new one.
+      oldWidget.editor.context.remove(
+        Editor.layoutKey,
+        _documentLayoutEditable,
+      );
+      _documentLayoutEditable = DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout);
       widget.editor.context.put(
         Editor.layoutKey,
-        DocumentLayoutEditable(() => _docLayoutKey.currentState as DocumentLayout),
+        _documentLayoutEditable,
       );
 
       _createEditContext();
@@ -551,13 +559,13 @@ class SuperEditorState extends State<SuperEditor> {
     }
 
     for (final plugin in widget.plugins) {
-      plugin.detach(widget.editor);
+      plugin._detachFromSuperEditor(widget.editor);
     }
 
     _iosControlsController.dispose();
     _androidControlsController.dispose();
 
-    widget.editor.context.remove(Editor.layoutKey);
+    widget.editor.context.remove(Editor.layoutKey, _documentLayoutEditable);
 
     _focusNode.removeListener(_onFocusChange);
     if (widget.focusNode == null) {
@@ -590,7 +598,7 @@ class SuperEditorState extends State<SuperEditor> {
     );
 
     for (final plugin in widget.plugins) {
-      plugin.attach(widget.editor);
+      plugin._attachToSuperEditor(widget.editor);
     }
 
     // The ContentTapDelegate depends upon the EditContext. Recreate the
@@ -1186,7 +1194,36 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 /// from the plugin, so that the [SuperEditor] widget can pass those extensions as properties
 /// during a widget build.
 abstract class SuperEditorPlugin {
-  const SuperEditorPlugin();
+  SuperEditorPlugin();
+
+  /// The reference count of the number of times [_attachToSuperEditor] was
+  /// called for each editor.
+  ///
+  /// This reference count is here due to order of operation nuances in Flutter's
+  /// widget tree rebuild process. If a [SuperEditor] subtree is replaced with a new
+  /// one (which happens a lot without carefully using `GlobalKey`s), then this
+  /// plugin will be told to attach before being told to detach. Without reference
+  /// counting, we would then run attach (NEW), followed by detach (OLD), and undo
+  /// the attachment we just ran.
+  final _attachCount = <Editor, int>{};
+
+  void _attachToSuperEditor(Editor editor) {
+    _attachCount[editor] ??= 0;
+
+    if (_attachCount[editor] == 0) {
+      attach(editor);
+    }
+
+    _attachCount[editor] = _attachCount[editor]! + 1;
+  }
+
+  void _detachFromSuperEditor(Editor editor) {
+    _attachCount[editor] = _attachCount[editor]! - 1;
+
+    if (_attachCount[editor] == 0) {
+      detach(editor);
+    }
+  }
 
   /// Adds desired behaviors to the given [editor].
   void attach(Editor editor) {}

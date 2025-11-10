@@ -96,7 +96,7 @@ class PatternTagPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(patternTagIndexKey)
+      ..context.remove(patternTagIndexKey, tagIndex)
       ..reactionPipeline.remove(_patternTagReaction);
   }
 }

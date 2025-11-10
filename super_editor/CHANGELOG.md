@@ -1,3 +1,15 @@
+## [0.3.0-dev.38]
+### Nov 9, 2025
+* BREAKING, FIX: Rework `SuperEditorPlugin` lifecycle because we discovered that when
+   one `SuperEditor` widget gets replaced by another, the new widget runs `initState()`
+   before the old widget runs `dispose()`. This resulted in plugins ending up in a detached
+   state when they should have been attached. This release adds some reference counting
+   so that detachment only happens when it truly should.
+* BREAKING, ADJUSTMENT: Related to the plugin lifecycle work, `EditContext.remove()` was
+   adjusted to prevent accidentally removing a resource that was just added. The API change
+   now expects you to pass the key to remove, and the value you want to remove for that key.
+   If the current value doesn't match what is provided, then the removal doesn't happen.
+
 ## [0.3.0-dev.37]
 ### Nov 5, 2025
 * ADJUSTMENT: Upgrade `super_keyboard` to `v0.3.0`.
