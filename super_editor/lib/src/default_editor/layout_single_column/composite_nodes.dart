@@ -1,17 +1,34 @@
+import 'dart:math';
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
+import 'package:super_editor/src/default_editor/text.dart';
 
 /// A view model for a [CompositeNode], which is a node that contains other nodes.
-class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel {
+class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel implements SelectionAwareViewModelMixin {
   CompositeNodeViewModel({
     required super.nodeId,
     super.createdAt,
     super.padding = EdgeInsets.zero,
     super.maxWidth,
+    required this.parent,
     required this.children,
-  });
+    Color selectionColor = const Color(0x00000000),
+    DocumentNodeSelection<NodeSelection>? selection,
+  })  : _selection = selection,
+        _selectionColor = selectionColor;
+
+  DocumentNodeSelection<NodeSelection>? _selection;
+  Color _selectionColor;
+
+  /// We have to keep reference to [parent] node, so we can reuse position-related logic
+  /// from Node, without duplication. Otherwise we have to extract it somewhere else.
+  final CompositeNode parent;
 
   final List<SingleColumnLayoutComponentViewModel> children;
 
@@ -23,7 +40,117 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel {
       padding: padding,
       maxWidth: maxWidth,
       children: List.from(children),
+      selection: _selection,
+      parent: parent,
+      selectionColor: _selectionColor,
     );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      super == other &&
+          other is CompositeNodeViewModel &&
+          runtimeType == other.runtimeType &&
+          _selection == other._selection &&
+          _selectionColor == other._selectionColor &&
+          children == other.children;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, _selection, _selectionColor, children);
+
+  @override
+  set selection(DocumentNodeSelection<NodeSelection>? selection) {
+    _selection = selection;
+    final nodeSelection = selection?.nodeSelection;
+
+    // Cleanup existing selection from children nodes
+    if (nodeSelection == null) {
+      for (final child in children) {
+        _setChildSelection(child, null);
+      }
+      return;
+    }
+
+    if (nodeSelection is! CompositeNodeSelection) {
+      return;
+    }
+
+    final base = nodeSelection.base;
+    final extent = nodeSelection.extent;
+
+    final baseIndex = parent.getChildIndexByNodeId(base.childNodeId);
+    final extentIndex = parent.getChildIndexByNodeId(extent.childNodeId);
+
+    // Selection within one node
+    if (baseIndex == extentIndex) {
+      final childNode = parent.getChildAt(baseIndex);
+      final childSelection = childNode.computeSelection(
+        base: base.childNodePosition,
+        extent: extent.childNodePosition,
+      );
+      for (final child in children) {
+        if (child.nodeId == nodeSelection.base.childNodeId) {
+          _setChildSelection(child, childSelection);
+        } else {
+          _setChildSelection(child, null);
+        }
+      }
+    }
+    // Selection across multiple nodes
+    else {
+      final fromChildIndex = min(baseIndex, extentIndex);
+      final toChildIndex = max(baseIndex, extentIndex);
+      final firstPosition = baseIndex < extentIndex ? base.childNodePosition : extent.childNodePosition;
+      final lastPosition = baseIndex > extentIndex ? base.childNodePosition : extent.childNodePosition;
+      for (var i = 0; i < children.length; i += 1) {
+        final childNode = parent.getChildAt(i);
+        NodeSelection? childSelection;
+        // firstly selected node
+        if (i == fromChildIndex) {
+          childSelection = childNode.computeSelection(base: firstPosition, extent: childNode.endPosition);
+        }
+        // lastly selected node
+        else if (i == toChildIndex) {
+          childSelection = childNode.computeSelection(base: childNode.beginningPosition, extent: lastPosition);
+        }
+        // nodes in between
+        else if (i > fromChildIndex && i < toChildIndex) {
+          childSelection = childNode.computeSelection(base: childNode.beginningPosition, extent: childNode.endPosition);
+        }
+        _setChildSelection(children[i], childSelection);
+      }
+    }
+  }
+
+  @override
+  set selectionColor(Color selectionColor) {
+    _selectionColor = selectionColor;
+    for (final child in children) {
+      if (child is TextComponentViewModel) {
+        child.selectionColor = selectionColor;
+      } else if (child is SelectionAwareViewModelMixin) {
+        child.selectionColor = selectionColor;
+      }
+    }
+  }
+
+  @override
+  DocumentNodeSelection<NodeSelection>? get selection => _selection;
+  @override
+  Color get selectionColor => _selectionColor;
+
+  void _setChildSelection(SingleColumnLayoutComponentViewModel child, NodeSelection? selection) {
+    if (child is TextComponentViewModel && (selection is TextSelection || selection == null)) {
+      child.selection = selection as TextSelection?;
+    } else if (child is SelectionAwareViewModelMixin) {
+      child.selection = selection != null
+          ? DocumentNodeSelection(
+              nodeId: child.nodeId,
+              nodeSelection: selection,
+            )
+          : null;
+    }
   }
 }
 

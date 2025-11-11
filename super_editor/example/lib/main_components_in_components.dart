@@ -129,6 +129,7 @@ class _BannerComponentBuilder implements ComponentBuilder {
 
     return CompositeNodeViewModel(
       nodeId: node.id,
+      parent: node,
       children: node.children.map((childNode) => presenterContext.createViewModel(childNode)!).toList(),
     );
   }
