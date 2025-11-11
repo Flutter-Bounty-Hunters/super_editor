@@ -142,22 +142,20 @@ class _BannerComponentBuilder implements ComponentBuilder {
       return null;
     }
 
-    final childrenAndKeys = componentViewModel.children
-        .map(
-          (childViewModel) => componentContext.buildChildComponent(childViewModel),
-        )
-        .toList(growable: false);
+    assert(componentViewModel.children.isNotEmpty, 'Empty children does not makes sense here');
 
     // print("Building a _BannerComponent - banner key: ${componentContext.componentKey}");
     // print(" - child keys: ${childrenAndKeys.map((x) => x.$1)}");
     return _BannerComponent(
       key: componentContext.componentKey,
-      // childComponentIds: [],
-      childComponentKeys: childrenAndKeys.map((childAndKey) => childAndKey.$1).toList(growable: false),
-      children: [
-        for (final child in childrenAndKeys) //
-          child.$2,
-      ],
+      children: componentViewModel.children.map((childViewModel) {
+        final (componentKey, component) = componentContext.buildChildComponent(childViewModel);
+        return CompositeChildComponent(
+          nodeId: childViewModel.nodeId,
+          componentKey: componentKey,
+          widget: component,
+        );
+      }).toList(),
     );
   }
 }
@@ -165,16 +163,10 @@ class _BannerComponentBuilder implements ComponentBuilder {
 class _BannerComponent extends StatefulWidget {
   const _BannerComponent({
     super.key,
-    // required this.childComponentIds,
-    required this.childComponentKeys,
     required this.children,
   });
 
-  // final List<String> childComponentIds;
-
-  final List<GlobalKey<DocumentComponent>> childComponentKeys;
-
-  final List<Widget> children;
+  final List<CompositeChildComponent> children;
 
   @override
   State<_BannerComponent> createState() => _BannerComponentState();
@@ -196,7 +188,7 @@ class _BannerComponentState extends State<_BannerComponent> with ProxyDocumentCo
         child: ColumnDocumentComponent(
           key: childDocumentComponentKey,
           // childComponentIds: widget.childComponentIds,
-          childComponentKeys: widget.childComponentKeys,
+          // childComponentKeys: widget.childComponentKeys,
           children: widget.children,
         ),
       ),

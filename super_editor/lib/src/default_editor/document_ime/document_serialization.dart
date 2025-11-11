@@ -85,8 +85,6 @@ class DocumentImeSerializer {
       String nodeImeText;
       if (node is ImeNodeSerialization) {
         nodeImeText = (node as ImeNodeSerialization).toImeText();
-      } else if (node is TextNode) {
-        nodeImeText = node.text.toPlainText();
       } else {
         nodeImeText = '~';
       }
@@ -268,12 +266,7 @@ class DocumentImeSerializer {
       if (range.start <= imePosition.offset && imePosition.offset <= range.end) {
         final node = _doc.getNodeById(imeRangesToDocTextNodes[range]!)!;
 
-        if (node is TextNode) {
-          return DocumentPosition(
-            nodeId: imeRangesToDocTextNodes[range]!,
-            nodePosition: TextNodePosition(offset: imePosition.offset - range.start),
-          );
-        } else if (node is ImeNodeSerialization) {
+        if (node is ImeNodeSerialization) {
           return DocumentPosition(
             nodeId: imeRangesToDocTextNodes[range]!,
             nodePosition: (node as ImeNodeSerialization).nodePositionFromImeOffset(imePosition.offset - range.start),
@@ -373,14 +366,10 @@ class DocumentImeSerializer {
       }
     }
 
-    if (nodePosition is TextNodePosition) {
-      return TextPosition(offset: imeRange.start + (docPosition.nodePosition as TextNodePosition).offset);
-    } else {
-      final node = _doc.getNodeById(docPosition.nodeId)!;
-      if (node is ImeNodeSerialization) {
-        final imeOffset = (node as ImeNodeSerialization).imeOffsetFromNodePosition(nodePosition);
-        return TextPosition(offset: imeRange.start + imeOffset);
-      }
+    final node = _doc.getNodeById(docPosition.nodeId)!;
+    if (node is ImeNodeSerialization) {
+      final imeOffset = (node as ImeNodeSerialization).imeOffsetFromNodePosition(nodePosition);
+      return TextPosition(offset: imeRange.start + imeOffset);
     }
 
     throw Exception("Super Editor doesn't know how to convert a $nodePosition into an IME-compatible selection");
