@@ -16,6 +16,7 @@ import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -2110,7 +2111,7 @@ class InsertTextRequest implements EditRequest {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2126,7 +2127,7 @@ class InsertTextCommand extends EditCommand {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2144,13 +2145,13 @@ class InsertTextCommand extends EditCommand {
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
 
-    var textNode = document.getNodeById(documentPosition.nodeId);
+    var textNode = document.getLeafNode(documentPosition);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textPosition = documentPosition.nodePosition as TextPosition;
+    final textPosition = documentPosition.leafNodePosition as TextPosition;
     final textOffset = textPosition.offset;
 
     textNode = textNode.copyTextNodeWith(
@@ -2164,16 +2165,13 @@ class InsertTextCommand extends EditCommand {
         },
       ),
     );
-    document.replaceNodeById(
-      textNode.id,
-      textNode,
-    );
+    document.replaceLeafNodeByPosition(documentPosition, textNode);
 
     executor.logChanges([
       DocumentEdit(
-        TextInsertionEvent(
-          nodeId: textNode.id,
-          offset: textOffset,
+        NodeTextInsertionEvent.create(
+          nodeId: documentPosition.nodeId,
+          position: documentPosition.nodePosition,
           text: AttributedText(textToInsert),
         ),
       ),
@@ -2182,9 +2180,8 @@ class InsertTextCommand extends EditCommand {
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: textNode.id,
-            nodePosition: TextNodePosition(
+          position: documentPosition.copyWithLeafPosition(
+            TextNodePosition(
               offset: textOffset + textToInsert.length,
               affinity: textPosition.affinity,
             ),
@@ -2198,15 +2195,57 @@ class InsertTextCommand extends EditCommand {
   }
 }
 
-class TextInsertionEvent extends NodeChangeEvent {
-  TextInsertionEvent({
+class NodeTextInsertionEvent extends NodeChangeEvent {
+  NodeTextInsertionEvent({
     required String nodeId,
-    required this.offset,
+    required this.position,
     required this.text,
   }) : super(nodeId);
 
-  final int offset;
+  static NodeTextInsertionEvent create({
+    required String nodeId,
+    required NodePosition position,
+    required AttributedText text,
+  }) {
+    if (position is TextNodePosition) {
+      // Keeping old Event class, for backward compatibility with existing reactions
+      return TextInsertionEvent(nodeId: nodeId, offset: position.offset, text: text);
+    } else {
+      return NodeTextInsertionEvent(nodeId: nodeId, position: position, text: text);
+    }
+  }
+
+  final NodePosition position;
   final AttributedText text;
+
+  @override
+  String describe() => "Inserted text ($nodeId) @ $position: '${text.toPlainText()}'";
+
+  @override
+  String toString() => "NodeTextInsertionEvent ('$nodeId' - $position -> '${text.toPlainText()}')";
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      super == other &&
+          other is NodeTextInsertionEvent &&
+          runtimeType == other.runtimeType &&
+          position.isEquivalentTo(other.position) &&
+          text == other.text;
+
+  @override
+  int get hashCode => super.hashCode ^ position.hashCode ^ text.hashCode;
+}
+
+// Should this be deprecated? Relying on this even won't catch text insertions inside CompositeNodes..
+class TextInsertionEvent extends NodeTextInsertionEvent {
+  TextInsertionEvent({
+    required String nodeId,
+    required this.offset,
+    required super.text,
+  }) : super(nodeId: nodeId, position: TextNodePosition(offset: offset));
+
+  final int offset;
 
   @override
   String describe() => "Inserted text ($nodeId) @ $offset: '${text.toPlainText()}'";
@@ -3317,6 +3356,6 @@ bool _isTextEntryNode({
   required DocumentSelection selection,
 }) {
   final extentPosition = selection.extent;
-  final extentNode = document.getNodeById(extentPosition.nodeId);
+  final extentNode = document.getLeafNode(selection.extent);
   return extentNode is TextNode;
 }

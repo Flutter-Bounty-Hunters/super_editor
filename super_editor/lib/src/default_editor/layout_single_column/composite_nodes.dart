@@ -177,6 +177,18 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
 
   DocumentNode getChildAt(int index) => children.elementAt(index);
 
+  DocumentNode getChild(CompositeNodePosition position) {
+    final child = getChildByNodeId(position.childNodeId);
+    if (child is CompositeNode && position.childNodePosition is CompositeNodePosition) {
+      return child.getChild(position.childNodePosition as CompositeNodePosition);
+    }
+    return child;
+  }
+
+  DocumentNode getChildByNodeId(String nodeId) {
+    return children.firstWhere((c) => c.id == nodeId);
+  }
+
   int getChildIndexByNodeId(String nodeId) {
     var index = 0;
     for (final child in children) {
@@ -186,6 +198,31 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
       index += 1;
     }
     return -1;
+  }
+
+  /// Returns a new CompositeNode where leaf at [position] is replaced by
+  /// provided [newLeaf]
+  CompositeNode copyAndReplaceLeaf({
+    required CompositeNodePosition position,
+    required DocumentNode newLeaf,
+  });
+
+  CompositeNode internalCopyAndReplaceLeaf({
+    required CompositeNodePosition position,
+    required DocumentNode newLeaf,
+    required CompositeNode Function(CompositeNode oldNode, List<DocumentNode> children) compositeNodeBuilder,
+  }) {
+    final childPosition = position.childNodePosition;
+    if (childPosition is CompositeNodePosition) {
+      final child = getChildByNodeId(position.childNodeId);
+      assert(child is CompositeNode, 'Unexpected child type for CompositeNodePosition (${child.runtimeType})');
+      return (child as CompositeNode).copyAndReplaceLeaf(position: childPosition, newLeaf: newLeaf);
+    } else {
+      final newChildren = children.map((child) {
+        return child.id == newLeaf.id ? newLeaf : child;
+      }).toList();
+      return compositeNodeBuilder(this, newChildren);
+    }
   }
 
   @override
@@ -361,4 +398,33 @@ class CompositeNodePosition implements NodePosition {
 
   @override
   int get hashCode => childNodeId.hashCode ^ childNodePosition.hashCode;
+}
+
+extension DocumentPositionCompositeEx on DocumentPosition {
+  NodePosition get leafNodePosition => nodePosition.leafPosition;
+
+  DocumentPosition copyWithLeafPosition(NodePosition nodePosition) {
+    return DocumentPosition(
+      nodeId: nodeId,
+      nodePosition: this.nodePosition.positionWithNewLeaf(nodePosition),
+    );
+  }
+}
+
+extension NodePositionCompositeEx on NodePosition {
+  NodePosition get leafPosition {
+    if (this is CompositeNodePosition) {
+      return (this as CompositeNodePosition).childNodePosition.leafPosition;
+    }
+    return this;
+  }
+
+  NodePosition positionWithNewLeaf(NodePosition newLeafPosition) {
+    final current = this;
+    if (current is CompositeNodePosition) {
+      return current.moveWithinChild(current.childNodePosition.positionWithNewLeaf(newLeafPosition));
+    } else {
+      return newLeafPosition;
+    }
+  }
 }

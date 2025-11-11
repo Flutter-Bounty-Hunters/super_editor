@@ -6,6 +6,7 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/common_editor_operations.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
@@ -346,12 +347,13 @@ class TextDeltasDocumentEditor {
   ) {
     editorOpsLog.fine('Attempting to insert "$text" at position: $insertionPosition');
 
-    DocumentNode? insertionNode = document.getNodeById(insertionPosition.nodeId);
+    DocumentNode? insertionNode = document.getLeafNode(insertionPosition);
     if (insertionNode == null) {
       editorOpsLog.warning('Attempted to insert text using a non-existing node');
       return false;
     }
 
+    // TODO: Handle this case inside CompositeNode?
     if (insertionPosition.nodePosition is UpstreamDownstreamNodePosition) {
       editorOpsLog.fine("The selected position is an UpstreamDownstreamPosition. Inserting new paragraph first.");
       editor.execute([InsertNewlineAtCaretRequest()]);
@@ -362,7 +364,7 @@ class TextDeltasDocumentEditor {
       insertionPosition = DocumentPosition(nodeId: insertionNode.id, nodePosition: insertionNode.endPosition);
     }
 
-    if (insertionNode is! TextNode || insertionPosition.nodePosition is! TextNodePosition) {
+    if (insertionNode is! TextNode || insertionPosition.leafNodePosition is! TextNodePosition) {
       editorOpsLog.fine(
           "Couldn't insert text because Super Editor doesn't know how to handle a node of type: $insertionNode, with position: ${insertionPosition.nodePosition}");
       return false;

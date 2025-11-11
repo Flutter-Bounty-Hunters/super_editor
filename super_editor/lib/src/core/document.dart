@@ -82,6 +82,10 @@ abstract class Document implements Iterable<DocumentNode> {
   /// no such node exists in this [Document].
   DocumentNode? getNode(DocumentPosition position);
 
+  /// Returns the [DocumentNode] at the given [position], following
+  /// [CompositeNodes] recursively, until a leaf node is reached
+  DocumentNode? getLeafNode(DocumentPosition position);
+
   /// Returns all [DocumentNode]s from [position1] to [position2], including
   /// the nodes at [position1] and [position2].
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2);

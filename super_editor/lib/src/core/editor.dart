@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:attributed_text/attributed_text.dart';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -1174,6 +1175,15 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   DocumentNode? getNode(DocumentPosition position) => getNodeById(position.nodeId);
 
   @override
+  DocumentNode? getLeafNode(DocumentPosition position) {
+    final node = getNodeById(position.nodeId);
+    if (position.nodePosition is CompositeNodePosition && node is CompositeNode) {
+      return node.getChild(position.nodePosition as CompositeNodePosition);
+    }
+    return node;
+  }
+
+  @override
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2) {
     final node1 = getNode(position1);
     if (node1 == null) {
@@ -1311,6 +1321,22 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     } else {
       throw Exception('Could not find node with ID: $nodeId');
     }
+  }
+
+  /// Replaces leaf node based on [position]. All CompositeNodes are copied and
+  /// given newNode is replaced by its id
+  void replaceLeafNodeByPosition(DocumentPosition position, DocumentNode newNode) {
+    final nodePosition = position.nodePosition;
+    var replacement = newNode;
+    if (nodePosition is CompositeNodePosition) {
+      final node = getNodeById(position.nodeId);
+      assert(node is CompositeNode);
+      replacement = (node as CompositeNode).copyAndReplaceLeaf(
+        position: nodePosition,
+        newLeaf: newNode,
+      );
+    }
+    return replaceNodeById(position.nodeId, replacement);
   }
 
   /// Returns [true] if the content of the [other] [Document] is equivalent

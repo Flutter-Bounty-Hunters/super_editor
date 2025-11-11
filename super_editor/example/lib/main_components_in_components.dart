@@ -229,4 +229,15 @@ class _BannerNode extends CompositeNode {
     // TODO: implement copyContent
     throw UnimplementedError();
   }
+
+  @override
+  CompositeNode copyAndReplaceLeaf({required CompositeNodePosition position, required DocumentNode newLeaf}) {
+    return internalCopyAndReplaceLeaf(
+      position: position,
+      newLeaf: newLeaf,
+      compositeNodeBuilder: (old, newChildren) {
+        return _BannerNode(id: old.id, metadata: metadata, children: newChildren);
+      },
+    );
+  }
 }

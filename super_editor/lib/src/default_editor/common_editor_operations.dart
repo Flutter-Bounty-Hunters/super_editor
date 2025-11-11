@@ -13,6 +13,7 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
@@ -1128,9 +1129,11 @@ class CommonEditorOperations {
       }
     }
 
-    if (composer.selection!.extent.nodePosition is TextNodePosition) {
-      final textPosition = composer.selection!.extent.nodePosition as TextNodePosition;
-      if (textPosition.offset == 0) {
+    if (composer.selection!.extent.leafNodePosition is TextNodePosition) {
+      final textPosition = composer.selection!.extent.leafNodePosition as TextNodePosition;
+      // TODO: Handle this case for CompositeNode as well
+      final isRootNode = composer.selection!.extent.nodePosition is! CompositeNodePosition;
+      if (textPosition.offset == 0 && isRootNode) {
         final nodeBefore = document.getNodeBeforeById(node.id);
         if (nodeBefore == null) {
           return false;
@@ -1722,7 +1725,7 @@ class CommonEditorOperations {
       editor.execute([InsertNewlineAtCaretRequest()]);
     }
 
-    final extentNode = document.getNodeById(composer.selection!.extent.nodeId)!;
+    final extentNode = document.getLeafNode(composer.selection!.extent)!;
     if (extentNode is! TextNode) {
       editorOpsLog.fine(
           "Couldn't insert character because Super Editor doesn't know how to handle a node of type: $extentNode");
@@ -2210,8 +2213,7 @@ class CommonEditorOperations {
     required Document document,
     required DocumentSelection selection,
   }) {
-    final extentPosition = selection.extent;
-    final extentNode = document.getNodeById(extentPosition.nodeId);
+    final extentNode = document.getLeafNode(selection.extent);
     return extentNode is TextNode;
   }
 
@@ -2581,31 +2583,42 @@ class DeleteUpstreamCharacterCommand extends EditCommand {
     if (!selection.isCollapsed) {
       throw Exception("Tried to delete upstream character but the selection isn't collapsed.");
     }
-    if (document.getNodeById(selection.extent.nodeId) is! TextNode) {
+    if (document.getLeafNode(selection.extent) is! TextNode) {
       throw Exception("Tried to delete upstream character but the selected node isn't a TextNode.");
     }
-    if (selection.isCollapsed && (selection.extent.nodePosition as TextNodePosition).offset <= 0) {
+    if (selection.isCollapsed && (selection.extent.leafNodePosition as TextNodePosition).offset <= 0) {
       throw Exception("Tried to delete upstream character but the caret is at the beginning of the text.");
     }
 
-    final textNode = document.getNode(selection.extent) as TextNode;
-    final currentTextOffset = (selection.extent.nodePosition as TextNodePosition).offset;
+    final textNode = document.getLeafNode(selection.extent) as TextNode;
+    final currentTextOffset = (selection.extent.leafNodePosition as TextNodePosition).offset;
 
     final previousCharacterOffset = getCharacterStartBounds(textNode.text.toPlainText(), currentTextOffset);
+
+    final textRange = textNode.selectionBetween(
+      currentTextOffset,
+      previousCharacterOffset,
+    );
+
+    final rangeToDelete = DocumentRange(
+      start: selection.base.copyWithLeafPosition(textRange.start.nodePosition),
+      end: selection.base.copyWithLeafPosition(textRange.end.nodePosition),
+    );
+
+    final previousCharacterSelection = textNode.selectionAt(previousCharacterOffset);
+    final newSelection = DocumentSelection(
+      base: selection.base.copyWithLeafPosition(previousCharacterSelection.start.nodePosition),
+      extent: selection.base.copyWithLeafPosition(previousCharacterSelection.end.nodePosition),
+    );
 
     // Delete the selected content.
     executor
       ..executeCommand(
-        DeleteContentCommand(
-          documentRange: textNode.selectionBetween(
-            currentTextOffset,
-            previousCharacterOffset,
-          ),
-        ),
+        DeleteContentCommand(documentRange: rangeToDelete),
       )
       ..executeCommand(
         ChangeSelectionCommand(
-          textNode.selectionAt(previousCharacterOffset),
+          newSelection,
           SelectionChangeType.deleteContent,
           SelectionReason.userInteraction,
         ),

@@ -705,6 +705,7 @@ class DeleteContentCommand extends EditCommand {
     _log.log('DeleteSelectionCommand', 'DocumentEditor: deleting selection: $documentRange');
     final document = context.document;
     final selection = context.composer.selection;
+    // TODO: Implement for CompositeNodePosition
     final nodes = document.getNodesInside(documentRange.start, documentRange.end);
     final normalizedRange = documentRange.normalize(document);
 
