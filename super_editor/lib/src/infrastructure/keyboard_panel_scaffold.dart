@@ -386,7 +386,6 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         // If the user called hideKeyboardPanel() just before calling this method then the panel
         // will animate down even though we don't want it to. It's currently still at 100% so we've
         // cause it in time to stop it from animating down.
-        print("STOPPING PANEL HEIGHT ANIMATION BEFORE IT STARTS");
         _panelHeightController.stop();
       }
 
@@ -460,12 +459,14 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
       if (!_wantsToShowSoftwareKeyboard) {
         // We don't want the panel or the keyboard, so animate the panel down.
         // The active panel will be null'ed out when the animation is complete.
-        print("Animating the keyboard panel down");
         _panelHeightController.reverse();
       } else {
         // We want the keyboard to replace the panel. Wait for keyboard to
         // raise before closing the panel. This is handled elsewhere.
       }
+
+      _activePanel = null;
+      _panelHeightController.reverse();
 
       // Open the keyboard.
       _softwareKeyboardController!.open(viewId: View.of(context).viewId);
@@ -483,7 +484,19 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     setState(() {
       _wantsToShowKeyboardPanel = false;
       _wantsToShowSoftwareKeyboard = false;
+
       _softwareKeyboardController!.close();
+      if (_panelHeightController.isDismissed) {
+        // The height animation is already at zero, so reversing it won't trigger
+        // the dismissal callback. Therefore, we need to null about the active panel, ourselves.
+        _activePanel = null;
+        print("Panel is already closed - null'ing out the acive panel");
+      } else {
+        // Note: The _activePanel will be null'ed out when the reverse is complete.
+        print("Animating panel down");
+        _panelHeightController.reverse();
+      }
+
       if (_panelHeightController.isDismissed) {
         // The height animation is already at zero, so reversing it won't trigger
         // the dismissal callback. Therefore, we need to null about the active panel, ourselves.

@@ -395,7 +395,7 @@ class MessagePageElement extends RenderObjectElement {
   }
 
   void buildContent(double bottomSpacing) {
-    messagePageElementLog.info('MessagePageScaffold ($hashCode) - (re)building content');
+    messagePageElementLog.info('MessagePageElement ($hashCode) - (re)building content');
     widget.controller?.debugMostRecentBottomSpacing.value = bottomSpacing;
 
     owner!.buildScope(this, () {
@@ -1144,7 +1144,7 @@ class RenderMessagePageScaffold extends RenderBox {
       _bottomSheet!.layout(
         bottomSheetConstraints.copyWith(
           minHeight: 0,
-          maxHeight: _bottomSheetCollapsedMaximumHeight,
+          maxHeight: min(_bottomSheetCollapsedMaximumHeight, _bottomSheetMaximumHeight),
         ),
         parentUsesSize: true,
       );

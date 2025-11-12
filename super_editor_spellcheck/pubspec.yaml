@@ -16,7 +16,7 @@ dependencies:
   overlord: ^0.4.2
   plugin_platform_interface: ^2.0.2
 
-  super_editor: ^0.3.0-dev.15
+  super_editor: ^0.3.0-dev.38
   super_text_layout: ^0.1.12
 
 dependency_overrides:
