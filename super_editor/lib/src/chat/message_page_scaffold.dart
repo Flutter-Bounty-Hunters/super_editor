@@ -1144,7 +1144,7 @@ class RenderMessagePageScaffold extends RenderBox {
       _bottomSheet!.layout(
         bottomSheetConstraints.copyWith(
           minHeight: 0,
-          maxHeight: _bottomSheetCollapsedMaximumHeight,
+          maxHeight: min(_bottomSheetCollapsedMaximumHeight, _bottomSheetMaximumHeight),
         ),
         parentUsesSize: true,
       );
