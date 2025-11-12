@@ -41,7 +41,7 @@ class KeyboardPanelScaffold<PanelType> extends StatefulWidget {
     required this.isImeConnected,
     required this.toolbarBuilder,
     required this.keyboardPanelBuilder,
-    this.fallbackPanelHeight = 250,
+    this.fallbackPanelHeight = 340,
     required this.contentBuilder,
     this.bypassMediaQuery = false,
   });
@@ -151,7 +151,9 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     _panelHeightController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
-    )..addListener(_onPanelHeightChange);
+    )
+      ..addStatusListener(_onPanelAnimationChange)
+      ..addListener(_onPanelHeightChange);
     _updateMaxPanelHeight();
 
     widget.controller.attach(this);
@@ -160,8 +162,11 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
     SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardGeometryChange);
 
-    _overlayPortalController.show();
     onNextFrame((_) {
+      // Wait until next frame to show overlay portal because it can't handle `show()`
+      // during a build operation.
+      _overlayPortalController.show();
+
       // Do initial safe area report to our ancestor keyboard safe area widget,
       // after we've added our UI to the overlay portal.
       _updateSafeArea();
@@ -220,7 +225,6 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
 
     widget.controller.detach();
 
-    // _panelAnimation.removeListener(_updatePanelForExitAnimation);
     _panelHeightController.removeListener(_onPanelHeightChange);
     _panelHeightController.dispose();
 
@@ -260,6 +264,20 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     ) //
         .chain(CurveTween(curve: Curves.easeInOut))
         .animate(_panelHeightController);
+  }
+
+  void _onPanelAnimationChange(AnimationStatus status) {
+    if (!mounted) {
+      // Should never happen because the ticker is tied to the widget tree,
+      // but this is defensive for situations we haven't considered.
+      return;
+    }
+
+    if (status == AnimationStatus.dismissed) {
+      setState(() {
+        _activePanel = null;
+      });
+    }
   }
 
   void _onPanelHeightChange() {
@@ -360,6 +378,14 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
       _wantsToShowSoftwareKeyboard = true;
       _softwareKeyboardController!.open(viewId: View.of(context).viewId);
 
+      if (_panelHeightController.value == 1.0 &&
+          SuperKeyboard.instance.mobileGeometry.value.keyboardState != KeyboardState.open) {
+        // If the user called hideKeyboardPanel() just before calling this method then the panel
+        // will animate down even though we don't want it to. It's currently still at 100% so we've
+        // cause it in time to stop it from animating down.
+        _panelHeightController.stop();
+      }
+
       // Notify delegate listeners.
       notifyListeners();
     });
@@ -421,6 +447,16 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     setState(() {
       // Close panel.
       _wantsToShowKeyboardPanel = false;
+
+      if (!_wantsToShowSoftwareKeyboard) {
+        // We don't want the panel or the keyboard, so animate the panel down.
+        // The active panel will be null'ed out when the animation is complete.
+        _panelHeightController.reverse();
+      } else {
+        // We want the keyboard to replace the panel. Wait for keyboard to
+        // raise before closing the panel. This is handled elsewhere.
+      }
+
       _activePanel = null;
       _panelHeightController.reverse();
 
@@ -439,14 +475,23 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     setState(() {
       _wantsToShowKeyboardPanel = false;
       _wantsToShowSoftwareKeyboard = false;
-      _activePanel = null;
+
       _softwareKeyboardController!.close();
+
+      if (_panelHeightController.isDismissed) {
+        // The height animation is already at zero, so reversing it won't trigger
+        // the dismissal callback. Therefore, we need to null about the active panel, ourselves.
+        _activePanel = null;
+        print("Panel is already closed - null'ing out the acive panel");
+      } else {
+        // Note: The _activePanel will be null'ed out when the reverse is complete.
+        print("Animating panel down");
+        _panelHeightController.reverse();
+      }
 
       // Notify delegate listeners.
       notifyListeners();
     });
-
-    _panelHeightController.reverse();
   }
 
   void _maybeAnimatePanelClosed() {
@@ -457,7 +502,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
     // The user wants to close both the software keyboard and the keyboard panel,
     // but the software keyboard is already closed. Animate the keyboard panel height
     // down to zero.
-    _panelHeightController.reverse(from: 1.0);
+    _panelHeightController.reverse();
   }
 
   /// Updates our local cache of the current bottom window insets, which we assume reflects
@@ -495,11 +540,10 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         break;
       case KeyboardState.closed:
         if (!wantsToShowKeyboardPanel) {
-          // Now that the keyboard is fully closed, and we don't want a panel, ensure that the
-          // panel is fully closed, and no longer animating.
-          _panelHeightController
-            ..stop()
-            ..value = 0;
+          // Now that the keyboard is fully closed, and we don't want a panel, close the panel
+          // in case it happens to be open.
+          print("Animating panel closed");
+          _panelHeightController.reverse();
         }
 
         // It was found on the iPad simulator that it was possible to close the minimized keyboard,
@@ -522,7 +566,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         onNextFrame((_) => _updateSafeArea());
         break;
       case KeyboardState.closing:
-        if (!wantsToShowKeyboardPanel) {
+        if (!wantsToShowKeyboardPanel && !wantsToShowSoftwareKeyboard) {
           // The keyboard is collapsing and we don't want the keyboard panel to be visible.
           // Follow the keyboard back down.
           //
@@ -614,6 +658,9 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   @override
   Widget build(BuildContext context) {
     final shouldShowKeyboardPanel = wantsToShowKeyboardPanel ||
+        // If the panel height is greater than zero, we're probably animating it away.
+        // Show it until the animation is done.
+        _panelHeightController.value > 0 ||
         // The keyboard panel should be kept visible while the software keyboard is expanding
         // and the keyboard panel was previously visible. Otherwise, there will be an empty
         // region between the top of the software keyboard and the bottom of the above-keyboard panel.
