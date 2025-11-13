@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 import 'package:text_table/text_table.dart';
 
 import 'test_documents.dart';
