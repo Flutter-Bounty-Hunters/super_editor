@@ -1412,6 +1412,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       onPanUpdate: _onHandlePanUpdate,
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.collapsed),
     );
+
     _upstreamHandleGesturesDelegate = DocumentHandleGestureDelegate(
       onTap: () {
         // Register tap down to win gesture arena ASAP.
@@ -1421,6 +1422,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.upstream),
       onPanCancel: () => _onHandlePanCancel(HandleType.upstream),
     );
+
     _downstreamHandleGesturesDelegate = DocumentHandleGestureDelegate(
       onTap: () {
         // Register tap down to win gesture arena ASAP.
