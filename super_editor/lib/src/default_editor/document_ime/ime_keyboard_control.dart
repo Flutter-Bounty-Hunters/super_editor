@@ -91,12 +91,12 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
     // WidgetsBinding.instance.addPostFrameCallback((_) {
     //   print("SoftwareKeyboardOpener - running post frame callback for open()");
     //   _didScheduleOpenPostFrameCallback = false;
-
-    if (!_ownsIme) {
-      print("Can't open because we don't have IME ownership");
-      editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
-      return;
-    }
+    //
+    // if (!_ownsIme) {
+    //   print("Can't open because we don't have IME ownership");
+    //   editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
+    //   return;
+    // }
 
     print("Opening IME connection and showing keyboard");
     editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
