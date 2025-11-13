@@ -1,9 +1,13 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart';
 
 import 'super_editor_syntax.dart';
 
 /// Serializes the given [doc] to Markdown text.
+///
+/// When [selection] is provided, only the selected range of the document is serialized.
 ///
 /// The given [syntax] controls how the [doc] is serialized, e.g., [MarkdownSyntax.normal]
 /// for standard Markdown syntax, or [MarkdownSyntax.superEditor] to use Super Editor's
@@ -13,6 +17,7 @@ import 'super_editor_syntax.dart';
 /// provide [customNodeSerializers] to serialize those custom nodes.
 String serializeDocumentToMarkdown(
   Document doc, {
+  DocumentSelection? selection,
   MarkdownSyntax syntax = MarkdownSyntax.superEditor,
   List<DocumentNodeMarkdownSerializer> customNodeSerializers = const [],
 }) {
@@ -27,21 +32,58 @@ String serializeDocumentToMarkdown(
     const TaskNodeSerializer(),
     HeaderNodeSerializer(syntax),
     ParagraphNodeSerializer(syntax),
+    const TableBlockNodeSerializer(),
   ];
 
   StringBuffer buffer = StringBuffer();
 
-  for (int i = 0; i < doc.nodeCount; ++i) {
-    if (i > 0) {
-      // Add a new line before every node, except the first node.
-      buffer.writeln("");
+  late final DocumentRange? selectedRange;
+  late final List<DocumentNode> selectedNodes;
+  if (selection != null) {
+    selectedRange = selection.normalize(doc);
+    selectedNodes = doc.getNodesInside(
+      selectedRange.start,
+      selectedRange.end,
+    );
+  } else {
+    selectedRange = null;
+    selectedNodes = doc.toList(growable: false);
+  }
+
+  for (int i = 0; i < selectedNodes.length; ++i) {
+    final node = selectedNodes[i];
+    late final NodeSelection? nodeSelection;
+    if (selectedRange != null && node.id == selectedRange.start.nodeId && node.id == selectedRange.end.nodeId) {
+      // The entire copy selection is within this node.
+      nodeSelection = node.computeSelection(
+        base: selectedRange.start.nodePosition,
+        extent: selectedRange.end.nodePosition,
+      );
+    } else if (selectedRange != null && node.id == selectedRange.start.nodeId) {
+      // The selection starts somewhere in this node and goes to the end of the node.
+      nodeSelection = node.computeSelection(
+        base: selectedRange.start.nodePosition,
+        extent: node.endPosition,
+      );
+    } else if (selectedRange != null && node.id == selectedRange.end.nodeId) {
+      // The selection starts at the beginning of this node and ends somewhere within this node.
+      nodeSelection = node.computeSelection(
+        base: node.beginningPosition,
+        extent: selectedRange.end.nodePosition,
+      );
+    } else {
+      // The node is fully selected, so we don't need to specify a selection.
+      nodeSelection = null;
     }
 
-    // Serialize the current node to markdown.
-    final node = doc.getNodeAt(i)!;
     for (final serializer in nodeSerializers) {
-      final serialization = serializer.serialize(doc, node);
+      final serialization = serializer.serialize(doc, node, selection: nodeSelection);
       if (serialization != null) {
+        if (i > 0) {
+          // Add a new line before every node, except the first node.
+          buffer.writeln("");
+        }
+
         buffer.write(serialization);
         break;
       }
@@ -53,7 +95,17 @@ String serializeDocumentToMarkdown(
 
 /// Serializes a given [DocumentNode] to a Markdown `String`.
 abstract class DocumentNodeMarkdownSerializer {
-  String? serialize(Document document, DocumentNode node);
+  /// Serializes the given [node] to a Markdown `String`.
+  ///
+  /// When [selection] is `null`, the entire node is converted to markdown. When
+  /// [selection] is non-`null`, only the selected range is converted to markdown.
+  ///
+  /// Returns `null` if the [node] is not supported by this serializer.
+  String? serialize(
+    Document document,
+    DocumentNode node, {
+    NodeSelection? selection,
+  });
 }
 
 /// A [DocumentNodeMarkdownSerializer] that automatically rejects any
@@ -65,16 +117,24 @@ abstract class NodeTypedDocumentNodeMarkdownSerializer<NodeType> implements Docu
   const NodeTypedDocumentNodeMarkdownSerializer();
 
   @override
-  String? serialize(Document document, DocumentNode node) {
+  String? serialize(
+    Document document,
+    DocumentNode node, {
+    NodeSelection? selection,
+  }) {
     if (node is! NodeType) {
       return null;
     }
 
-    return doSerialization(document, node as NodeType);
+    return doSerialization(document, node as NodeType, selection: selection);
   }
 
   @protected
-  String doSerialization(Document document, NodeType node);
+  String doSerialization(
+    Document document,
+    NodeType node, {
+    NodeSelection? selection,
+  });
 }
 
 /// [DocumentNodeMarkdownSerializer] for serializing [ImageNode]s as standard Markdown
@@ -87,7 +147,23 @@ class ImageNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<ImageN
   final bool useSizeNotation;
 
   @override
-  String doSerialization(Document document, ImageNode node) {
+  String doSerialization(
+    Document document,
+    ImageNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null) {
+      if (selection is! UpstreamDownstreamNodeSelection) {
+        // We don't know how to handle this selection type.
+        return '';
+      }
+      if (selection.isCollapsed) {
+        // This selection doesn't include the image - it's a collapsed selection
+        // either on the upstream or downstream edge.
+        return '';
+      }
+    }
+
     if (!useSizeNotation || (node.expectedBitmapSize?.width == null && node.expectedBitmapSize?.height == null)) {
       // We don't want to use size notation or the image doesn't have
       // size information. Use the regular syntax.
@@ -117,7 +193,23 @@ class HorizontalRuleNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializ
   const HorizontalRuleNodeSerializer();
 
   @override
-  String doSerialization(Document document, HorizontalRuleNode node) {
+  String doSerialization(
+    Document document,
+    HorizontalRuleNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null) {
+      if (selection is! UpstreamDownstreamNodeSelection) {
+        // We don't know how to handle this selection type.
+        return '';
+      }
+      if (selection.isCollapsed) {
+        // This selection doesn't include the horizontal rule - it's a collapsed selection
+        // either on the upstream or downstream edge.
+        return '';
+      }
+    }
+
     return '---';
   }
 }
@@ -130,13 +222,30 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
   const ListItemNodeSerializer();
 
   @override
-  String doSerialization(Document document, ListItemNode node) {
+  String doSerialization(
+    Document document,
+    ListItemNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null && selection is! TextNodeSelection) {
+      // We don't know how to handle this selection type.
+      return '';
+    }
+    final textSelection = selection as TextNodeSelection?;
+    if (textSelection != null && textSelection.isCollapsed) {
+      // Selection is collapsed. Nothing is selected for copy.
+      return '';
+    }
+    final textToConvert = textSelection != null //
+        ? node.text.copyText(textSelection.start, textSelection.end)
+        : node.text;
+
     final buffer = StringBuffer();
 
     final indent = List.generate(node.indent + 1, (index) => '  ').join('');
     final symbol = node.type == ListItemType.unordered ? '*' : '1.';
 
-    buffer.write('$indent$symbol ${node.text.toMarkdown()}');
+    buffer.write('$indent$symbol ${textToConvert.toMarkdown()}');
 
     final nodeIndex = document.getNodeIndexById(node.id);
     final nodeBelow = nodeIndex < document.nodeCount - 1 ? document.getNodeAt(nodeIndex + 1) : null;
@@ -160,30 +269,49 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
   final MarkdownSyntax markdownSyntax;
 
   @override
-  String doSerialization(Document document, ParagraphNode node) {
+  String doSerialization(
+    Document document,
+    ParagraphNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null && selection is! TextNodeSelection) {
+      // We don't know how to handle this selection type.
+      return '';
+    }
+    final textSelection = selection as TextNodeSelection?;
+    if (textSelection != null && textSelection.isCollapsed) {
+      // Selection is collapsed. Nothing is selected for copy.
+      return '';
+    }
+
     final buffer = StringBuffer();
 
     final Attribution? blockType = node.getMetadataValue('blockType');
 
+    final inlineMarkdown = (textSelection != null //
+            ? node.text.copyText(textSelection.start, textSelection.end)
+            : node.text)
+        .toMarkdown();
+
     if (blockType == header1Attribution) {
-      buffer.write('# ${node.text.toMarkdown()}');
+      buffer.write('# $inlineMarkdown');
     } else if (blockType == header2Attribution) {
-      buffer.write('## ${node.text.toMarkdown()}');
+      buffer.write('## $inlineMarkdown');
     } else if (blockType == header3Attribution) {
-      buffer.write('### ${node.text.toMarkdown()}');
+      buffer.write('### $inlineMarkdown');
     } else if (blockType == header4Attribution) {
-      buffer.write('#### ${node.text.toMarkdown()}');
+      buffer.write('#### $inlineMarkdown');
     } else if (blockType == header5Attribution) {
-      buffer.write('##### ${node.text.toMarkdown()}');
+      buffer.write('##### $inlineMarkdown');
     } else if (blockType == header6Attribution) {
-      buffer.write('###### ${node.text.toMarkdown()}');
+      buffer.write('###### $inlineMarkdown');
     } else if (blockType == blockquoteAttribution) {
       // TODO: handle multiline
-      buffer.write('> ${node.text.toMarkdown()}');
+      buffer.write('> $inlineMarkdown');
     } else if (blockType == codeAttribution) {
       buffer //
         ..writeln('```') //
-        ..writeln(node.text.toMarkdown()) //
+        ..writeln(inlineMarkdown) //
         ..write('```');
     } else {
       final String? textAlign = node.getMetadataValue('textAlign');
@@ -194,7 +322,7 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
           buffer.writeln(alignmentToken);
         }
       }
-      buffer.write(node.text.toMarkdown());
+      buffer.write(inlineMarkdown);
     }
 
     // We're not at the end of the document yet. Add a blank line after the
@@ -217,8 +345,25 @@ class TaskNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<TaskNod
   const TaskNodeSerializer();
 
   @override
-  String doSerialization(Document document, TaskNode node) {
-    return '- [${node.isComplete ? 'x' : ' '}] ${node.text.toPlainText()}';
+  String doSerialization(
+    Document document,
+    TaskNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null && selection is! TextNodeSelection) {
+      // We don't know how to handle this selection type.
+      return '';
+    }
+    final textSelection = selection as TextNodeSelection?;
+    if (textSelection != null && textSelection.isCollapsed) {
+      // Selection is collapsed. Nothing is selected for copy.
+      return '';
+    }
+    final textToConvert = textSelection != null //
+        ? node.text.copyText(textSelection.start, textSelection.end)
+        : node.text;
+
+    return '- [${node.isComplete ? 'x' : ' '}] ${textToConvert.toMarkdown()}';
   }
 }
 
@@ -402,7 +547,11 @@ class HeaderNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Parag
   final MarkdownSyntax markdownSyntax;
 
   @override
-  String? serialize(Document document, DocumentNode node) {
+  String? serialize(
+    Document document,
+    DocumentNode node, {
+    NodeSelection? selection,
+  }) {
     if (node is! ParagraphNode) {
       return null;
     }
@@ -424,7 +573,24 @@ class HeaderNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Parag
   }
 
   @override
-  String doSerialization(Document document, ParagraphNode node) {
+  String doSerialization(
+    Document document,
+    ParagraphNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null && selection is! TextNodeSelection) {
+      // We don't know how to handle this selection type.
+      return '';
+    }
+    final textSelection = selection as TextNodeSelection?;
+    if (textSelection != null && textSelection.isCollapsed) {
+      // Selection is collapsed. Nothing is selected for copy.
+      return '';
+    }
+    final textToConvert = textSelection != null //
+        ? node.text.copyText(textSelection.start, textSelection.end)
+        : node.text;
+
     final buffer = StringBuffer();
 
     final Attribution? blockType = node.getMetadataValue('blockType');
@@ -439,17 +605,17 @@ class HeaderNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Parag
     }
 
     if (blockType == header1Attribution) {
-      buffer.write('# ${node.text.toMarkdown()}');
+      buffer.write('# ${textToConvert.toMarkdown()}');
     } else if (blockType == header2Attribution) {
-      buffer.write('## ${node.text.toMarkdown()}');
+      buffer.write('## ${textToConvert.toMarkdown()}');
     } else if (blockType == header3Attribution) {
-      buffer.write('### ${node.text.toMarkdown()}');
+      buffer.write('### ${textToConvert.toMarkdown()}');
     } else if (blockType == header4Attribution) {
-      buffer.write('#### ${node.text.toMarkdown()}');
+      buffer.write('#### ${textToConvert.toMarkdown()}');
     } else if (blockType == header5Attribution) {
-      buffer.write('##### ${node.text.toMarkdown()}');
+      buffer.write('##### ${textToConvert.toMarkdown()}');
     } else if (blockType == header6Attribution) {
-      buffer.write('###### ${node.text.toMarkdown()}');
+      buffer.write('###### ${textToConvert.toMarkdown()}');
     }
 
     // We're not at the end of the document yet. Add a blank line after the
@@ -461,5 +627,93 @@ class HeaderNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Parag
     }
 
     return buffer.toString();
+  }
+}
+
+/// [DocumentNodeMarkdownSerializer] for serializing [TableBlockNode]s as the extended Markdown
+/// syntax for tables.
+///
+/// See https://www.markdownguide.org/extended-syntax/#tables for the specification.
+class TableBlockNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<TableBlockNode> {
+  const TableBlockNodeSerializer();
+
+  @override
+  String doSerialization(
+    Document document,
+    TableBlockNode node, {
+    NodeSelection? selection,
+  }) {
+    if (selection != null) {
+      if (selection is! UpstreamDownstreamNodeSelection) {
+        // We don't know how to handle this selection type.
+        return '';
+      }
+      if (selection.isCollapsed) {
+        // This selection doesn't include the table - it's a collapsed selection
+        // either on the upstream or downstream edge.
+        return '';
+      }
+    }
+
+    if (node.rowCount == 0) {
+      // The table must have at least one row (the header row) to be serialized.
+      return '';
+    }
+
+    final buffer = StringBuffer();
+
+    final headerRow = node.getRow(0);
+
+    // Serialize the header values.
+    buffer.write('|');
+    for (final cell in headerRow) {
+      buffer.write(' ');
+      buffer.write(cell.text.toMarkdown());
+      buffer.write(' |');
+    }
+
+    // Serialize the header separator row.
+    buffer.writeln();
+    buffer.write('|');
+    for (int i = 0; i < headerRow.length; i++) {
+      buffer.write(' ');
+
+      final firstDataCell = node.rowCount > 1 //
+          ? node.getCell(rowIndex: 1, columnIndex: i)
+          : null;
+
+      buffer.write(_getHeaderSeparatorColumnContent(firstDataCell));
+      buffer.write(' |');
+    }
+
+    // Serialize the data rows.
+    if (node.rowCount > 1) {
+      for (int i = 1; i < node.rowCount; i++) {
+        buffer.writeln();
+        final row = node.getRow(i);
+
+        buffer.write('|');
+        for (final cell in row) {
+          buffer.write(' ');
+          buffer.write(cell.text.toMarkdown());
+          buffer.write(' |');
+        }
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  String _getHeaderSeparatorColumnContent(TextNode? firstDataCell) {
+    if (firstDataCell == null) {
+      return '---';
+    }
+
+    final textAlign = firstDataCell.getMetadataValue('textAlign');
+    return switch (textAlign) {
+      TextAlign.center => ':--:',
+      TextAlign.right => '--:',
+      _ => '---',
+    };
   }
 }

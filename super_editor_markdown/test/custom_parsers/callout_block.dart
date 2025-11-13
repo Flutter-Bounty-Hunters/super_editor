@@ -192,7 +192,7 @@ class _InlineMarkdownToDocument implements md.NodeVisitor {
 
 class CalloutSerializer implements DocumentNodeMarkdownSerializer {
   @override
-  String? serialize(Document document, DocumentNode node) {
+  String? serialize(Document document, DocumentNode node, {NodeSelection? selection}) {
     if (node is! ParagraphNode) {
       return null;
     }

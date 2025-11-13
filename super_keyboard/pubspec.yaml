@@ -1,6 +1,6 @@
 name: super_keyboard
 description: "A plugin that reports keyboard visibility and size."
-version: 0.2.2
+version: 0.3.0
 homepage: https://github.com/superlistapp/super_editor
 funding:
   - https://flutterbountyhunters.com

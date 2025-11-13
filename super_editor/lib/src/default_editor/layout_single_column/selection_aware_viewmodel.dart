@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:super_editor/src/core/document.dart' show NodeSelection;
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 

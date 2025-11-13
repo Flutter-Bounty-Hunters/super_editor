@@ -32,6 +32,7 @@ import 'package:super_editor/src/infrastructure/platforms/platform.dart';
 import 'package:super_editor/src/infrastructure/signal_notifier.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
+import 'package:super_keyboard/super_keyboard.dart';
 
 import '../infrastructure/document_gestures.dart';
 import '../infrastructure/document_gestures_interaction_overrides.dart';
@@ -268,7 +269,6 @@ class IosDocumentTouchInteractor extends StatefulWidget {
     this.openKeyboardWhenTappingExistingSelection = true,
     this.openKeyboardOnSelectionChange = true,
     required this.openSoftwareKeyboard,
-    required this.isImeConnected,
     required this.scrollController,
     required this.dragHandleAutoScroller,
     required this.fillViewport,
@@ -293,10 +293,6 @@ class IosDocumentTouchInteractor extends StatefulWidget {
 
   /// A callback that should open the software keyboard when invoked.
   final VoidCallback openSoftwareKeyboard;
-
-  /// A [ValueListenable] that should notify this widget when the IME connects
-  /// and disconnects.
-  final ValueListenable<bool> isImeConnected;
 
   /// Optional list of handlers that respond to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.
@@ -666,7 +662,8 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           selection.extent.nodeId == docPosition.nodeId &&
           selection.extent.nodePosition.isEquivalentTo(docPosition.nodePosition);
 
-      if (didTapOnExistingSelection && widget.isImeConnected.value) {
+      if (didTapOnExistingSelection &&
+          SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
         // Toggle the toolbar display when the user taps on the collapsed caret,
         // or on top of an existing selection.
         //
@@ -1519,7 +1516,13 @@ class SuperEditorIosToolbarOverlayManagerState extends State<SuperEditorIosToolb
     super.didChangeDependencies();
 
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show()` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @visibleForTesting
@@ -1581,7 +1584,13 @@ class SuperEditorIosMagnifierOverlayManagerState extends State<SuperEditorIosMag
   void didChangeDependencies() {
     super.didChangeDependencies();
     _controlsController = SuperEditorIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @override

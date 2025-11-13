@@ -1,3 +1,8 @@
+## [0.3.0]
+### Nov 4, 2025
+ * BREAKING: Moved logging to a class called `SKLog`, made log printer configurable by client apps.
+ * BREAKING: Adjusted platform logging so that platform logs can (optionally) be forwarded to the Flutter-side logger.
+
 ## [0.2.2]
 ### July 6, 2025
  * FEATURE: `KeyboardHeightSimulator` can now render a widget version of a software keyboard in golden tests.

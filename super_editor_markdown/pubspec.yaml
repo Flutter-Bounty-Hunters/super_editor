@@ -1,6 +1,6 @@
 name: super_editor_markdown
 description: Markdown (de)serialization for super_editor documents.
-version: 0.1.8
+version: 0.2.0
 homepage: https://github.com/superlistapp/super_editor
 funding:
   - https://flutterbountyhunters.com
@@ -19,9 +19,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  super_editor: ^0.3.0-dev.25
+  super_editor: ^0.3.0-dev.31
   logging: ^1.3.0
   markdown: ^7.2.1
+  collection: ^1.15.0
 
 #dependency_overrides:
   # Override to local mono-repo path so devs can test this repo
@@ -42,6 +43,7 @@ dev_dependencies:
   golden_toolkit: ^0.15.0
 
   super_text_layout: ^0.1.12
+  text_table: ^4.0.1
 
 flutter:
 # no Flutter configuration

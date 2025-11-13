@@ -749,11 +749,23 @@ Paragraph3""");
           serializeDocumentToMarkdown(doc),
           '''
 - [x] Task 1
-- [ ] Task 2
+- [ ] Task 2  
 with multiple lines
 - [ ] Task 3
 - [x] Task 4''',
         );
+      });
+
+      test('task with styles', () {
+        final doc = MutableDocument(nodes: [
+          TaskNode(
+            id: '1',
+            text: attributedTextFromMarkdown('**Task** 1'),
+            isComplete: false,
+          ),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), '- [ ] **Task** 1');
       });
 
       test('example doc', () {
@@ -1454,7 +1466,7 @@ This is some code
         const markdown = '''
 - [x] Task 1
 - [ ] Task 2
-- [ ] Task 3
+- [ ] Task 3  
 with multiple lines
 - [x] Task 4''';
 
@@ -1569,6 +1581,18 @@ with multiple lines
 
         // Ensure text outside the range isn't attributed.
         expect(styledText.getAllAttributionsAt(7).contains(underlineAttribution), false);
+      });
+
+      test('paragraph with inline code', () {
+        final doc = deserializeMarkdownToDocument('`This is` a paragraph.');
+        final styledText = (doc.getNodeAt(0)! as ParagraphNode).text;
+
+        // Ensure text within the range is attributed.
+        expect(styledText.getAllAttributionsAt(0).contains(codeAttribution), true);
+        expect(styledText.getAllAttributionsAt(6).contains(codeAttribution), true);
+
+        // Ensure text outside the range isn't attributed.
+        expect(styledText.getAllAttributionsAt(7).contains(codeAttribution), false);
       });
 
       test('paragraph with left alignment', () {

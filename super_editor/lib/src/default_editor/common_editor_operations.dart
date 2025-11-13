@@ -5,7 +5,6 @@ import 'package:attributed_text/attributed_text.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:linkify/linkify.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_layout.dart';
@@ -21,11 +20,11 @@ import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
-import 'attributions.dart';
-import 'horizontal_rule.dart';
-import 'image.dart';
-import 'multi_node_editing.dart';
-import 'text_tools.dart';
+import 'package:super_editor/src/default_editor/attributions.dart';
+import 'package:super_editor/src/default_editor/horizontal_rule.dart';
+import 'package:super_editor/src/default_editor/image.dart';
+import 'package:super_editor/src/default_editor/multi_node_editing.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 
 /// Performs common, high-level editing and composition tasks
 /// with a simplified API.
@@ -274,6 +273,8 @@ class CommonEditorOperations {
   /// in [movementModifier]. To move to the beginning of a line, pass
   /// [MovementModifier.line] in [movementModifier].
   ///
+  /// Clears the composing region.
+  ///
   /// Returns [true] if the extent moved, or the selection changed, e.g., the
   /// selection collapsed but the extent stayed in the same place. Returns
   /// [false] if the extent did not move and the selection did not change.
@@ -292,6 +293,11 @@ class CommonEditorOperations {
           SelectionChangeType.collapseSelection,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
 
       return true;
@@ -350,6 +356,11 @@ class CommonEditorOperations {
           SelectionChangeType.pushExtent,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
     } else {
       // Push the caret upstream.
@@ -361,6 +372,11 @@ class CommonEditorOperations {
           SelectionChangeType.pushCaret,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
     }
 
@@ -380,6 +396,8 @@ class CommonEditorOperations {
   /// in [movementModifier]. To move to the end of a line, pass
   /// [MovementModifier.line] in [movementModifier].
   ///
+  /// Clears any composing region.
+  ///
   /// Returns [true] if the extent moved, or the selection changed, e.g., the
   /// selection collapsed but the extent stayed in the same place. Returns
   /// [false] if the extent did not move and the selection did not change.
@@ -398,6 +416,11 @@ class CommonEditorOperations {
           SelectionChangeType.collapseSelection,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
 
       return true;
@@ -458,6 +481,11 @@ class CommonEditorOperations {
           SelectionChangeType.pushExtent,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
     } else {
       // Push the caret downstream.
@@ -469,6 +497,11 @@ class CommonEditorOperations {
           SelectionChangeType.pushCaret,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
     }
 
@@ -490,6 +523,8 @@ class CommonEditorOperations {
   ///
   /// Expands/contracts the selection if [expand] is [true], otherwise
   /// collapses the selection or keeps it collapsed.
+  ///
+  /// Clears any composing region.
   ///
   /// Returns [true] if the extent moved, or the selection changed, e.g., the
   /// selection collapsed but the extent stayed in the same place. Returns
@@ -559,6 +594,8 @@ class CommonEditorOperations {
   ///
   /// Expands/contracts the selection if [expand] is [true], otherwise
   /// collapses the selection or keeps it collapsed.
+  ///
+  /// Clears any composing region.
   ///
   /// Returns [true] if the extent moved, or the selection changed, e.g., the
   /// selection collapsed but the extent stayed in the same place. Returns
@@ -804,6 +841,11 @@ class CommonEditorOperations {
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest()
       ]);
     } else {
       // Selection should be replaced by new collapsed position.
@@ -813,6 +855,11 @@ class CommonEditorOperations {
           SelectionChangeType.collapseSelection,
           SelectionReason.userInteraction,
         ),
+        // Since we are moving the caret, we clear the composing region (if any)
+        // to avoid lefting a composing region far from the caret. Without this,
+        // we can end up with a selection in one node and a composing region
+        // in another node.
+        const ClearComposingRegionRequest(),
       ]);
     }
   }

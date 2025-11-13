@@ -16,7 +16,7 @@ void main() {
       await tester //
           .createDocument()
           .withSingleEmptyParagraph()
-          .withAddedComponents([const HintTextComponentBuilder()])
+          .withAddedComponents([HintComponentBuilder("Hello", (_) => const TextStyle())])
           .autoFocus(false)
           .pump();
 
@@ -94,59 +94,6 @@ void main() {
       // unkown node.
     });
   });
-}
-
-class HintTextComponentBuilder implements ComponentBuilder {
-  const HintTextComponentBuilder();
-
-  @override
-  SingleColumnLayoutComponentViewModel? createViewModel(
-    PresenterContext context,
-    Document document,
-    DocumentNode node,
-  ) {
-    // This component builder can work with the standard paragraph view model.
-    // We'll defer to the standard paragraph component builder to create it.
-    return null;
-  }
-
-  @override
-  Widget? createComponent(
-      SingleColumnDocumentComponentContext componentContext, SingleColumnLayoutComponentViewModel componentViewModel) {
-    if (componentViewModel is! ParagraphComponentViewModel) {
-      return null;
-    }
-
-    final textSelection = componentViewModel.selection;
-
-    return TextWithHintComponent(
-      key: componentContext.componentKey,
-      text: componentViewModel.text,
-      textStyleBuilder: defaultStyleBuilder,
-      metadata: componentViewModel.blockType != null
-          ? {
-              'blockType': componentViewModel.blockType,
-            }
-          : {},
-      // This is the text displayed as a hint.
-      hintText: AttributedText(
-        'this is hint text...',
-        AttributedSpans(
-          attributions: [
-            const SpanMarker(attribution: italicsAttribution, offset: 12, markerType: SpanMarkerType.start),
-            const SpanMarker(attribution: italicsAttribution, offset: 15, markerType: SpanMarkerType.end),
-          ],
-        ),
-      ),
-      // This is the function that selects styles for the hint text.
-      hintStyleBuilder: (Set<Attribution> attributions) => defaultStyleBuilder(attributions).copyWith(
-        color: const Color(0xFFDDDDDD),
-      ),
-      textSelection: textSelection,
-      selectionColor: componentViewModel.selectionColor,
-      underlines: componentViewModel.createUnderlines(),
-    );
-  }
 }
 
 /// Pump a SuperEditor containing an image which will render as an 100x100 box
@@ -229,11 +176,6 @@ class _UnknownNode extends BlockNode {
 
   @override
   _UnknownNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
-    return _UnknownNode(id: id);
-  }
-
-  @override
-  _UnknownNode copy() {
     return _UnknownNode(id: id);
   }
 }

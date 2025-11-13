@@ -10,8 +10,8 @@ import 'supereditor_test_tools.dart';
 import 'test_documents.dart';
 
 void main() {
-  group("SuperEditor", () {
-    group("applies attributions", () {
+  group("SuperEditor >", () {
+    group("applies attributions >", () {
       group("when continuing existing attributions >", () {
         group("by placing caret >", () {
           // Bold is a stand-in for any value-based attribution extension, e.g.,
@@ -1701,6 +1701,96 @@ void main() {
             ),
           ],
         ),
+      );
+    });
+
+    testWidgetsOnArbitraryDesktop('adds and removes attributions with placeholders', (tester) async {
+      // A test that locks down a fix for bug: https://github.com/superlistapp/super_editor/issues/2776
+      // The problem was a behavior in the command that was incorrectly copying the `AttributedText`
+      // when the `AttributedText` has placeholders.
+      final testContext = await tester //
+          .createDocument()
+          .withCustomContent(
+            MutableDocument(
+              nodes: [
+                ParagraphNode(
+                  id: '1',
+                  text: AttributedText(
+                    'this [] orange [] that',
+                    null,
+                    {
+                      6: 'first',
+                      17: 'second',
+                    },
+                  ),
+                )
+              ],
+            ),
+          )
+          .pump();
+
+      // Apply orange color to the word "orange".
+      testContext.editor.execute([
+        AddTextAttributionsRequest(
+          documentRange: _creatSingleNodeTextRange('1', 5, 11),
+          attributions: {const ColorAttribution(Colors.orange)},
+        ),
+      ]);
+      await tester.pump();
+
+      // Ensure the plain text value didn't change, the attribution was applied, and the placeholders remain.
+      expect(
+        SuperEditorInspector.findTextInComponent('1').toPlainText(includePlaceholders: false),
+        'this [] orange [] that',
+      );
+
+      expect(
+        SuperEditorInspector.findTextInComponent('1').spans,
+        AttributedSpans(
+          attributions: [
+            ..._createSpanMarkersForAttribution(
+              attribution: const ColorAttribution(Colors.orange),
+              startOffset: 5,
+              endOffset: 10,
+            ),
+          ],
+        ),
+      );
+
+      expect(
+        SuperEditorInspector.findTextInComponent('1').placeholders,
+        {
+          6: 'first',
+          17: 'second',
+        },
+      );
+
+      // Now test the removal command by removing the attribution.
+      testContext.editor.execute([
+        RemoveTextAttributionsRequest(
+          documentRange: _creatSingleNodeTextRange('1', 5, 11),
+          attributions: {const ColorAttribution(Colors.orange)},
+        ),
+      ]);
+      await tester.pump();
+
+      // Ensure the plain text value didn't change, the attribution was removed, and the placeholders remain.
+      expect(
+        SuperEditorInspector.findTextInComponent('1').toPlainText(includePlaceholders: false),
+        'this [] orange [] that',
+      );
+
+      expect(
+        SuperEditorInspector.findTextInComponent('1').spans,
+        AttributedSpans(),
+      );
+
+      expect(
+        SuperEditorInspector.findTextInComponent('1').placeholders,
+        {
+          6: 'first',
+          17: 'second',
+        },
       );
     });
   });

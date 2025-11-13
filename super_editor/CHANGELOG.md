@@ -1,3 +1,64 @@
+## [0.3.0-dev.38]
+### Nov 9, 2025
+* BREAKING, FIX: Rework `SuperEditorPlugin` lifecycle because we discovered that when
+   one `SuperEditor` widget gets replaced by another, the new widget runs `initState()`
+   before the old widget runs `dispose()`. This resulted in plugins ending up in a detached
+   state when they should have been attached. This release adds some reference counting
+   so that detachment only happens when it truly should.
+* BREAKING, ADJUSTMENT: Related to the plugin lifecycle work, `EditContext.remove()` was
+   adjusted to prevent accidentally removing a resource that was just added. The API change
+   now expects you to pass the key to remove, and the value you want to remove for that key.
+   If the current value doesn't match what is provided, then the removal doesn't happen.
+
+## [0.3.0-dev.37]
+### Nov 5, 2025
+* ADJUSTMENT: Upgrade `super_keyboard` to `v0.3.0`.
+* ADJUSTMENT: Upgrade `follow_the_leader` to `v0.5.2`.
+
+## [0.3.0-dev.36]
+### Oct 29, 2025
+* ADJUSTMENT: Change Android toolbar to look like latest Android OS version.
+* FIX: When loading a document that contains text with tag triggers, e.g. "/",
+       don't attempt to compose tags when placing the caret near the trigger.
+
+## [0.3.0-dev.35]
+### Oct 7, 2025
+* FIX: Detach plugins in `SuperEditor` `dispose()`.
+* FIX: Crash when pushing route with `delegatedTransition`.
+
+## [0.3.0-dev.34]
+### Sept 23, 2025
+* FIX: `MessagePageScaffold` fix its `Element` so that subtrees correctly activate and deactivate.
+* FIX: `KeyboardPanelScaffold` under certain conditions retained toolbar space when toolbar wasn't visible.
+* FIX: `KeyboardScaffoldSafeArea` handle possibility that the safe area content is below the bottom of the screen.
+* FIX: A couple places where `OverlayController.show()` are called were moved to post frame callbacks.
+
+## [0.3.0-dev.33]
+### Aug 27, 2025
+* ADJUSTMENT: Upgrade `attributed_text` dependency to `v0.4.5`. 
+
+## [0.3.0-dev.32]
+### Aug 27, 2025
+* FIX: `HintTextComponent` now uses its given inline widget builders.
+
+## [0.3.0-dev.31]
+### Aug 26, 2025
+* FEATURE: Block/Markdown Tables
+   * Created a table node that holds styled text (no internal blocks), and supports upstream/downstream selection.
+   * Parses a table node from Markdown, with super_editor_markdown 0.1.9.
+   * Visual component for displaying Markdown tables.
+* FIX: Placeholder bug when adding/removing attributions.
+* FIX: No longer hides toolbar when releasing a long press in an editor.
+* ADJUSTMENT: Publicly export ReadOnlyTaskComponentBuilder.
+
+## [0.3.0-dev.30]
+### Aug 26, 2025
+Messed up release from wrong branch.
+
+## [0.3.0-dev.29]
+### July 27, 2025
+ * FEATURE: Serialize `Document`s to HTML.
+
 ## [0.3.0-dev.28]
 ### July 22, 2025
  * FIX: Inserting character (via IME) with a block node and text selected, now correctly deletes the selected content

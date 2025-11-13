@@ -21,6 +21,40 @@ void main() {
           throwsA(isA<AssertionError>()),
         );
       });
+
+      test("is order agnostic", () {
+        // Ensure that constructors don't below up when the placeholder
+        // entry order isn't the same as content order, and also ensure that
+        // equality doesn't care about the map order.
+
+        final order1 = AttributedText("Hello, World!", null, {
+          3: const _FakePlaceholder("first"),
+          6: const _FakePlaceholder("second"),
+          9: const _FakePlaceholder("third"),
+        });
+
+        final order2 = AttributedText("Hello, World!", null, {
+          6: const _FakePlaceholder("second"),
+          3: const _FakePlaceholder("first"),
+          9: const _FakePlaceholder("third"),
+        });
+
+        final order3 = AttributedText("Hello, World!", null, {
+          6: const _FakePlaceholder("second"),
+          9: const _FakePlaceholder("third"),
+          3: const _FakePlaceholder("first"),
+        });
+
+        final order4 = AttributedText("Hello, World!", null, {
+          9: const _FakePlaceholder("third"),
+          6: const _FakePlaceholder("second"),
+          3: const _FakePlaceholder("first"),
+        });
+
+        expect(order1, equals(order2));
+        expect(order1, equals(order3));
+        expect(order1, equals(order4));
+      });
     });
 
     group("length >", () {

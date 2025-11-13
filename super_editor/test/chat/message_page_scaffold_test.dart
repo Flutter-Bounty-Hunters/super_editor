@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 
+import '../infrastructure/keyboard_panel_scaffold_test.dart';
+
 void main() {
   group('Message page scaffold >', () {
     testWidgets('can add and remove ancestor inherited widgets', (tester) async {
@@ -163,6 +165,64 @@ void main() {
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
       expect(find.text('Home'), findsOne);
+    });
+
+    testWidgetsOnMobilePhone('works when bottom sheet animates from below the screen', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Launch Bottom Sheet"),
+                  ElevatedButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        elevation: 24,
+                        clipBehavior: Clip.antiAlias,
+                        scrollControlDisabledMaxHeightRatio: 0.93,
+                        builder: (context) {
+                          return MessagePageScaffold(
+                            contentBuilder: (context, bottomSheetHeight) {
+                              return const Placeholder();
+                            },
+                            bottomSheetBuilder: (context) {
+                              return KeyboardScaffoldSafeArea(
+                                // ^ This widget is really what we're testing here. It used to
+                                //   throw a layout area when its content was below the bottom of
+                                //   the screen.
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  color: Colors.red,
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                    child: const Text("Open Sheet"),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ),
+      ));
+
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pumpAndSettle();
+
+      // Ensure the bottom sheet was actually launched.
+      expect(find.byType(MessagePageScaffold), findsOne);
+
+      // If there's no error during opening animation, things should be fine.
+      // Before this test and related modifications, we were getting layout errors
+      // as the bottom sheet tried to animate up from below the bottom of the screen.
     });
   });
 }

@@ -95,7 +95,7 @@ class StableTagPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(StableTagPlugin.stableTagIndexKey)
+      ..context.remove(StableTagPlugin.stableTagIndexKey, tagIndex)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
       ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }

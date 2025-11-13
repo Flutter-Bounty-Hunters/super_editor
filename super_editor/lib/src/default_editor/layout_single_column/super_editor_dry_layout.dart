@@ -138,13 +138,13 @@ class RenderViewportWithDryLayout extends RenderViewport {
   }
 
   @override
-  computeMaxIntrinsicHeight(double width) {
+  double computeMaxIntrinsicHeight(double width) {
     final layoutBox = _findFirstRenderBoxInSliverList(child);
     return layoutBox.computeMaxIntrinsicHeight(width);
   }
 
   @override
-  computeMinIntrinsicHeight(double width) {
+  double computeMinIntrinsicHeight(double width) {
     final layoutBox = _findFirstRenderBoxInSliverList(child);
     return layoutBox.computeMinIntrinsicHeight(width);
   }

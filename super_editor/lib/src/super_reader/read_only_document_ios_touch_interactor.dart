@@ -1077,7 +1077,13 @@ class SuperReaderIosToolbarOverlayManagerState extends State<SuperReaderIosToolb
     super.didChangeDependencies();
 
     _controlsContext = SuperReaderIosControlsScope.rootOf(context);
-    _overlayPortalController.show();
+
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @override
@@ -1138,7 +1144,12 @@ class SuperReaderIosMagnifierOverlayManagerState extends State<SuperReaderIosMag
 
     _controlsContext = SuperReaderIosControlsScope.rootOf(context);
 
-    _overlayPortalController.show();
+    // It's possible that `didChangeDependencies` is called during build when pushing a route
+    // that has a delegated transition. We need to wait until the next frame to show the overlay,
+    // otherwise this widget crashes, since we can't call `OverlayPortalController.show` during build.
+    onNextFrame((timeStamp) {
+      _overlayPortalController.show();
+    });
   }
 
   @override

@@ -51,8 +51,14 @@ class AttributedText {
     AttributedSpans? spans,
     Map<int, Object>? placeholders,
   ])  : _text = text ?? "",
-        spans = spans ?? AttributedSpans(),
-        placeholders = placeholders ?? <int, Object>{} {
+        spans = spans ?? AttributedSpans() {
+    // Sort the placeholders map so that we can always assume the entries
+    // iterate in the placeholder content order. This knowledge is relied upon
+    // in multiple places in this class.
+    this.placeholders = Map.fromEntries(
+      placeholders?.entries.sorted((a, b) => a.key - b.key) ?? [],
+    );
+
     assert(() {
       // ^ Run this in an assert with a callback so that the validation doesn't run in
       //   production and cost processor cycles.
@@ -70,6 +76,7 @@ class AttributedText {
       final buffer = StringBuffer();
       int start = 0;
       int insertedPlaceholders = 0;
+
       for (final entry in this.placeholders.entries) {
         final textSegment = _text.substring(start - insertedPlaceholders, entry.key - insertedPlaceholders);
         buffer.write(textSegment);
@@ -160,8 +167,11 @@ class AttributedText {
   /// Placeholders that represent non-text content, e.g., inline images, that
   /// should appear in the rendered text.
   ///
+  /// The entries in this map are in content-order, e.g., the entry for a placeholder
+  /// at index 3 comes before an entry whose placeholder is at index 5.
+  ///
   /// In terms of [length], each placeholder is treated as a single character.
-  final Map<int, Object> placeholders;
+  late final Map<int, Object> placeholders;
 
   /// Returns the `length` of this [AttributedText], which includes the length
   /// of the plain text `String`, and the number of [placeholders].

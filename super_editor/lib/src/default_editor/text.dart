@@ -694,6 +694,12 @@ mixin TextComponentViewModel on SingleColumnLayoutComponentViewModel {
       showComposingRegionUnderline.hashCode;
 }
 
+/// Keys to access metadata that are specific to a [TextNode].
+class TextNodeMetadata {
+  /// The [TextAlign] of the [TextNode].
+  static const String textAlign = 'textAlign';
+}
+
 /// Document component that displays hint text when its content text
 /// is empty.
 ///
@@ -702,6 +708,7 @@ class TextWithHintComponent extends StatefulWidget {
   const TextWithHintComponent({
     Key? key,
     required this.text,
+    this.inlineWidgetBuilders = const [],
     this.hintText,
     this.hintStyleBuilder,
     this.textAlign,
@@ -716,6 +723,10 @@ class TextWithHintComponent extends StatefulWidget {
   }) : super(key: key);
 
   final AttributedText text;
+
+  /// {@macro text_component_inline_widget_builders}
+  final InlineWidgetBuilderChain inlineWidgetBuilders;
+
   final AttributedText? hintText;
   final AttributionStyleBuilder? hintStyleBuilder;
   final TextAlign? textAlign;
@@ -768,6 +779,7 @@ class _TextWithHintComponentState extends State<TextWithHintComponent>
         TextComponent(
           key: _childTextComponentKey,
           text: widget.text,
+          inlineWidgetBuilders: widget.inlineWidgetBuilders,
           textAlign: widget.textAlign,
           textDirection: widget.textDirection,
           textStyleBuilder: widget.textStyleBuilder,
@@ -816,10 +828,12 @@ class TextComponent extends StatefulWidget {
 
   final AttributionStyleBuilder textStyleBuilder;
 
+  /// {@template text_component_inline_widget_builders}
   /// A Chain of Responsibility that's used to build inline widgets.
   ///
   /// The first builder in the chain to return a non-null `Widget` will be
   /// used for a given inline placeholder.
+  /// {@endtemplate}
   final InlineWidgetBuilderChain inlineWidgetBuilders;
 
   final Map<String, dynamic> metadata;
@@ -1601,7 +1615,11 @@ class AddTextAttributionsCommand extends EditCommand {
           node.id,
           node.copyTextNodeWith(
             text: AttributedText(
-              node.text.toPlainText(),
+              node.text.toPlainText(
+                // Don't include placeholder characters, because we're providing
+                // actual placeholders down below.
+                includePlaceholders: false,
+              ),
               node.text.spans.copy()
                 ..addAttribution(
                   newAttribution: attribution,
@@ -1729,13 +1747,18 @@ class RemoveTextAttributionsCommand extends EditCommand {
         // see that we made a change, and re-renders the text in the document.
         node = node.copyTextNodeWith(
           text: AttributedText(
-            node.text.toPlainText(),
+            node.text.toPlainText(
+              // Don't include placeholder characters, because we're providing
+              // actual placeholders down below.
+              includePlaceholders: false,
+            ),
             node.text.spans.copy()
               ..removeAttribution(
                 attributionToRemove: attribution,
                 start: range.start,
                 end: range.end,
               ),
+            Map.from(node.text.placeholders),
           ),
         );
 
