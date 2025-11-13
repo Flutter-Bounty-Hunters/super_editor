@@ -2264,58 +2264,75 @@ class NodeTextInsertionEvent extends NodeChangeEvent {
 class TextInsertionEvent extends NodeTextInsertionEvent {
   TextInsertionEvent({
     required String nodeId,
-    required this.offset,
+    required int offset,
     required super.text,
   }) : super(nodeId: nodeId, position: TextNodePosition(offset: offset));
 
-  final int offset;
+  int get offset => (position as TextNodePosition).offset;
 
   @override
   String describe() => "Inserted text ($nodeId) @ $offset: '${text.toPlainText()}'";
 
   @override
   String toString() => "TextInsertionEvent ('$nodeId' - $offset -> '${text.toPlainText()}')";
+}
+
+class NodeTextDeletedEvent extends NodeChangeEvent {
+  NodeTextDeletedEvent(
+    String nodeId, {
+    required this.position,
+    required this.deletedText,
+  }) : super(nodeId);
+
+  static NodeTextDeletedEvent create({
+    required String nodeId,
+    required NodePosition position,
+    required AttributedText deletedText,
+  }) {
+    if (position is TextNodePosition) {
+      // Keeping old Event class, for backward compatibility with existing reactions
+      return TextDeletedEvent(nodeId, offset: position.offset, deletedText: deletedText);
+    } else {
+      return NodeTextDeletedEvent(nodeId, position: position, deletedText: deletedText);
+    }
+  }
+
+  final NodePosition position;
+  final AttributedText deletedText;
+
+  @override
+  String describe() => "Deleted text ($nodeId) @ $position: '${deletedText.toPlainText()}'";
+
+  @override
+  String toString() => "NodeTextDeletedEvent ('$nodeId' - $position -> '${deletedText.toPlainText()}')";
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       super == other &&
-          other is TextInsertionEvent &&
+          other is NodeTextDeletedEvent &&
           runtimeType == other.runtimeType &&
-          offset == other.offset &&
-          text == other.text;
+          position.isEquivalentTo(other.position) &&
+          deletedText == other.deletedText;
 
   @override
-  int get hashCode => super.hashCode ^ offset.hashCode ^ text.hashCode;
+  int get hashCode => super.hashCode ^ position.hashCode ^ deletedText.hashCode;
 }
 
-class TextDeletedEvent extends NodeChangeEvent {
-  const TextDeletedEvent(
+class TextDeletedEvent extends NodeTextDeletedEvent {
+  TextDeletedEvent(
     String nodeId, {
-    required this.offset,
-    required this.deletedText,
-  }) : super(nodeId);
+    required int offset,
+    required super.deletedText,
+  }) : super(nodeId, position: TextNodePosition(offset: offset));
 
-  final int offset;
-  final AttributedText deletedText;
+  int get offset => (position as TextNodePosition).offset;
 
   @override
   String describe() => "Deleted text ($nodeId) @ $offset: ${deletedText.toPlainText()}";
 
   @override
   String toString() => "TextDeletedEvent ('$nodeId' - $offset -> '${deletedText.toPlainText()}')";
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      super == other &&
-          other is TextDeletedEvent &&
-          runtimeType == other.runtimeType &&
-          offset == other.offset &&
-          deletedText == other.deletedText;
-
-  @override
-  int get hashCode => super.hashCode ^ offset.hashCode ^ deletedText.hashCode;
 }
 
 /// A request to insert a newline at the current caret position.

@@ -2630,42 +2630,34 @@ class DeleteUpstreamCharacterCommand extends EditCommand {
     if (!selection.isCollapsed) {
       throw Exception("Tried to delete upstream character but the selection isn't collapsed.");
     }
-    if (document.getLeafNode(selection.extent) is! TextNode) {
+    final textNode = document.getLeafNode(selection.extent);
+    if (textNode is! TextNode) {
       throw Exception("Tried to delete upstream character but the selected node isn't a TextNode.");
     }
-    if (selection.isCollapsed && (selection.extent.leafNodePosition as TextNodePosition).offset <= 0) {
+    final extentNodePosition = selection.extent.leafNodePosition as TextNodePosition;
+    if (selection.isCollapsed && extentNodePosition.offset <= 0) {
       throw Exception("Tried to delete upstream character but the caret is at the beginning of the text.");
     }
 
-    final textNode = document.getLeafNode(selection.extent) as TextNode;
-    final currentTextOffset = (selection.extent.leafNodePosition as TextNodePosition).offset;
-
-    final previousCharacterOffset = getCharacterStartBounds(textNode.text.toPlainText(), currentTextOffset);
+    final previousCharacterOffset = getCharacterStartBounds(textNode.text.toPlainText(), extentNodePosition.offset);
 
     final textRange = textNode.selectionBetween(
-      currentTextOffset,
+      extentNodePosition.offset,
       previousCharacterOffset,
     );
 
-    final rangeToDelete = DocumentRange(
-      start: selection.base.copyWithLeafPosition(textRange.start.nodePosition),
-      end: selection.base.copyWithLeafPosition(textRange.end.nodePosition),
-    );
-
     final previousCharacterSelection = textNode.selectionAt(previousCharacterOffset);
-    final newSelection = DocumentSelection(
-      base: selection.base.copyWithLeafPosition(previousCharacterSelection.start.nodePosition),
-      extent: selection.base.copyWithLeafPosition(previousCharacterSelection.end.nodePosition),
-    );
 
     // Delete the selected content.
     executor
       ..executeCommand(
-        DeleteContentCommand(documentRange: rangeToDelete),
+        DeleteContentCommand(
+          documentRange: selection.moveWithinLeafNode(textRange),
+        ),
       )
       ..executeCommand(
         ChangeSelectionCommand(
-          newSelection,
+          selection.moveWithinLeafNode(previousCharacterSelection),
           SelectionChangeType.deleteContent,
           SelectionReason.userInteraction,
         ),

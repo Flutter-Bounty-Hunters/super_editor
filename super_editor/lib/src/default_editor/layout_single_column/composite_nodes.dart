@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
@@ -400,6 +401,18 @@ class CompositeNodePosition implements NodePosition {
   int get hashCode => childNodeId.hashCode ^ childNodePosition.hashCode;
 }
 
+extension DocumentSelectionCompositeEx on DocumentSelection {
+  DocumentSelection moveWithinLeafNode(DocumentSelection leafSelection) {
+    if (leafSelection.base.nodeId != base.leafNodeId || leafSelection.extent.nodeId != extent.leafNodeId) {
+      throw Exception('Tried to move selection within leaf node, but new selection relates to different leaf node');
+    }
+    return DocumentSelection(
+      base: base.copyWithLeafPosition(leafSelection.base.nodePosition),
+      extent: extent.copyWithLeafPosition(leafSelection.extent.nodePosition),
+    );
+  }
+}
+
 extension DocumentPositionCompositeEx on DocumentPosition {
   NodePosition get leafNodePosition => nodePosition.leafPosition;
 
@@ -408,6 +421,10 @@ extension DocumentPositionCompositeEx on DocumentPosition {
       nodeId: nodeId,
       nodePosition: this.nodePosition.positionWithNewLeaf(nodePosition),
     );
+  }
+
+  String get leafNodeId {
+    return nodePosition._leafNodeId ?? nodeId;
   }
 }
 
@@ -425,6 +442,15 @@ extension NodePositionCompositeEx on NodePosition {
       return current.moveWithinChild(current.childNodePosition.positionWithNewLeaf(newLeafPosition));
     } else {
       return newLeafPosition;
+    }
+  }
+
+  String? get _leafNodeId {
+    final current = this;
+    if (current is CompositeNodePosition) {
+      return current.childNodePosition._leafNodeId ?? current.childNodeId;
+    } else {
+      return null;
     }
   }
 }

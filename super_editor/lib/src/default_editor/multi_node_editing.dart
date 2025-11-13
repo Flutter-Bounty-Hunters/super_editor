@@ -8,6 +8,7 @@ import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/common_editor_operations.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -705,7 +706,6 @@ class DeleteContentCommand extends EditCommand {
     _log.log('DeleteSelectionCommand', 'DocumentEditor: deleting selection: $documentRange');
     final document = context.document;
     final selection = context.composer.selection;
-    // TODO: Implement for CompositeNodePosition
     final nodes = document.getNodesInside(documentRange.start, documentRange.end);
     final normalizedRange = documentRange.normalize(document);
 
@@ -736,7 +736,6 @@ class DeleteContentCommand extends EditCommand {
       final changeList = _deleteSelectionWithinSingleNode(
         document: document,
         normalizedRange: normalizedRange,
-        node: nodes.first,
       );
 
       executor.logChanges(changeList);
@@ -874,11 +873,11 @@ class DeleteContentCommand extends EditCommand {
   List<EditEvent> _deleteSelectionWithinSingleNode({
     required MutableDocument document,
     required DocumentRange normalizedRange,
-    required DocumentNode node,
   }) {
     _log.log('_deleteSelectionWithinSingleNode', ' - deleting selection within single node');
-    final startPosition = normalizedRange.start.nodePosition;
-    final endPosition = normalizedRange.end.nodePosition;
+    final startPosition = normalizedRange.start.leafNodePosition;
+    final endPosition = normalizedRange.end.leafNodePosition;
+    final node = document.getLeafNode(normalizedRange.start)!;
 
     if (startPosition is UpstreamDownstreamNodePosition) {
       if (startPosition == endPosition) {
@@ -889,14 +888,14 @@ class DeleteContentCommand extends EditCommand {
       // The range is expanded within a block-level node. The only
       // possibility is that the entire node is selected. Delete the node
       // and replace it with an empty paragraph.
-      document.replaceNodeById(
-        node.id,
+      document.replaceLeafNodeByPosition(
+        normalizedRange.start,
         ParagraphNode(id: node.id, text: AttributedText()),
       );
 
       return [
         DocumentEdit(
-          NodeChangeEvent(node.id),
+          NodeChangeEvent(normalizedRange.start.nodeId),
         )
       ];
     } else if (node is TextNode) {
@@ -906,8 +905,8 @@ class DeleteContentCommand extends EditCommand {
       _log.log('_deleteSelectionWithinSingleNode', ' - deleting from $startOffset to $endOffset');
 
       final deletedText = node.text.copyText(startOffset, endOffset);
-      document.replaceNodeById(
-        node.id,
+      document.replaceLeafNodeByPosition(
+        normalizedRange.start,
         node.copyTextNodeWith(
           text: node.text.removeRegion(
             startOffset: startOffset,
@@ -918,10 +917,10 @@ class DeleteContentCommand extends EditCommand {
 
       return [
         DocumentEdit(
-          TextDeletedEvent(
-            node.id,
+          NodeTextDeletedEvent.create(
+            nodeId: node.id,
             deletedText: deletedText,
-            offset: startOffset,
+            position: startPosition,
           ),
         ),
       ];
