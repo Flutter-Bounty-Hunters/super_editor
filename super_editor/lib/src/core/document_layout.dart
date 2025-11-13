@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 
 import 'document.dart';
 import 'document_selection.dart';
@@ -92,6 +93,10 @@ abstract class DocumentLayout {
   /// Returns the [DocumentComponent] that renders the [DocumentNode] with
   /// the given [nodeId], or [null] if no such component exists.
   DocumentComponent? getComponentByNodeId(String nodeId);
+
+  /// Returns the [DocumentComponent] that renders leaf [DocumentNode] within [CompositeNode]
+  /// or root [DocumentNode] when position is not [CompositeNodePosition] (similar to getComponentByNodeId)
+  DocumentComponent? getLeafComponent(DocumentPosition position);
 
   /// Converts [ancestorOffset] from the [ancestor]'s coordinate space to the
   /// same location on the screen within this [DocumentLayout]'s coordinate space.
@@ -318,7 +323,7 @@ mixin DocumentComponent<T extends StatefulWidget> on State<T> {
 /// to the component that's being wrapped. The only thing that the implementer needs
 /// to provide is [childDocumentComponentKey], which is a `GlobalKey` that provides
 /// access to the child [DocumentComponent].
-mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T> {
+mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T>, CompositeComponent {
   @protected
   GlobalKey get childDocumentComponentKey;
 
@@ -450,6 +455,14 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
   @override
   MouseCursor? getDesiredCursorAtOffset(Offset localOffset) {
     return _childDocumentComponent.getDesiredCursorAtOffset(_getChildOffset(localOffset));
+  }
+
+  @override
+  DocumentComponent<StatefulWidget>? getLeafComponentByNodePosition(NodePosition position) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getLeafComponentByNodePosition(position);
+    }
+    return this;
   }
 }
 

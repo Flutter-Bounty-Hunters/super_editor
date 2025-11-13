@@ -38,7 +38,8 @@ class ColumnDocumentComponent extends StatefulWidget {
 }
 
 class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
-    with DocumentComponent<ColumnDocumentComponent> {
+    with DocumentComponent<ColumnDocumentComponent>
+    implements CompositeComponent {
   CompositeChildComponent? childByNodeId(String nodeId) {
     return widget.children.firstWhereOrNull((c) => c.nodeId == nodeId);
   }
@@ -321,7 +322,7 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
 
     final childIndex = _findChildIndexForPosition(currentPosition);
     final child = _getChildComponentAtIndex(childIndex);
-    final leftWithinChild = child.movePositionLeft(currentPosition.childNodePosition);
+    final leftWithinChild = child.movePositionLeft(currentPosition.childNodePosition, movementModifier);
     if (leftWithinChild != null) {
       return currentPosition.moveWithinChild(leftWithinChild);
     }
@@ -346,7 +347,7 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
 
     final childIndex = _findChildIndexForPosition(currentPosition);
     final child = _getChildComponentAtIndex(childIndex);
-    final rightWithinChild = child.movePositionRight(currentPosition.childNodePosition);
+    final rightWithinChild = child.movePositionRight(currentPosition.childNodePosition, movementModifier);
     if (rightWithinChild != null) {
       return currentPosition.moveWithinChild(rightWithinChild);
     }
@@ -442,5 +443,18 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
         children: widget.children.map((c) => c.widget).toList(),
       ),
     );
+  }
+
+  @override
+  DocumentComponent<StatefulWidget>? getLeafComponentByNodePosition(NodePosition position) {
+    if (position is CompositeNodePosition) {
+      final child = childByNodeId(position.childNodeId)!;
+      if (child.component is CompositeComponent) {
+        return (child.component as CompositeComponent).getLeafComponentByNodePosition(position.childNodePosition);
+      }
+      assert(position.childNodePosition is! CompositeNodePosition);
+      return child.component;
+    }
+    return this;
   }
 }

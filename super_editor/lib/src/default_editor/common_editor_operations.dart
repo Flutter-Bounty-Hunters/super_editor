@@ -1543,6 +1543,8 @@ class CommonEditorOperations {
         newSelectionPosition = selectionAffinity == TextAffinity.downstream ? selection.base : selection.extent;
       }
     } else {
+      final baseLeafPosition = basePosition.leafNodePosition;
+      final extentLeafPosition = extentPosition.leafNodePosition;
       // Selection is within a single node.
       //
       // If it's an upstream/downstream selection node, then the whole node
@@ -1552,17 +1554,15 @@ class CommonEditorOperations {
       // out which DocumentPosition contains the earlier TextNodePosition.
       if (basePosition.nodePosition is UpstreamDownstreamNodePosition) {
         // Assume that the node was replace with an empty paragraph.
-        newSelectionPosition = DocumentPosition(
-          nodeId: baseNode.id,
-          nodePosition: const TextNodePosition(offset: 0),
+        newSelectionPosition = basePosition.copyWithLeafPosition(
+          const TextNodePosition(offset: 0),
         );
-      } else if (basePosition.nodePosition is TextNodePosition) {
-        final baseOffset = (basePosition.nodePosition as TextNodePosition).offset;
-        final extentOffset = (extentPosition.nodePosition as TextNodePosition).offset;
+      } else if (baseLeafPosition is TextNodePosition && extentLeafPosition is TextNodePosition) {
+        final baseOffset = baseLeafPosition.offset;
+        final extentOffset = extentLeafPosition.offset;
 
-        newSelectionPosition = DocumentPosition(
-          nodeId: baseNode.id,
-          nodePosition: TextNodePosition(offset: min(baseOffset, extentOffset)),
+        newSelectionPosition = basePosition.copyWithLeafPosition(
+          TextNodePosition(offset: min(baseOffset, extentOffset)),
         );
       } else {
         throw Exception(

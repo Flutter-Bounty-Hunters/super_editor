@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 import '_presenter.dart';
@@ -658,6 +659,24 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       return null;
     }
     return key.currentState as DocumentComponent;
+  }
+
+  @override
+  DocumentComponent? getLeafComponent(DocumentPosition position) {
+    final parent = getComponentByNodeId(position.nodeId);
+    if (parent is CompositeComponent) {
+      final child = (parent as CompositeComponent).getLeafComponentByNodePosition(position.nodePosition);
+      if (child is! DocumentComponent) {
+        final warningText = 'WARNING: found child component but it\'s not a DocumentComponent: ${child.runtimeType}';
+        editorLayoutLog.info(warningText);
+        if (kDebugMode) {
+          throw Exception(warningText);
+        }
+        return null;
+      }
+      return child;
+    }
+    return parent;
   }
 
   @override

@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
@@ -453,4 +454,8 @@ extension NodePositionCompositeEx on NodePosition {
       return null;
     }
   }
+}
+
+abstract class CompositeComponent {
+  DocumentComponent? getLeafComponentByNodePosition(NodePosition position);
 }

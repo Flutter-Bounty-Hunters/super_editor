@@ -878,6 +878,11 @@ class DeleteContentCommand extends EditCommand {
     final startPosition = normalizedRange.start.leafNodePosition;
     final endPosition = normalizedRange.end.leafNodePosition;
     final node = document.getLeafNode(normalizedRange.start)!;
+    if (normalizedRange.start.leafNodeId != normalizedRange.end.leafNodeId) {
+      // The selection covers multiple nodes within CompositeNode - skipping for now.
+      // This should be implemented at the higher level
+      return [];
+    }
 
     if (startPosition is UpstreamDownstreamNodePosition) {
       if (startPosition == endPosition) {
