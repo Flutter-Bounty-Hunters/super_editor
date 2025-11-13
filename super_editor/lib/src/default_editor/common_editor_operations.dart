@@ -930,6 +930,7 @@ class CommonEditorOperations {
       return true;
     }
 
+    // TODO: Implement support for CompositeNode
     if (composer.selection!.extent.nodePosition is UpstreamDownstreamNodePosition) {
       final nodePosition = composer.selection!.extent.nodePosition as UpstreamDownstreamNodePosition;
       if (nodePosition.affinity == TextAffinity.upstream) {
@@ -954,10 +955,15 @@ class CommonEditorOperations {
       }
     }
 
-    if (composer.selection!.extent.nodePosition is TextNodePosition) {
-      final textPosition = composer.selection!.extent.nodePosition as TextNodePosition;
-      final text = (document.getNodeById(composer.selection!.extent.nodeId) as TextNode).text;
+    if (composer.selection!.extent.leafNodePosition is TextNodePosition) {
+      final textPosition = composer.selection!.extent.leafNodePosition as TextNodePosition;
+      final text = (document.getLeafNode(composer.selection!.extent) as TextNode).text;
+      final isRootNode = composer.selection!.extent is! CompositeNodePosition;
       if (textPosition.offset == text.length) {
+        // TODO: Implement for CompositeNode
+        if (!isRootNode) {
+          return false;
+        }
         final node = document.getNodeById(composer.selection!.extent.nodeId)!;
         final nodeAfter = document.getNodeAfterById(node.id);
 
@@ -1074,26 +1080,29 @@ class CommonEditorOperations {
     if (!_isTextEntryNode(document: document, selection: composer.selection!)) {
       return false;
     }
-    if (composer.selection!.isCollapsed && (composer.selection!.extent.nodePosition as TextNodePosition).offset < 0) {
+    final leafNodePosition = composer.selection!.extent.leafNodePosition;
+    if (composer.selection!.isCollapsed && (leafNodePosition as TextNodePosition).offset < 0) {
       return false;
     }
 
-    final textNode = document.getNode(composer.selection!.extent) as TextNode;
+    final textNode = document.getLeafNode(composer.selection!.extent) as TextNode;
     final text = textNode.text;
-    final currentTextOffset = (composer.selection!.extent.nodePosition as TextNodePosition).offset;
+    final currentTextOffset = (leafNodePosition as TextNodePosition).offset;
     if (currentTextOffset >= text.length) {
       return false;
     }
 
     final nextCharacterOffset = getCharacterEndBounds(text.toPlainText(), currentTextOffset);
 
+    final deleteSelection = composer.selection!.moveWithinLeafNode(textNode.selectionBetween(
+      currentTextOffset,
+      nextCharacterOffset,
+    ));
+
     // Delete the selected content.
     editor.execute([
       DeleteContentRequest(
-        documentRange: textNode.selectionBetween(
-          currentTextOffset,
-          nextCharacterOffset,
-        ),
+        documentRange: deleteSelection,
       ),
     ]);
 
@@ -1178,9 +1187,12 @@ class CommonEditorOperations {
 
     if (composer.selection!.extent.leafNodePosition is TextNodePosition) {
       final textPosition = composer.selection!.extent.leafNodePosition as TextNodePosition;
-      // TODO: Handle this case for CompositeNode as well
       final isRootNode = composer.selection!.extent.nodePosition is! CompositeNodePosition;
-      if (textPosition.offset == 0 && isRootNode) {
+      if (textPosition.offset == 0) {
+        // TODO: Handle this case for CompositeNode as well
+        if (!isRootNode) {
+          return false;
+        }
         final nodeBefore = document.getNodeBeforeById(node.id);
         if (nodeBefore == null) {
           return false;
