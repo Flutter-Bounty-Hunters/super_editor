@@ -2467,6 +2467,41 @@ class PasteEditorCommand extends EditCommand {
       return;
     }
 
+    if (_pastePosition.nodePosition is CompositeNodePosition) {
+      // For time being we only support insertion of text into TextNodes,
+      // as we don't know yet, if we can add more Nodes into CompositeNode (maybe only Column should support it?)
+      final textToPaste = parsedContent.fold(AttributedText(''), (result, item) {
+        if (item is TextNode) {
+          if (result.isNotEmpty) {
+            result = result.copyAndAppend(AttributedText('\n'));
+          }
+          result = result.copyAndAppend(item.text);
+        }
+        return result;
+      });
+
+      executor.executeCommand(
+        InsertAttributedTextCommand(
+          documentPosition: _pastePosition,
+          textToInsert: textToPaste,
+        ),
+      );
+
+      final pasteTextPosition = _pastePosition.leafNodePosition as TextNodePosition;
+      executor.executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(
+            position: _pastePosition
+                .copyWithLeafPosition(TextNodePosition(offset: pasteTextPosition.offset + textToPaste.length)),
+          ),
+          SelectionChangeType.insertContent,
+          SelectionReason.userInteraction,
+        ),
+      );
+
+      return;
+    }
+
     final document = context.document;
     final composer = context.find<MutableDocumentComposer>(Editor.composerKey);
     final currentNodeWithSelection = document.getNodeById(_pastePosition.nodeId);

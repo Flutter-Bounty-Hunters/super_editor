@@ -2082,7 +2082,7 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
     }
 
     final range = selection.normalize(context.document);
-    if (range.start.nodeId == range.end.nodeId && range.start.nodePosition is! TextNodePosition) {
+    if (range.start.nodeId == range.end.nodeId && range.start.leafNodePosition is! TextNodePosition) {
       // Selection is in a single node, and it's not a text node. We can't insert text here.
       return;
     }
@@ -2099,7 +2099,8 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
       );
 
       final caret = context.composer.selection!.extent;
-      if (caret.nodePosition is! TextNodePosition) {
+      // For CompositeNodes this should not be the case, as DeleteSelectionCommand won't delete TextNode inside CompositeNode
+      if (caret.leafNodePosition is! TextNodePosition) {
         // After deleting an expanded selection, we ended up with a caret
         // sitting in a non-text node. Insert a text node to accept the new
         // text.
@@ -2162,7 +2163,7 @@ class InsertTextCommand extends EditCommand {
 
   @override
   String describe() =>
-      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.nodePosition as TextNodePosition).offset} - '$textToInsert'";
+      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.leafNodePosition as TextNodePosition).offset} - '$textToInsert'";
 
   @override
   void execute(EditContext context, CommandExecutor executor) {
@@ -2763,7 +2764,7 @@ class InsertAttributedTextCommand extends EditCommand {
     required this.documentPosition,
     required this.textToInsert,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final AttributedText textToInsert;
@@ -2775,13 +2776,13 @@ class InsertAttributedTextCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    final textNode = document.getNodeById(documentPosition.nodeId);
+    final textNode = document.getLeafNode(documentPosition);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textOffset = (documentPosition.nodePosition as TextPosition).offset;
+    final textOffset = (documentPosition.leafNodePosition as TextPosition).offset;
 
     late final AttributedText finalTextToInsert;
     if (createdAt != null) {
@@ -2794,8 +2795,8 @@ class InsertAttributedTextCommand extends EditCommand {
       finalTextToInsert = textToInsert;
     }
 
-    document.replaceNodeById(
-      textNode.id,
+    document.replaceLeafNodeByPosition(
+      documentPosition,
       textNode.copyTextNodeWith(
         text: textNode.text.insert(
           textToInsert: finalTextToInsert,
@@ -2806,9 +2807,9 @@ class InsertAttributedTextCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        TextInsertionEvent(
+        NodeTextInsertionEvent.create(
           nodeId: textNode.id,
-          offset: textOffset,
+          position: documentPosition.nodePosition,
           text: textToInsert,
         ),
       ),
