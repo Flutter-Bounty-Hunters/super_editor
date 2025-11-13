@@ -84,6 +84,7 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
       print(" - we've already scheduled an open post frame callback, ignoring.");
       return;
     }
+    _didScheduleOpenPostFrameCallback = true;
 
     // Wait until end of frame to try to open the keyboard so that all IME ownership
     // changes have time to finish, and we can check if we're the final owner.
