@@ -54,7 +54,9 @@ class SuperIme with ChangeNotifier {
     TextInputConfiguration configuration, {
     bool showKeyboard = false,
   }) {
+    print("SuperIme - openConnection()");
     if (!isOwner(ownerInputId)) {
+      print(" - '$ownerInputId' is not the owner. Fizzling.");
       return;
     }
 
@@ -65,6 +67,7 @@ class SuperIme with ChangeNotifier {
       // While SuperIme might be a global, shared IME, we don't actually have
       // global control of the IME. Only Flutter does. We need to be resilient to
       // any other Flutter input messing with the IME.
+      print(" - existing connection is detached, so we have to create a new IME connection.");
       _imeConnection = null;
     }
 
