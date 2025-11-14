@@ -1,5 +1,5 @@
 import 'package:slack/domain/message.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
+import 'package:super_editor/super_editor.dart';
 
 final fakeMessages = <Message>[
   _buildMessage(

@@ -2,7 +2,6 @@ import 'package:bear/infrastructure/editor/components.dart';
 import 'package:bear/infrastructure/editor/stylesheet.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 
 class TextEditor extends StatefulWidget {
   const TextEditor({super.key});

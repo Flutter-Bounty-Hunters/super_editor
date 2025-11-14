@@ -15,10 +15,6 @@ dependencies:
     git:
       url: https://github.com/superlistapp/super_editor.git
       path: super_editor
-  super_editor_markdown:
-    git:
-      url: https://github.com/superlistapp/super_editor.git
-      path: super_editor_markdown
   follow_the_leader: ^0.5.1
   overlord: ^0.4.2
   markdown: ^7.2.1
