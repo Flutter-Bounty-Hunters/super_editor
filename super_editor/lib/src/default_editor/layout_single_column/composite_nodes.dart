@@ -36,16 +36,28 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel implem
 
   @override
   SingleColumnLayoutComponentViewModel copy() {
-    return CompositeNodeViewModel(
-      nodeId: nodeId,
-      createdAt: createdAt,
-      padding: padding,
-      maxWidth: maxWidth,
-      children: List.from(children),
-      selection: _selection,
-      parent: parent,
-      selectionColor: _selectionColor,
+    return internalCopy(
+      CompositeNodeViewModel(
+        nodeId: nodeId,
+        children: List.from(children),
+        selection: _selection,
+        parent: parent,
+      ),
     );
+  }
+
+  CompositeNodeViewModel internalCopy(covariant CompositeNodeViewModel viewModel) {
+    // [nodeId], [parent] and [children] are required to set in the constructor
+    viewModel._selection = selection;
+    viewModel._selectionColor = _selectionColor;
+
+    // SingleColumnLayoutComponentViewModel properties:
+    viewModel.createdAt = createdAt;
+    viewModel.maxWidth = maxWidth;
+    viewModel.padding = padding;
+    viewModel.opacity = opacity;
+
+    return viewModel;
   }
 
   @override
@@ -202,6 +214,14 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     return -1;
   }
 
+  void validateChildrenNodeIds() {
+    assert(
+      children.map((c) => c.id).toSet().length == children.length,
+      'Duplicated id within composite $runtimeType node detected. nodeId=$id, '
+      'children=[${children.map((c) => c.id).join(', ')}]',
+    );
+  }
+
   /// Returns a new CompositeNode where leaf at [position] is replaced by
   /// provided [newLeaf]
   CompositeNode copyAndReplaceLeaf({
@@ -214,17 +234,19 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     required DocumentNode newLeaf,
     required CompositeNode Function(CompositeNode oldNode, List<DocumentNode> children) compositeNodeBuilder,
   }) {
+    DocumentNode childReplacement;
     final childPosition = position.childNodePosition;
     if (childPosition is CompositeNodePosition) {
       final child = getChildByNodeId(position.childNodeId);
       assert(child is CompositeNode, 'Unexpected child type for CompositeNodePosition (${child.runtimeType})');
-      return (child as CompositeNode).copyAndReplaceLeaf(position: childPosition, newLeaf: newLeaf);
+      childReplacement = (child as CompositeNode).copyAndReplaceLeaf(position: childPosition, newLeaf: newLeaf);
     } else {
-      final newChildren = children.map((child) {
-        return child.id == newLeaf.id ? newLeaf : child;
-      }).toList();
-      return compositeNodeBuilder(this, newChildren);
+      childReplacement = newLeaf;
     }
+    final newChildren = children.map((child) {
+      return child.id == childReplacement.id ? childReplacement : child;
+    }).toList();
+    return compositeNodeBuilder(this, newChildren);
   }
 
   @override
@@ -325,6 +347,8 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
 
   @override
   NodePosition nodePositionFromImeOffset(int imeOffset) {
+    // TODO: Check if there is a more efficient way to calculate offsets
+    // (as Nodes are immutable, we might cache imeText length per node here
     var offsetBeforeChild = 0;
     for (final child in children) {
       final childImeTextLength = _imeTextFromNode(child).length;

@@ -28,34 +28,70 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
       document: MutableDocument(
         nodes: [
           ParagraphNode(
-            id: "1",
+            id: "header",
             text: AttributedText("This is a demo of a Banner component."),
             metadata: {
               NodeMetadata.blockType: header1Attribution,
             },
           ),
-          _BannerNode(id: "2", children: [
+          _BannerNode(id: "main-banner", children: [
             ParagraphNode(
-              id: "3",
+              id: "main-banner-header",
               text: AttributedText("Hello, Banner!"),
               metadata: {
                 NodeMetadata.blockType: header2Attribution,
               },
             ),
-            HorizontalRuleNode(id: "7"),
+            HorizontalRuleNode(id: "main-banner-hr"),
             ImageNode(
-              id: "4",
+              id: "main-banner-image",
               imageUrl:
                   "https://www.thedroidsonroids.com/wp-content/uploads/2023/08/flutter_blog_series_What-is-Flutter-app-development-.png",
             ),
-            HorizontalRuleNode(id: "8"),
+            HorizontalRuleNode(id: "main-banner-hr-2"),
             ParagraphNode(
-              id: "5",
+              id: "main-banner-description",
               text: AttributedText("This is a banner, which can contain any other blocks you want"),
+            ),
+            _BannerNode(id: "inner-banner", children: [
+              ParagraphNode(
+                id: "inner-banner-header",
+                text: AttributedText("Info!"),
+                metadata: {
+                  NodeMetadata.blockType: header3Attribution,
+                },
+              ),
+              HorizontalRuleNode(id: "inner-banner-hr"),
+              ParagraphNode(
+                id: "inner-banner-description",
+                text: AttributedText("This is an internal banner, which can be used to test multiple banners"),
+              ),
+            ]),
+            ParagraphNode(
+              id: "between-internal-banners",
+              text: AttributedText("The text between internal banners"),
+            ),
+            _BannerNode(id: "inner-banner-2", children: [
+              ParagraphNode(
+                id: "inner-banner-2-header",
+                text: AttributedText("Warning!"),
+                metadata: {
+                  NodeMetadata.blockType: header3Attribution,
+                },
+              ),
+              HorizontalRuleNode(id: "inner-banner-2-hr"),
+              ParagraphNode(
+                id: "inner-banner-2-description",
+                text: AttributedText("This is another internal banner"),
+              ),
+            ]),
+            ParagraphNode(
+              id: "last-text",
+              text: AttributedText("Some notes after all internal banners"),
             ),
           ]),
           ParagraphNode(
-            id: "6",
+            id: "footer text",
             text: AttributedText("This is after the banner component."),
           ),
         ],
@@ -97,6 +133,14 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
               },
             ),
             StyleRule(
+              BlockSelector('banner').childOf("banner"),
+              (doc, docNode) {
+                return {
+                  Styles.backgroundColor: Colors.lightBlueAccent,
+                };
+              },
+            ),
+            StyleRule(
               BlockSelector(horizontalRuleBlockType.name).childOf("banner"),
               (doc, docNode) {
                 return {
@@ -128,7 +172,7 @@ class _BannerComponentBuilder implements ComponentBuilder {
       return null;
     }
 
-    return CompositeNodeViewModel(
+    return _BannerNodeViewModel(
       nodeId: node.id,
       parent: node,
       children: node.children.map((childNode) => presenterContext.createViewModel(childNode)!).toList(),
@@ -140,19 +184,16 @@ class _BannerComponentBuilder implements ComponentBuilder {
     SingleColumnDocumentComponentContext componentContext,
     SingleColumnLayoutComponentViewModel componentViewModel,
   ) {
-    if (componentViewModel is! CompositeNodeViewModel) {
+    if (componentViewModel is! _BannerNodeViewModel) {
       return null;
     }
 
-    assert(componentViewModel.children.isNotEmpty, 'Empty children does not makes sense here');
-
-    // print("Building a _BannerComponent - banner key: ${componentContext.componentKey}");
-    // print(" - child keys: ${childrenAndKeys.map((x) => x.$1)}");
     return _BannerComponent(
       key: componentContext.componentKey,
+      backgroundColor: componentViewModel.backgroundColor,
       children: componentViewModel.children.map((childViewModel) {
         final (componentKey, component) = componentContext.buildChildComponent(childViewModel);
-        return CompositeChildComponent(
+        return CompositeComponentChild(
           nodeId: childViewModel.nodeId,
           componentKey: componentKey,
           widget: component,
@@ -162,13 +203,49 @@ class _BannerComponentBuilder implements ComponentBuilder {
   }
 }
 
+class _BannerNodeViewModel extends CompositeNodeViewModel {
+  Color? backgroundColor;
+
+  _BannerNodeViewModel({
+    required super.nodeId,
+    required super.parent,
+    required super.children,
+  });
+
+  @override
+  SingleColumnLayoutComponentViewModel copy() {
+    return internalCopy(
+      _BannerNodeViewModel(
+        nodeId: nodeId,
+        parent: parent,
+        children: List.from(children),
+      ),
+    );
+  }
+
+  @override
+  CompositeNodeViewModel internalCopy(_BannerNodeViewModel viewModel) {
+    final copy = super.internalCopy(viewModel) as _BannerNodeViewModel;
+    copy.backgroundColor = backgroundColor;
+    return copy;
+  }
+
+  @override
+  void applyStyles(Map<String, dynamic> styles) {
+    backgroundColor = styles[Styles.backgroundColor];
+    super.applyStyles(styles);
+  }
+}
+
 class _BannerComponent extends StatefulWidget {
+  final Color? backgroundColor;
   const _BannerComponent({
     super.key,
+    this.backgroundColor,
     required this.children,
   });
 
-  final List<CompositeChildComponent> children;
+  final List<CompositeComponentChild> children;
 
   @override
   State<_BannerComponent> createState() => _BannerComponentState();
@@ -184,13 +261,11 @@ class _BannerComponentState extends State<_BannerComponent> with ProxyDocumentCo
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.blue,
+          color: widget.backgroundColor ?? Colors.blue,
           borderRadius: BorderRadius.circular(8),
         ),
         child: ColumnDocumentComponent(
           key: childDocumentComponentKey,
-          // childComponentIds: widget.childComponentIds,
-          // childComponentKeys: widget.childComponentKeys,
           children: widget.children,
         ),
       ),
@@ -209,7 +284,9 @@ class _BannerNode extends CompositeNode {
               ...metadata,
             NodeMetadata.blockType: bannerBlockType,
           },
-        );
+        ) {
+    validateChildrenNodeIds();
+  }
 
   final List<DocumentNode> children;
 

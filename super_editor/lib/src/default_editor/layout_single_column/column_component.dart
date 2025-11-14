@@ -7,14 +7,13 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/flutter/geometry.dart';
 
-/// a [CompositeChildComponent] is an object that holds already built
+/// a [CompositeComponentChild] is an object that holds already built
 /// component, with component key and nodeId.
-/// All possible components
-class CompositeChildComponent {
+class CompositeComponentChild {
   final String nodeId;
   final GlobalKey<DocumentComponent> componentKey;
   final Widget widget;
-  CompositeChildComponent({
+  CompositeComponentChild({
     required this.nodeId,
     required this.componentKey,
     required this.widget,
@@ -26,12 +25,17 @@ class CompositeChildComponent {
 
 /// A [DocumentComponent] that presents other components, within a column.
 class ColumnDocumentComponent extends StatefulWidget {
-  const ColumnDocumentComponent({
+  ColumnDocumentComponent({
     super.key,
     required this.children,
-  });
+  }) {
+    // As return type of methods like [getBeginningPositionNearX] is not nullable,
+    // we cannot handle case of empty children inside a Component. It should be handled at
+    // the component builder/parser level
+    assert(children.isNotEmpty, 'Unable to create ColumnColumnComponent with empty children');
+  }
 
-  final List<CompositeChildComponent> children;
+  final List<CompositeComponentChild> children;
 
   @override
   State<ColumnDocumentComponent> createState() => _ColumnDocumentComponentState();
@@ -40,7 +44,7 @@ class ColumnDocumentComponent extends StatefulWidget {
 class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
     with DocumentComponent<ColumnDocumentComponent>
     implements CompositeComponent {
-  CompositeChildComponent? childByNodeId(String nodeId) {
+  CompositeComponentChild? childByNodeId(String nodeId) {
     return widget.children.firstWhereOrNull((c) => c.nodeId == nodeId);
   }
 
@@ -429,7 +433,7 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
 
   RenderBox get _columnBox => context.findRenderObject() as RenderBox;
 
-  Offset _getChildOffset(CompositeChildComponent child) {
+  Offset _getChildOffset(CompositeComponentChild child) {
     return child.renderBox.localToGlobal(Offset.zero, ancestor: _columnBox);
   }
 
