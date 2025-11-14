@@ -573,7 +573,7 @@ class LinkifyReaction extends EditReaction {
       final edit = edits[i];
       if (edit is DocumentEdit) {
         final change = edit.change;
-        if (change is TextInsertionEvent && change.text.toPlainText() == " ") {
+        if (change is TextInsertionEvent && change.text.toPlainText() == " " && change.nodePath.isRoot) {
           // Every space insertion might appear after a URL.
           linkifyCandidate = change;
           didInsertSpace = true;
@@ -1034,7 +1034,8 @@ class DashConversionReaction extends EditReaction {
       return;
     }
 
-    final insertionNode = document.getNodeById(dashInsertionEvent.nodeId) as TextNode;
+    final insertionNode = document.getNodeAtPath(dashInsertionEvent.nodePath) as TextNode;
+    final insertionNodePath = dashInsertionEvent.nodePath;
     final upstreamCharacter = insertionNode.text.toPlainText()[dashInsertionEvent.offset - 1];
     if (upstreamCharacter != '-') {
       return;
@@ -1045,15 +1046,15 @@ class DashConversionReaction extends EditReaction {
     requestDispatcher.execute([
       DeleteContentRequest(
         documentRange: DocumentRange(
-          start: DocumentPosition(
-              nodeId: insertionNode.id, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset - 1)),
-          end: DocumentPosition(
-              nodeId: insertionNode.id, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset + 1)),
+          start: DocumentPosition.withPath(
+              nodePath: insertionNodePath, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset - 1)),
+          end: DocumentPosition.withPath(
+              nodePath: insertionNodePath, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset + 1)),
         ),
       ),
       InsertTextRequest(
-        documentPosition: DocumentPosition(
-          nodeId: insertionNode.id,
+        documentPosition: DocumentPosition.withPath(
+          nodePath: insertionNodePath,
           nodePosition: TextNodePosition(
             offset: dashInsertionEvent.offset - 1,
           ),
@@ -1063,8 +1064,8 @@ class DashConversionReaction extends EditReaction {
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: insertionNode.id,
+          position: DocumentPosition.withPath(
+            nodePath: insertionNodePath,
             nodePosition: TextNodePosition(offset: dashInsertionEvent.offset),
           ),
         ),
@@ -1163,6 +1164,11 @@ class EditInspector {
     if (textInsertionEvent.nodeId != newSelection.extent.nodeId) {
       // The selection is in a different node than where tex was inserted. This indicates
       // something other than a user typing.
+      return null;
+    }
+
+    if (!textInsertionEvent.nodePath.isRoot) {
+      // Is not yet implemented
       return null;
     }
 

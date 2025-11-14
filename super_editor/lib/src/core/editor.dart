@@ -1209,12 +1209,28 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   DocumentNode? getNode(DocumentPosition position) => getNodeById(position.nodeId);
 
   @override
-  DocumentNode? getLeafNode(DocumentPosition position) {
-    final node = getNodeById(position.nodeId);
-    if (position.nodePosition is CompositeNodePosition && node is CompositeNode) {
-      return node.getChild(position.nodePosition as CompositeNodePosition);
+  DocumentNode? getNodeAtPath(NodePath path) {
+    var node = getNodeById(path.rootId);
+    for (var i = 1; i < path.length; i += 1) {
+      final childId = path.getAt(i);
+      assert(
+        node is CompositeNode,
+        'Unable to get node at $path, when $childId is not CompositeNode (${node.runtimeType} was given)',
+      );
+      node = (node as CompositeNode).getChildByNodeId(childId);
     }
     return node;
+  }
+
+  @override
+  DocumentNode? getLeafNode(DocumentPosition position) => getNodeAtPath(NodePath.withDocumentPosition(position));
+
+  @override
+  CompositeNode? getLeafNodeParent(DocumentPosition position) {
+    final path = NodePath.withDocumentPosition(position).toLeafParentPath();
+    final node = path != null ? getNodeAtPath(path) : null;
+    assert(node is CompositeNode, 'Unexpected Leaf Parent Node ${node.runtimeType}. CompositeNode expected');
+    return node as CompositeNode;
   }
 
   @override
@@ -1283,6 +1299,16 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     } else {
       editorDocLog.warning('Could not delete node. Index out of range: $index');
     }
+  }
+
+  @override
+  bool canDeleteNode(DocumentPosition position) {
+    final node = getLeafNode(position);
+    if (node == null) {
+      return false;
+    }
+    final parent = getLeafNodeParent(position);
+    return parent?.canDeleteChild(node.id) ?? node.isDeletable;
   }
 
   /// Deletes the given [node] from the [Document].

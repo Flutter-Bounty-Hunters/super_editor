@@ -344,7 +344,7 @@ class DeleteUpstreamAtBeginningOfBlockNodeCommand extends EditCommand {
       // The caret is sitting on the downstream edge of block-level content. Delete the
       // whole block by replacing it with an empty paragraph.
       executor.executeCommand(
-        ReplaceNodeWithEmptyParagraphWithCaretCommand(nodeId: deletionPosition.nodeId),
+        ReplaceNodeWithEmptyParagraphWithCaretCommand(position: deletionPosition),
       );
       return;
     }

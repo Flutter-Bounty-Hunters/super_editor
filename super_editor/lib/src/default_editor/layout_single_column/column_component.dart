@@ -159,6 +159,8 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
 
     final baseIndex = widget.children.indexWhere((c) => c.nodeId == baseNodePosition.childNodeId);
     final extentIndex = widget.children.indexWhere((c) => c.nodeId == extentNodePosition.childNodeId);
+    assert(baseIndex != -1, 'Unable to find base child node with id "${baseNodePosition.childNodeId}"');
+    assert(extentIndex != -1, 'Unable to find extent child node with id "${extentNodePosition.childNodeId}"');
 
     final componentBoundingBoxes = <Rect>[];
 

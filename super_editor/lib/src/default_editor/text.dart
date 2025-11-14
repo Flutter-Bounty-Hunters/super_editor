@@ -1635,7 +1635,7 @@ class AddTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: AttributionChange.added,
               range: range,
               attributions: attributions,
@@ -1765,7 +1765,7 @@ class RemoveTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1942,7 +1942,7 @@ class ToggleTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: wasAttributionAdded ? AttributionChange.added : AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1963,11 +1963,11 @@ class ToggleTextAttributionsCommand extends EditCommand {
 /// A [NodeChangeEvent] for the addition or removal of a set of attributions.
 class AttributionChangeEvent extends NodeChangeEvent {
   AttributionChangeEvent({
-    required String nodeId,
+    required NodePath nodePath,
     required this.change,
     required this.range,
     required this.attributions,
-  }) : super(nodeId);
+  }) : super(nodePath);
 
   final AttributionChange change;
   final SpanRange range;
@@ -1975,10 +1975,11 @@ class AttributionChangeEvent extends NodeChangeEvent {
 
   @override
   String describe() =>
-      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodeId) - ${range.start} -> ${range.end}: $attributions";
+      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodePath) - ${range.start} -> ${range.end}: $attributions";
 
   @override
-  String toString() => "AttributionChangeEvent ('$nodeId' - ${range.start} -> ${range.end} ($change): '$attributions')";
+  String toString() =>
+      "AttributionChangeEvent ('$nodePath' - ${range.start} -> ${range.end} ($change): '$attributions')";
 
   @override
   bool operator ==(Object other) =>
@@ -2034,7 +2035,7 @@ class ChangeSingleColumnLayoutComponentStylesCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(node.id),
+        NodeChangeEvent(NodePath.withNodeId(node.id)),
       ),
     ]);
   }
@@ -2193,9 +2194,9 @@ class InsertTextCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeTextInsertionEvent.create(
-          nodeId: documentPosition.nodeId,
-          position: documentPosition.nodePosition,
+        TextInsertionEvent(
+          nodePath: NodePath.withDocumentPosition(documentPosition),
+          offset: textOffset,
           text: AttributedText(textToInsert),
         ),
       ),
@@ -2219,121 +2220,62 @@ class InsertTextCommand extends EditCommand {
   }
 }
 
-class NodeTextInsertionEvent extends NodeChangeEvent {
-  NodeTextInsertionEvent({
-    required String nodeId,
-    required this.position,
-    required this.text,
-  }) : super(nodeId);
-
-  static NodeTextInsertionEvent create({
-    required String nodeId,
-    required NodePosition position,
-    required AttributedText text,
-  }) {
-    if (position is TextNodePosition) {
-      // Keeping old Event class, for backward compatibility with existing reactions
-      return TextInsertionEvent(nodeId: nodeId, offset: position.offset, text: text);
-    } else {
-      return NodeTextInsertionEvent(nodeId: nodeId, position: position, text: text);
-    }
-  }
-
-  final NodePosition position;
-  final AttributedText text;
-
-  @override
-  String describe() => "Inserted text ($nodeId) @ $position: '${text.toPlainText()}'";
-
-  @override
-  String toString() => "NodeTextInsertionEvent ('$nodeId' - $position -> '${text.toPlainText()}')";
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      super == other &&
-          other is NodeTextInsertionEvent &&
-          runtimeType == other.runtimeType &&
-          position.isEquivalentTo(other.position) &&
-          text == other.text;
-
-  @override
-  int get hashCode => super.hashCode ^ position.hashCode ^ text.hashCode;
-}
-
-// Should this be deprecated? Relying on this even won't catch text insertions inside CompositeNodes..
-class TextInsertionEvent extends NodeTextInsertionEvent {
+class TextInsertionEvent extends NodeChangeEvent {
   TextInsertionEvent({
-    required String nodeId,
-    required int offset,
-    required super.text,
-  }) : super(nodeId: nodeId, position: TextNodePosition(offset: offset));
+    required NodePath nodePath,
+    required this.offset,
+    required this.text,
+  }) : super(nodePath);
 
-  int get offset => (position as TextNodePosition).offset;
+  final int offset;
+  final AttributedText text;
 
   @override
   String describe() => "Inserted text ($nodeId) @ $offset: '${text.toPlainText()}'";
 
   @override
   String toString() => "TextInsertionEvent ('$nodeId' - $offset -> '${text.toPlainText()}')";
-}
-
-class NodeTextDeletedEvent extends NodeChangeEvent {
-  NodeTextDeletedEvent(
-    String nodeId, {
-    required this.position,
-    required this.deletedText,
-  }) : super(nodeId);
-
-  static NodeTextDeletedEvent create({
-    required String nodeId,
-    required NodePosition position,
-    required AttributedText deletedText,
-  }) {
-    if (position is TextNodePosition) {
-      // Keeping old Event class, for backward compatibility with existing reactions
-      return TextDeletedEvent(nodeId, offset: position.offset, deletedText: deletedText);
-    } else {
-      return NodeTextDeletedEvent(nodeId, position: position, deletedText: deletedText);
-    }
-  }
-
-  final NodePosition position;
-  final AttributedText deletedText;
-
-  @override
-  String describe() => "Deleted text ($nodeId) @ $position: '${deletedText.toPlainText()}'";
-
-  @override
-  String toString() => "NodeTextDeletedEvent ('$nodeId' - $position -> '${deletedText.toPlainText()}')";
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       super == other &&
-          other is NodeTextDeletedEvent &&
+          other is TextInsertionEvent &&
           runtimeType == other.runtimeType &&
-          position.isEquivalentTo(other.position) &&
+          offset == other.offset &&
+          text == other.text;
+
+  @override
+  int get hashCode => super.hashCode ^ offset.hashCode ^ text.hashCode;
+}
+
+class TextDeletedEvent extends NodeChangeEvent {
+  TextDeletedEvent(
+    NodePath nodePath, {
+    required this.offset,
+    required this.deletedText,
+  }) : super(nodePath);
+
+  final int offset;
+  final AttributedText deletedText;
+
+  @override
+  String describe() => "Deleted text ($nodePath) @ $offset: ${deletedText.toPlainText()}";
+
+  @override
+  String toString() => "TextDeletedEvent ('$nodePath' - $offset -> '${deletedText.toPlainText()}')";
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      super == other &&
+          other is TextDeletedEvent &&
+          runtimeType == other.runtimeType &&
+          offset == other.offset &&
           deletedText == other.deletedText;
 
   @override
-  int get hashCode => super.hashCode ^ position.hashCode ^ deletedText.hashCode;
-}
-
-class TextDeletedEvent extends NodeTextDeletedEvent {
-  TextDeletedEvent(
-    String nodeId, {
-    required int offset,
-    required super.deletedText,
-  }) : super(nodeId, position: TextNodePosition(offset: offset));
-
-  int get offset => (position as TextNodePosition).offset;
-
-  @override
-  String describe() => "Deleted text ($nodeId) @ $offset: ${deletedText.toPlainText()}";
-
-  @override
-  String toString() => "TextDeletedEvent ('$nodeId' - $offset -> '${deletedText.toPlainText()}')";
+  int get hashCode => super.hashCode ^ offset.hashCode ^ deletedText.hashCode;
 }
 
 /// A request to insert a newline at the current caret position.
@@ -2739,7 +2681,7 @@ class ConvertTextNodeToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(extentNode.id),
+        NodeChangeEvent(NodePath.withNodeId(extentNode.id)),
       ),
     ]);
   }
@@ -2807,9 +2749,9 @@ class InsertAttributedTextCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeTextInsertionEvent.create(
-          nodeId: textNode.id,
-          position: documentPosition.nodePosition,
+        TextInsertionEvent(
+          nodePath: NodePath.withDocumentPosition(documentPosition),
+          offset: textOffset,
           text: textToInsert,
         ),
       ),

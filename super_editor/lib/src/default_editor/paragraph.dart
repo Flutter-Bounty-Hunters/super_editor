@@ -602,7 +602,7 @@ class ChangeParagraphAlignmentCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(nodeId),
+        NodeChangeEvent(NodePath.withNodeId(nodeId)),
       ),
     ]);
   }
@@ -658,7 +658,7 @@ class ChangeParagraphBlockTypeCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(nodeId),
+        NodeChangeEvent(NodePath.withNodeId(nodeId)),
       ),
     ]);
   }
@@ -771,10 +771,10 @@ class CombineParagraphsCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(secondNode.id, secondNode),
+        NodeRemovedEvent(NodePath.withNodeId(secondNode.id), secondNode),
       ),
       DocumentEdit(
-        NodeChangeEvent(nodeAbove.id),
+        NodeChangeEvent(NodePath.withNodeId(nodeAbove.id)),
       ),
     ]);
   }
@@ -922,10 +922,10 @@ class SplitParagraphCommand extends EditCommand {
 
     final documentChanges = [
       DocumentEdit(
-        NodeChangeEvent(node.id),
+        NodeChangeEvent(NodePath.withNodeId(node.id)),
       ),
       DocumentEdit(
-        NodeInsertedEvent(newNodeId, document.getNodeIndexById(newNodeId)),
+        NodeInsertedEvent(NodePath.withNodeId(newNodeId), document.getNodeIndexById(newNodeId)),
       ),
       SelectionChangeEvent(
         oldSelection: oldSelection,
@@ -1204,7 +1204,7 @@ class DeleteParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(node.id, node),
+        NodeRemovedEvent(NodePath.withNodeId(node.id), node),
       )
     ]);
   }
@@ -1390,7 +1390,7 @@ class SetParagraphIndentCommand extends EditCommand {
     // Log all changes.
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(paragraph.id),
+        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
       ),
     ]);
   }
@@ -1425,7 +1425,7 @@ class IndentParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(paragraph.id),
+        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
       ),
     ]);
   }
@@ -1509,7 +1509,7 @@ class UnIndentParagraphCommand extends EditCommand {
     // Log all changes.
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(paragraph.id),
+        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
       ),
     ]);
   }

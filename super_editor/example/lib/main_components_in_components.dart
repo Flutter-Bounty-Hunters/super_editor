@@ -311,7 +311,7 @@ class _BannerNode extends CompositeNode {
     // Maybe this should go to base class, so we only have to override the case when more than one
     // child node in the selection?
     if (compositeSelection.extent.childNodeId == compositeSelection.base.childNodeId) {
-      final child = getChildByNodeId(compositeSelection.extent.childNodeId);
+      final child = getChildByNodeId(compositeSelection.extent.childNodeId)!;
       final childSelection = child.computeSelection(
         base: compositeSelection.base.childNodePosition,
         extent: compositeSelection.extent.childNodePosition,

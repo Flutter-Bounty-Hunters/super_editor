@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
@@ -61,17 +62,54 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel implem
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      super == other &&
-          other is CompositeNodeViewModel &&
-          runtimeType == other.runtimeType &&
-          _selection == other._selection &&
-          _selectionColor == other._selectionColor &&
-          children == other.children;
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (super != other ||
+        other is! CompositeNodeViewModel ||
+        other.runtimeType != runtimeType ||
+        _selection != other._selection ||
+        _selectionColor != other._selectionColor) {
+      return false;
+    }
+    return hasSameChildren(other);
+  }
 
   @override
   int get hashCode => Object.hash(super.hashCode, _selection, _selectionColor, children);
+
+  /// Returns true only when [other] have same children count
+  /// and children runtimeTypes are matches accordingly.
+  /// Checks recursively
+  bool hasSameChildrenStructure(CompositeNodeViewModel other) {
+    if (other.children.length != children.length) {
+      return false;
+    }
+    for (var i = 0; i < children.length; i += 1) {
+      final child = children[i];
+      final otherChild = other.children[i];
+      if (child.runtimeType != otherChild.runtimeType) {
+        return false;
+      }
+      if (child is CompositeNodeViewModel && !child.hasSameChildrenStructure(otherChild as CompositeNodeViewModel)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool hasSameChildren(CompositeNodeViewModel other) {
+    if (children.length != other.children.length) {
+      return false;
+    }
+    for (var i = 0; i < children.length; i += 1) {
+      if (children[i] != other.children[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   @override
   set selection(DocumentNodeSelection<NodeSelection>? selection) {
@@ -192,15 +230,15 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
   DocumentNode getChildAt(int index) => children.elementAt(index);
 
   DocumentNode getChild(CompositeNodePosition position) {
-    final child = getChildByNodeId(position.childNodeId);
+    final child = getChildByNodeId(position.childNodeId)!;
     if (child is CompositeNode && position.childNodePosition is CompositeNodePosition) {
       return child.getChild(position.childNodePosition as CompositeNodePosition);
     }
     return child;
   }
 
-  DocumentNode getChildByNodeId(String nodeId) {
-    return children.firstWhere((c) => c.id == nodeId);
+  DocumentNode? getChildByNodeId(String nodeId) {
+    return children.firstWhereOrNull((c) => c.id == nodeId);
   }
 
   int getChildIndexByNodeId(String nodeId) {
@@ -379,6 +417,22 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
   String _imeTextFromNode(DocumentNode node) {
     return node is ImeNodeSerialization ? (node as ImeNodeSerialization).toImeText() : _imeNonSerializableChildChar;
   }
+
+  bool canInsertChildAfter(String nodeId) {
+    return true;
+  }
+
+  bool canDeleteChild(String nodeId) {
+    final nodeToDelete = getChildByNodeId(nodeId);
+    if (nodeToDelete == null || !nodeToDelete.isDeletable) {
+      return false;
+    }
+    // If CompositeNode is not deletable, at least one child must be inside
+    if (!isDeletable && children.length == 1) {
+      return false;
+    }
+    return true;
+  }
 }
 
 class CompositeNodeSelection implements NodeSelection {
@@ -448,9 +502,9 @@ extension DocumentPositionCompositeEx on DocumentPosition {
     );
   }
 
-  String get leafNodeId {
-    return nodePosition._leafNodeId ?? nodeId;
-  }
+  NodePath get nodePath => NodePath.withDocumentPosition(this);
+
+  String get leafNodeId => nodePath.leafId;
 }
 
 extension NodePositionCompositeEx on NodePosition {
@@ -467,15 +521,6 @@ extension NodePositionCompositeEx on NodePosition {
       return current.moveWithinChild(current.childNodePosition.positionWithNewLeaf(newLeafPosition));
     } else {
       return newLeafPosition;
-    }
-  }
-
-  String? get _leafNodeId {
-    final current = this;
-    if (current is CompositeNodePosition) {
-      return current.childNodePosition._leafNodeId ?? current.childNodeId;
-    } else {
-      return null;
     }
   }
 }

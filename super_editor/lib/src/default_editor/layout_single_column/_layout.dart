@@ -1041,6 +1041,9 @@ class _Component extends StatelessWidget {
     return (SingleColumnLayoutComponentViewModel componentViewModel) {
       final childComponentKey = GlobalKey<DocumentComponent>();
 
+      // TODO: We should do something similar to _PresenterComponentBuilder to build only single child when its changed
+      // but that also requires changing SingleColumnLayoutPresenterChangeListener API (to include information about
+      // children changes)
       return (
         childComponentKey,
         _buildComponent(

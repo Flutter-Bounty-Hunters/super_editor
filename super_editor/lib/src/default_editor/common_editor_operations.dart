@@ -934,16 +934,18 @@ class CommonEditorOperations {
     if (composer.selection!.extent.nodePosition is UpstreamDownstreamNodePosition) {
       final nodePosition = composer.selection!.extent.nodePosition as UpstreamDownstreamNodePosition;
       if (nodePosition.affinity == TextAffinity.upstream) {
+    final extentLeafPosition = composer.selection!.extent.leafNodePosition;
+    if (extentLeafPosition is UpstreamDownstreamNodePosition) {
+      if (extentLeafPosition.affinity == TextAffinity.upstream) {
         // The caret is sitting on the upstream edge of block-level content.
-        final nodeId = composer.selection!.extent.nodeId;
 
-        if (!document.getNodeById(nodeId)!.isDeletable) {
+        if (!document.canDeleteNode(composer.selection!.extent)) {
           // The node is not deletable. Fizzle.
           return false;
         }
 
         //Delete the whole block by replacing it with an empty paragraph.
-        replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(nodeId);
+        replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(composer.selection!.extent);
 
         return true;
       } else {
@@ -1140,19 +1142,18 @@ class CommonEditorOperations {
       return unindentListItem();
     }
 
-    if (composer.selection!.extent.nodePosition is UpstreamDownstreamNodePosition) {
-      final nodePosition = composer.selection!.extent.nodePosition as UpstreamDownstreamNodePosition;
-      if (nodePosition.affinity == TextAffinity.downstream) {
+    final extentLeafPosition = composer.selection!.extent.leafNodePosition;
+    if (extentLeafPosition is UpstreamDownstreamNodePosition) {
+      if (extentLeafPosition.affinity == TextAffinity.downstream) {
         // The caret is sitting on the downstream edge of block-level content.
-        final nodeId = composer.selection!.extent.nodeId;
 
-        if (!document.getNodeById(nodeId)!.isDeletable) {
+        if (!document.canDeleteNode(composer.selection!.extent)) {
           // The node is not deletable. Fizzle.
           return false;
         }
 
         // Delete the whole block by replacing it with an empty paragraph.
-        replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(nodeId);
+        replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(composer.selection!.extent);
 
         return true;
       } else {
@@ -1185,11 +1186,10 @@ class CommonEditorOperations {
       }
     }
 
-    if (composer.selection!.extent.leafNodePosition is TextNodePosition) {
-      final textPosition = composer.selection!.extent.leafNodePosition as TextNodePosition;
+    if (extentLeafPosition is TextNodePosition) {
       final isRootNode = composer.selection!.extent.nodePosition is! CompositeNodePosition;
-      if (textPosition.offset == 0) {
-        // TODO: Handle this case for CompositeNode as well
+      if (extentLeafPosition.offset == 0) {
+        // TODO: Handle this case for CompositeNode as well -aleksey
         if (!isRootNode) {
           return false;
         }
@@ -1399,14 +1399,14 @@ class CommonEditorOperations {
     return true;
   }
 
-  /// Replaces the [DocumentNode] with the given `nodeId` with a [ParagraphNode],
+  /// Replaces the [DocumentNode] with the given [position] with a [ParagraphNode],
   /// and places the caret in the new [ParagraphNode].
   ///
   /// This can be used, for example, to effectively delete an image by replacing
   /// it with an empty paragraph.
-  void replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(String nodeId) {
+  void replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(DocumentPosition position) {
     editor.execute([
-      ReplaceNodeWithEmptyParagraphWithCaretRequest(nodeId: nodeId),
+      ReplaceNodeWithEmptyParagraphWithCaretRequest(position: position),
     ]);
   }
 
@@ -2554,7 +2554,7 @@ class PasteEditorCommand extends EditCommand {
 
       executor.logChanges([
         DocumentEdit(
-          NodeInsertedEvent(pastedNode.id, document.getNodeIndexById(pastedNode.id)),
+          NodeInsertedEvent(NodePath.withNodeId(pastedNode.id), document.getNodeIndexById(pastedNode.id)),
         )
       ]);
     }

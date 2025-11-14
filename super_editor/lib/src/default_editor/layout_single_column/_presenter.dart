@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/styles.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Information that is provided to a [ComponentBuilder] to
@@ -262,6 +263,18 @@ class SingleColumnLayoutPresenter {
         editorLayoutLog.fine("Component for node $nodeId didn't change at all");
         changeMap[nodeId] = 0;
         continue;
+      }
+
+      if (nodeIdToComponentMap[nodeId].runtimeType == newComponent.runtimeType &&
+          nodeIdToComponentMap[nodeId] is CompositeNodeViewModel) {
+        // If components are for CompositeNode and their internal structure changed
+        // treat it as deletion (to trigger full layout). Otherwise components might be not refreshed at time
+        // when they are called, for example when we replace child node by different type
+        if (!(nodeIdToComponentMap[nodeId] as CompositeNodeViewModel)
+            .hasSameChildrenStructure(newComponent as CompositeNodeViewModel)) {
+          changeMap[nodeId] = -1;
+          continue;
+        }
       }
 
       if (nodeIdToComponentMap[nodeId].runtimeType == newComponent.runtimeType) {

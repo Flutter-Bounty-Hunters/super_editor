@@ -189,7 +189,7 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       ? ReplaceNodeCommand(existingNodeId: request.existingNodeId, newNode: request.newNode)
       : null,
   (editor, request) => request is ReplaceNodeWithEmptyParagraphWithCaretRequest
-      ? ReplaceNodeWithEmptyParagraphWithCaretCommand(nodeId: request.nodeId)
+      ? ReplaceNodeWithEmptyParagraphWithCaretCommand(position: request.position)
       : null,
   (editor, request) => request is DeleteContentRequest //
       ? DeleteContentCommand(documentRange: request.documentRange)

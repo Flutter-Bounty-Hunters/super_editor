@@ -717,7 +717,7 @@ class ChangeTaskCompletionCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(nodeId),
+        NodeChangeEvent(NodePath.withNodeId(nodeId)),
       ),
     ]);
   }
@@ -828,7 +828,7 @@ class ConvertTaskToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(taskNode.id),
+        NodeChangeEvent(NodePath.withNodeId(taskNode.id)),
       )
     ]);
   }
@@ -913,10 +913,10 @@ class SplitExistingTaskCommand extends EditCommand {
     executor.logChanges([
       SplitTaskIntention.start(),
       DocumentEdit(
-        NodeChangeEvent(node.id),
+        NodeChangeEvent(NodePath.withNodeId(node.id)),
       ),
       DocumentEdit(
-        NodeInsertedEvent(newTaskNode.id, document.getNodeIndexById(newTaskNode.id)),
+        NodeInsertedEvent(NodePath.withNodeId(newTaskNode.id), document.getNodeIndexById(newTaskNode.id)),
       ),
       SelectionChangeEvent(
         oldSelection: oldSelection,
@@ -980,7 +980,7 @@ class IndentTaskCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(task.id),
+        NodeChangeEvent(NodePath.withNodeId(task.id)),
       ),
     ]);
   }
@@ -1037,7 +1037,7 @@ class UnIndentTaskCommand extends EditCommand {
 
     changeLog.add(
       DocumentEdit(
-        NodeChangeEvent(task.id),
+        NodeChangeEvent(NodePath.withNodeId(task.id)),
       ),
     );
 
@@ -1050,7 +1050,7 @@ class UnIndentTaskCommand extends EditCommand {
 
       changeLog.add(
         DocumentEdit(
-          NodeChangeEvent(subTask.id),
+          NodeChangeEvent(NodePath.withNodeId(subTask.id)),
         ),
       );
     }
@@ -1095,7 +1095,7 @@ class SetTaskIndentCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(task.id),
+        NodeChangeEvent(NodePath.withNodeId(task.id)),
       ),
     ]);
   }
