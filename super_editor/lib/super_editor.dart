@@ -114,6 +114,17 @@ export 'src/super_reader/reader_context.dart';
 export 'src/super_reader/super_reader.dart';
 export 'src/super_reader/tasks.dart';
 
+// Markdown Serialization
+export 'src/infrastructure/serialization/markdown/document_to_markdown_serializer.dart';
+export 'src/infrastructure/serialization/markdown/image_syntax.dart';
+export 'src/infrastructure/serialization/markdown/markdown_inline_parser.dart';
+export 'src/infrastructure/serialization/markdown/markdown_inline_upstream_plugin.dart';
+export 'src/infrastructure/serialization/markdown/markdown_to_attributed_text_parsing.dart';
+export 'src/infrastructure/serialization/markdown/markdown_to_document_parsing.dart';
+export 'src/infrastructure/serialization/markdown/super_editor_paste_markdown.dart';
+export 'src/infrastructure/serialization/markdown/super_editor_syntax.dart';
+export 'src/infrastructure/serialization/markdown/table.dart';
+
 // HTML Serialization
 export 'src/infrastructure/serialization/html/document_to_html.dart';
 export 'src/infrastructure/serialization/html/html_blockquotes.dart';
