@@ -154,8 +154,6 @@ class DocumentImeInputClient extends TextInputConnectionDecorator with TextInput
       editorImeLog.fine(
           "Sending forceful update to IME because our local TextEditingValue didn't change, but the IME may have:");
       editorImeLog.fine("$newValue");
-      print("Sending forceful update to IME because our local TextEditingValue didn't change, but the IME may have:");
-      print("$newValue");
       imeConnection.value?.setEditingState(newValue);
     } else {
       editorImeLog.fine("Ignoring new TextEditingValue because it's the same as the existing one: $newValue");
@@ -276,7 +274,6 @@ class DocumentImeInputClient extends TextInputConnectionDecorator with TextInput
 
     editorImeLog.fine("[DocumentImeInputClient] - Sending IME serialization:");
     editorImeLog.fine("[DocumentImeInputClient] - $textEditingValue");
-    print("Setting text editing value: $textEditingValue");
     setEditingState(textEditingValue);
     editorImeLog.fine("[DocumentImeInputClient] - Done sending document to IME");
 

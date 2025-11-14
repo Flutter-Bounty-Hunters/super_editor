@@ -47,13 +47,15 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     );
   }
 
+  // TODO: We need to pass DocumentPosition here, not just [node] in order to
+  // before / next API get working.
   SingleColumnLayoutComponentViewModel _styleComponent(
     Document document,
     DocumentNode node,
     DocumentNode? parent,
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
-    print("_styleComponent() - node: $node, viewModel: $viewModel");
+    // print("_styleComponent() - node: $node, viewModel: $viewModel");
 
     // Combine all applicable style rules into a single set of styles
     // for this component.
@@ -73,9 +75,9 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     viewModel.applyStyles(aggregateStyles);
 
     if (node is CompositeNode && viewModel is CompositeNodeViewModel) {
-      print(" - this is a composite node. Styling recursively.");
+      // print(" - this is a composite node. Styling recursively.");
       for (int i = 0; i < node.children.length; i += 1) {
-        print(" - styling sub-view model: ${viewModel.children[i]}");
+        // print(" - styling sub-view model: ${viewModel.children[i]}");
         _styleComponent(document, node.getChildAt(i), node, viewModel.children[i]);
       }
     }

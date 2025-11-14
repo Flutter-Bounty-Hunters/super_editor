@@ -68,8 +68,6 @@ class DocumentImeSerializer {
 
     selectedNodes.clear();
     selectedNodes.addAll(_doc.getNodesInContentOrder(selection));
-    print("Serializing document to IME...");
-    print(" - selected nodes: $selectedNodes");
     for (int i = 0; i < selectedNodes.length; i += 1) {
       // Append a newline character before appending another node's text.
       //

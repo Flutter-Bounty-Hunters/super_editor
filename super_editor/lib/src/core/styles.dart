@@ -204,11 +204,11 @@ class BlockSelector {
     }
 
     if (_parentBlockType != null) {
-      print(
-          "Looking for parent block: $_parentBlockType, actual parent: $parent, parent block type: ${(parent?.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name}");
+      // print(
+      //     "Looking for parent block: $_parentBlockType, actual parent: $parent, parent block type: ${(parent?.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name}");
       if (parent == null ||
           (parent.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _parentBlockType) {
-        print("Doesn't match parent");
+        // print("Doesn't match parent");
         return false;
       }
     }
