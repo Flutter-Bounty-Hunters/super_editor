@@ -280,20 +280,24 @@ class InsertNodeAtEndOfDocumentRequest implements EditRequest {
 
 class InsertNodeAtIndexRequest implements EditRequest {
   InsertNodeAtIndexRequest({
+    this.parentPath,
     required this.nodeIndex,
     required this.newNode,
   });
 
+  final NodePath? parentPath;
   final int nodeIndex;
   final DocumentNode newNode;
 }
 
 class InsertNodeAtIndexCommand extends EditCommand {
   InsertNodeAtIndexCommand({
+    this.parentPath,
     required this.nodeIndex,
     required this.newNode,
   });
 
+  final NodePath? parentPath;
   final int nodeIndex;
   final DocumentNode newNode;
 
@@ -303,10 +307,22 @@ class InsertNodeAtIndexCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    document.insertNodeAt(nodeIndex, newNode);
+    NodePath insertedNodePath;
+    if (parentPath != null) {
+      final parent = document.getNodeAtPath(parentPath!) as CompositeNode;
+      final childNode = parent.getChildAt(nodeIndex);
+      document.insertNodeAfterPath(
+        existingNodePath: parentPath!.append(childNode.id),
+        newNode: newNode,
+      );
+      insertedNodePath = parentPath!.append(newNode.id);
+    } else {
+      document.insertNodeAt(nodeIndex, newNode);
+      insertedNodePath = NodePath.withNodeId(newNode.id);
+    }
     executor.logChanges([
       DocumentEdit(
-        NodeInsertedEvent(NodePath.withNodeId(newNode.id), nodeIndex),
+        NodeInsertedEvent(insertedNodePath, nodeIndex),
       )
     ]);
   }

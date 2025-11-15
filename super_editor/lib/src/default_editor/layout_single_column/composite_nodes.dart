@@ -260,31 +260,43 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     );
   }
 
-  /// Returns a new CompositeNode where leaf at [position] is replaced by
-  /// provided [newLeaf]
-  CompositeNode copyAndReplaceLeaf({
-    required CompositeNodePosition position,
-    required DocumentNode newLeaf,
-  });
+  CompositeNode copyWithChildren(List<DocumentNode> children);
 
-  CompositeNode internalCopyAndReplaceLeaf({
-    required CompositeNodePosition position,
-    required DocumentNode newLeaf,
-    required CompositeNode Function(CompositeNode oldNode, List<DocumentNode> children) compositeNodeBuilder,
+  /// Find a [CompositeNode] specified by [nodePath] and replace it's children using [childrenReplacer] function,
+  /// then returns a new root [CompositeNode]
+  CompositeNode copyAndReplaceLeafChildren({
+    required NodePath nodePath,
+    required List<DocumentNode> Function(CompositeNode leafNode, List<DocumentNode> leafChildren) childrenReplacer,
   }) {
-    DocumentNode childReplacement;
-    final childPosition = position.childNodePosition;
-    if (childPosition is CompositeNodePosition) {
-      final child = getChildByNodeId(position.childNodeId);
-      assert(child is CompositeNode, 'Unexpected child type for CompositeNodePosition (${child.runtimeType})');
-      childReplacement = (child as CompositeNode).copyAndReplaceLeaf(position: childPosition, newLeaf: newLeaf);
-    } else {
-      childReplacement = newLeaf;
+    assert(
+      nodePath.rootNodeId == id,
+      'Invalid NodePathIterator state. `current` should point to children of current CompositeNode',
+    );
+
+    var stack = <CompositeNode>[];
+    var currentNode = this;
+    stack.add(currentNode);
+    for (var i = 1; i < nodePath.length; i += 1) {
+      final childId = nodePath.getAt(i);
+      final child = currentNode.getChildByNodeId(childId);
+      assert(
+        child is CompositeNode,
+        'nodePath should be path to leaf parent, but $childId is not CompositeNode (${child.runtimeType})',
+      );
+      currentNode = child as CompositeNode;
+      stack.add(currentNode);
     }
-    final newChildren = children.map((child) {
-      return child.id == childReplacement.id ? childReplacement : child;
-    }).toList();
-    return compositeNodeBuilder(this, newChildren);
+
+    var adjustedNode = currentNode.copyWithChildren(
+      childrenReplacer(currentNode, currentNode.children.toList()),
+    );
+    for (var i = stack.length - 2; i >= 0; i -= 1) {
+      final child = stack[i];
+      adjustedNode =
+          child.copyWithChildren(child.children.map((c) => c.id == adjustedNode.id ? adjustedNode : c).toList());
+    }
+
+    return adjustedNode;
   }
 
   @override
@@ -504,7 +516,7 @@ extension DocumentPositionCompositeEx on DocumentPosition {
 
   NodePath get nodePath => NodePath.withDocumentPosition(this);
 
-  String get leafNodeId => nodePath.leafId;
+  String get leafNodeId => nodePath.leafNodeId;
 }
 
 extension NodePositionCompositeEx on NodePosition {

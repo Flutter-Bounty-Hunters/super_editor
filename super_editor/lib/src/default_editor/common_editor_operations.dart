@@ -930,10 +930,6 @@ class CommonEditorOperations {
       return true;
     }
 
-    // TODO: Implement support for CompositeNode
-    if (composer.selection!.extent.nodePosition is UpstreamDownstreamNodePosition) {
-      final nodePosition = composer.selection!.extent.nodePosition as UpstreamDownstreamNodePosition;
-      if (nodePosition.affinity == TextAffinity.upstream) {
     final extentLeafPosition = composer.selection!.extent.leafNodePosition;
     if (extentLeafPosition is UpstreamDownstreamNodePosition) {
       if (extentLeafPosition.affinity == TextAffinity.upstream) {

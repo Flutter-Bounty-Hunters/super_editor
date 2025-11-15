@@ -1210,7 +1210,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   DocumentNode? getNodeAtPath(NodePath path) {
-    var node = getNodeById(path.rootId);
+    var node = getNodeById(path.rootNodeId);
     for (var i = 1; i < path.length; i += 1) {
       final childId = path.getAt(i);
       assert(
@@ -1223,13 +1223,26 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
+  int getNodeIndexInParent(NodePath path) {
+    final parentPath = path.toLeafParentPath();
+    if (parentPath == null) {
+      return getNodeIndexById(path.rootNodeId);
+    }
+    final parent = getNodeAtPath(parentPath) as CompositeNode;
+    return parent.getChildIndexByNodeId(path.leafNodeId);
+  }
+
+  @override
   DocumentNode? getLeafNode(DocumentPosition position) => getNodeAtPath(NodePath.withDocumentPosition(position));
 
   @override
   CompositeNode? getLeafNodeParent(DocumentPosition position) {
     final path = NodePath.withDocumentPosition(position).toLeafParentPath();
-    final node = path != null ? getNodeAtPath(path) : null;
-    assert(node is CompositeNode, 'Unexpected Leaf Parent Node ${node.runtimeType}. CompositeNode expected');
+    if (path == null) {
+      return null;
+    }
+    final node = getNodeAtPath(path);
+    assert(node is CompositeNode, 'Unexpected Leaf Parent Node "${node.runtimeType}". CompositeNode expected');
     return node as CompositeNode;
   }
 
@@ -1383,20 +1396,56 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
+  void replaceNodeByPath(NodePath path, DocumentNode newNode) {
+    var replacement = newNode;
+    if (!path.isRoot) {
+      final node = getNodeById(path.rootNodeId);
+      assert(node is CompositeNode);
+      replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
+        nodePath: path.toLeafParentPath()!,
+        childrenReplacer: (CompositeNode leafNode, List<DocumentNode> children) {
+          return children.map((c) => c.id == path.leafNodeId ? newNode : c).toList();
+        },
+      );
+    }
+    return replaceNodeById(path.rootNodeId, replacement);
+  }
+
   /// Replaces leaf node based on [position]. All CompositeNodes are copied and
   /// given newNode is replaced by its id
   void replaceLeafNodeByPosition(DocumentPosition position, DocumentNode newNode) {
-    final nodePosition = position.nodePosition;
-    var replacement = newNode;
-    if (nodePosition is CompositeNodePosition) {
-      final node = getNodeById(position.nodeId);
-      assert(node is CompositeNode);
-      replacement = (node as CompositeNode).copyAndReplaceLeaf(
-        position: nodePosition,
-        newLeaf: newNode,
+    return replaceNodeByPath(NodePath.withDocumentPosition(position), newNode);
+  }
+
+  /// Inserts [newNode] immediately after the given [existingNode].
+  void insertNodeAfterPath({
+    required NodePath existingNodePath,
+    required DocumentNode newNode,
+  }) {
+    if (existingNodePath.isRoot) {
+      return insertNodeAfter(
+        existingNodeId: existingNodePath.rootNodeId,
+        newNode: newNode,
       );
+    } else {
+      final leafParentPath = existingNodePath.toLeafParentPath()!;
+      final leafParent = getNodeAtPath(leafParentPath) as CompositeNode;
+      final insertIndex = leafParent.getChildIndexByNodeId(existingNodePath.leafNodeId);
+
+      final node = getNodeById(existingNodePath.rootNodeId);
+      assert(node is CompositeNode);
+
+      final replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
+        nodePath: leafParentPath,
+        childrenReplacer: (CompositeNode leafNode, List<DocumentNode> children) {
+          final newChildren = List.of(children);
+          newChildren.insert(insertIndex, newNode);
+          return newChildren;
+        },
+      );
+
+      replaceNodeById(existingNodePath.rootNodeId, replacement);
     }
-    return replaceNodeById(position.nodeId, replacement);
   }
 
   /// Returns [true] if the content of the [other] [Document] is equivalent

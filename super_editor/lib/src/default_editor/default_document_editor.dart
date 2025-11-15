@@ -168,7 +168,11 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       ? InsertNodeAtIndexCommand(nodeIndex: editor.document.length, newNode: request.newNode)
       : null,
   (editor, request) => request is InsertNodeAtIndexRequest
-      ? InsertNodeAtIndexCommand(nodeIndex: request.nodeIndex, newNode: request.newNode)
+      ? InsertNodeAtIndexCommand(
+          parentPath: request.parentPath,
+          nodeIndex: request.nodeIndex,
+          newNode: request.newNode,
+        )
       : null,
   (editor, request) => request is InsertNodeBeforeNodeRequest
       ? InsertNodeBeforeNodeCommand(existingNodeId: request.existingNodeId, newNode: request.newNode)

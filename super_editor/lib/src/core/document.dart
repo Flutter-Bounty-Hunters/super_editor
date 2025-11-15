@@ -53,6 +53,10 @@ abstract class Document implements Iterable<DocumentNode> {
   /// has the given [nodeId], or `-1` if the node does not exist.
   int getNodeIndexById(String nodeId);
 
+  /// Returns the index of the `DocumentNode` in parent node. If this
+  /// is a root node, then returns the index in this `Document`.
+  int getNodeIndexInParent(NodePath path);
+
   /// Returns the [DocumentNode] that appears immediately before the
   /// given [node] in this [Document], or null if the given [node]
   /// is the first node, or the given [node] does not exist in this
@@ -147,9 +151,9 @@ class NodePath {
 
   bool get isRoot => _path.length == 1;
 
-  String get rootId => _path.first;
+  String get rootNodeId => _path.first;
 
-  String get leafId => _path.last;
+  String get leafNodeId => _path.last;
 
   NodePath? toLeafParentPath() {
     if (length > 1) {
@@ -160,7 +164,7 @@ class NodePath {
 
   @override
   String toString() {
-    return isRoot ? rootId : _path.join('.');
+    return isRoot ? rootNodeId : _path.join('.');
   }
 
   @override
@@ -184,6 +188,10 @@ class NodePath {
 
   @override
   int get hashCode => _path.hashCode;
+
+  NodePath append(String childId) {
+    return NodePath([..._path, childId]);
+  }
 }
 
 /// Listener that's notified when a document changes.
@@ -225,9 +233,9 @@ abstract class NodeDocumentChange extends DocumentChange {
   const NodeDocumentChange();
 
   @Deprecated('Use rootNodeId instead or nodePath')
-  String get nodeId => nodePath.rootId;
+  String get nodeId => nodePath.rootNodeId;
 
-  String get rootNodeId => nodePath.rootId;
+  String get rootNodeId => nodePath.rootNodeId;
 
   NodePath get nodePath;
 }
@@ -380,7 +388,7 @@ class DocumentPosition {
     for (var i = nodePath.length - 1; i > 0; i -= 1) {
       resultPosition = CompositeNodePosition(nodePath.getAt(i), resultPosition);
     }
-    return DocumentPosition(nodeId: nodePath.rootId, nodePosition: resultPosition);
+    return DocumentPosition(nodeId: nodePath.rootNodeId, nodePosition: resultPosition);
   }
 
   /// ID of a [DocumentNode] within a [Document].

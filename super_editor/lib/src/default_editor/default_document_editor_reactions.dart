@@ -13,6 +13,7 @@ import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/horizontal_rule.dart';
 import 'package:super_editor/src/default_editor/image.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
@@ -314,7 +315,8 @@ class HorizontalRuleConversionReaction extends EditReaction {
     }
 
     final textInsertionEvent = edit.change as TextInsertionEvent;
-    final paragraph = document.getNodeById(textInsertionEvent.nodeId) as TextNode;
+    final paragraphPath = textInsertionEvent.nodePath;
+    final paragraph = document.getNodeAtPath(paragraphPath) as TextNode;
     final match = _hrPattern.firstMatch(paragraph.text.toPlainText())?.group(0);
     if (match == null) {
       return;
@@ -327,20 +329,21 @@ class HorizontalRuleConversionReaction extends EditReaction {
     requestDispatcher.execute([
       DeleteContentRequest(
         documentRange: DocumentRange(
-          start: DocumentPosition(nodeId: paragraph.id, nodePosition: const TextNodePosition(offset: 0)),
-          end: DocumentPosition(nodeId: paragraph.id, nodePosition: TextNodePosition(offset: match.length)),
+          start: DocumentPosition.withPath(nodePath: paragraphPath, nodePosition: const TextNodePosition(offset: 0)),
+          end: DocumentPosition.withPath(nodePath: paragraphPath, nodePosition: TextNodePosition(offset: match.length)),
         ),
       ),
       InsertNodeAtIndexRequest(
-        nodeIndex: document.getNodeIndexById(paragraph.id),
+        parentPath: paragraphPath.toLeafParentPath(),
+        nodeIndex: document.getNodeIndexInParent(paragraphPath),
         newNode: HorizontalRuleNode(
           id: Editor.createNodeId(),
         ),
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: paragraph.id,
+          position: DocumentPosition.withPath(
+            nodePath: paragraphPath,
             nodePosition: const TextNodePosition(offset: 0),
           ),
         ),
@@ -573,7 +576,7 @@ class LinkifyReaction extends EditReaction {
       final edit = edits[i];
       if (edit is DocumentEdit) {
         final change = edit.change;
-        if (change is TextInsertionEvent && change.text.toPlainText() == " " && change.nodePath.isRoot) {
+        if (change is TextInsertionEvent && change.text.toPlainText() == " ") {
           // Every space insertion might appear after a URL.
           linkifyCandidate = change;
           didInsertSpace = true;
@@ -597,14 +600,14 @@ class LinkifyReaction extends EditReaction {
         }
 
         final caretPosition = selection.extent;
-        if (caretPosition.nodeId != linkifyCandidate.nodeId) {
+        if (caretPosition.leafNodeId != linkifyCandidate.nodePath.leafNodeId) {
           // The selection moved to some other node. Don't linkify.
           linkifyCandidate = null;
           continue;
         }
 
         // +1 for the inserted space
-        if ((caretPosition.nodePosition as TextNodePosition).offset != linkifyCandidate.offset + 1) {
+        if ((caretPosition.leafNodePosition as TextNodePosition).offset != linkifyCandidate.offset + 1) {
           // The caret isn't sitting directly after the space. Whatever
           // these events represent, it doesn't represent the user typing
           // a URL and then press SPACE. Don't linkify.
@@ -614,7 +617,7 @@ class LinkifyReaction extends EditReaction {
 
         // The caret sits directly after an inserted space. Get the word before
         // the space from the document, and linkify, if it fits a schema.
-        final textNode = document.getNodeById(linkifyCandidate.nodeId) as TextNode;
+        final textNode = document.getNodeAtPath(linkifyCandidate.nodePath) as TextNode;
         _extractUpstreamWordAndLinkify(textNode.text, linkifyCandidate.offset);
       } else if ((edit is SubmitParagraphIntention && edit.isStart) ||
           (edit is SplitParagraphIntention && edit.isStart) ||
@@ -631,7 +634,7 @@ class LinkifyReaction extends EditReaction {
 
         final nextEdit = edits[i + 1];
         if (nextEdit is DocumentEdit && nextEdit.change is NodeChangeEvent) {
-          final editedNode = document.getNodeById((nextEdit.change as NodeChangeEvent).nodeId);
+          final editedNode = document.getNodeAtPath((nextEdit.change as NodeChangeEvent).nodePath);
           if (editedNode is TextNode) {
             _extractUpstreamWordAndLinkify(editedNode.text, editedNode.text.length);
           }
@@ -1117,11 +1120,11 @@ class EditInspector {
       return false;
     }
 
-    if (lastSelectionChangeEvent.newSelection!.extent.nodeId != textInsertionEvent.nodeId) {
+    if (lastSelectionChangeEvent.newSelection!.extent.leafNodeId != textInsertionEvent.nodePath.leafNodeId) {
       return false;
     }
 
-    final editedNode = document.getNodeById(textInsertionEvent.nodeId)!;
+    final editedNode = document.getNodeAtPath(textInsertionEvent.nodePath)!;
     if (editedNode is! TextNode) {
       return false;
     }
