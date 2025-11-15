@@ -21,8 +21,8 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import 'layout_single_column/layout_single_column.dart';
-import 'text_tools.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 
 @immutable
 class ParagraphNode extends TextNode {
@@ -278,38 +278,78 @@ class ParagraphComponentViewModel extends SingleColumnLayoutComponentViewModel w
       super.hashCode ^ textViewModelHashCode ^ blockType.hashCode ^ indent.hashCode ^ textScaler.hashCode;
 }
 
-/// A [ComponentBuilder] for rendering hint text in the first node of a document,
-/// when its an empty text node.
+/// A [ComponentBuilder] for rendering hint text in any empty [ParagraphNode] within a [Document].
+///
+/// Use [shouldShowHint] to specify when the hint text should be shown.
 class HintComponentBuilder extends ParagraphComponentBuilder {
-  const HintComponentBuilder(
-    this.hint,
-    this.hintStyleBuilder,
-  );
+  /// Shows a hint only when the document has a single node.
+  static bool defaultShowHintDelegate(Document document, ParagraphNode node) {
+    return document.length == 1;
+  }
 
-  final String hint;
-  final TextStyle Function(BuildContext) hintStyleBuilder;
+  /// Creates a [HintComponentBuilder] that displays the given [hint] text.
+  ///
+  /// Either a [hintTextStyle] or a [hintStyleBuilder] must be provided to style the hint text.
+  ///
+  /// The [shouldShowHint] determines whether to show the hint for a given [DocumentNode].
+  HintComponentBuilder.attributed(
+    this.hint, {
+    this.shouldShowHint = defaultShowHintDelegate,
+    TextStyle? hintTextStyle,
+    HintTextStyler? hintStyleBuilder,
+  })  : assert(hintStyleBuilder != null || hintTextStyle != null,
+            'Either hintStyleBuilder or hintTextStyle must be provided'),
+        assert(hintStyleBuilder == null || hintTextStyle == null,
+            'Provide either hintStyleBuilder or hintTextStyle, not both'),
+        _hintStyleBuilder = hintStyleBuilder ?? ((context, attributions) => hintTextStyle!);
+
+  /// Creates a [HintComponentBuilder] that displays the given [hint] text.
+  ///
+  /// Either a [hintTextStyle] or a [hintStyleBuilder] must be provided to style the hint text.
+  ///
+  /// The [shouldShowHint] determines whether to show the hint for a given [DocumentNode].
+  HintComponentBuilder.basic(
+    String hint, {
+    this.shouldShowHint = defaultShowHintDelegate,
+    TextStyle? hintTextStyle,
+    HintTextStyler? hintStyleBuilder,
+  })  : assert(hintStyleBuilder != null || hintTextStyle != null,
+            'Either hintStyleBuilder or hintTextStyle must be provided'),
+        assert(hintStyleBuilder == null || hintTextStyle == null,
+            'Provide either hintStyleBuilder or hintTextStyle, not both'),
+        _hintStyleBuilder = hintStyleBuilder ?? ((context, attributions) => hintTextStyle!),
+        hint = AttributedText(hint);
+
+  @Deprecated('Use HintComponentBuilder.attributedText() or HintComponentBuilder.string() instead')
+  HintComponentBuilder(
+    String hint,
+    TextStyle Function(BuildContext) hintStyleBuilder,
+  )   : hint = AttributedText(hint),
+        _hintStyleBuilder = ((context, attributions) => hintStyleBuilder(context)),
+        shouldShowHint = defaultShowHintDelegate;
+
+  /// The hint text to be displayed.
+  final AttributedText hint;
+
+  /// Delegate that determines whether to show the hint for a given [DocumentNode].
+  final ShowHintDelegate shouldShowHint;
+
+  /// Returns the styles for the hint text.
+  final HintTextStyler _hintStyleBuilder;
 
   @override
   SingleColumnLayoutComponentViewModel? createViewModel(
     Document document,
     DocumentNode node,
   ) {
+    // The `HintComponentViewModel` requires a `ParagraphComponentViewModel`,
+    // so we need to do this check here instead of delegate it to `showHintDelegate`.
     if (node is! ParagraphNode) {
       return null;
     }
 
-    final nodeIndex = document.getNodeIndexById(
-      node.id,
-    );
-
-    if (nodeIndex > 0) {
-      // This isn't the first node, we don't ever want to show hint text.
-      return null;
-    }
-
-    if (document.length > 1) {
-      // There are more than one nodes in the document, we don't want to show
-      // hint text.
+    if (!shouldShowHint(document, node)) {
+      // We don't want to display a hint for this node.
       return null;
     }
 
@@ -333,8 +373,8 @@ class HintComponentBuilder extends ParagraphComponentBuilder {
       text: componentViewModel.text,
       inlineWidgetBuilders: componentViewModel.inlineWidgetBuilders,
       textStyleBuilder: componentViewModel.textStyleBuilder,
-      hintText: AttributedText(componentViewModel.hintText),
-      hintStyleBuilder: (attributions) => hintStyleBuilder(componentContext.context),
+      hintText: componentViewModel.hintText,
+      hintStyleBuilder: (attributions) => _hintStyleBuilder(componentContext.context, attributions),
       textSelection: componentViewModel.selection,
       selectionColor: componentViewModel.selectionColor,
       underlines: componentViewModel.createUnderlines(),
@@ -349,7 +389,7 @@ class HintComponentBuilder extends ParagraphComponentBuilder {
 class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with TextComponentViewModel {
   factory HintComponentViewModel.fromParagraphViewModel(
     ParagraphComponentViewModel viewModel, {
-    required String hintText,
+    required AttributedText hintText,
   }) {
     return HintComponentViewModel(
       nodeId: viewModel.nodeId,
@@ -390,7 +430,7 @@ class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with T
     this.highlightWhenEmpty = false,
   });
 
-  String hintText;
+  AttributedText hintText;
 
   Attribution? blockType;
 
@@ -458,6 +498,12 @@ class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with T
   @override
   int get hashCode => super.hashCode ^ textViewModelHashCode ^ blockType.hashCode ^ indent.hashCode ^ hintText.hashCode;
 }
+
+/// A method that returns the [TextStyle] that should be used to style a hint text.
+typedef HintTextStyler = TextStyle Function(BuildContext context, Set<Attribution> attributions);
+
+/// A method that determines whether to show the hint for a given [node].
+typedef ShowHintDelegate = bool Function(Document document, ParagraphNode node);
 
 /// The standard [TextBlockIndentCalculator] used by paragraphs in `SuperEditor`.
 double defaultParagraphIndentCalculator(TextStyle textStyle, int indent) {
