@@ -64,9 +64,6 @@ dev_dependencies:
   flutter_lints: ^2.0.1
   golden_toolkit: ^0.15.0
   mockito: ^5.0.4
-  super_editor_markdown:
-    path: ../super_editor_markdown
-  text_table: ^4.0.1
   meta: ^1.8.0
   args: ^2.3.1
   path: ^1.8.3
