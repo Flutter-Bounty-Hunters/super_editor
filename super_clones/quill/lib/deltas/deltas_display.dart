@@ -2,7 +2,6 @@ import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_quill/super_editor_quill.dart';
 
 class DeltasDisplay extends StatefulWidget {
   const DeltasDisplay({
