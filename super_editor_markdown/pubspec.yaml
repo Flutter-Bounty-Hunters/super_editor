@@ -23,8 +23,8 @@ dependencies:
 #    path: ../super_editor
 #  super_text_layout:
 #    path: ../super_text_layout
-  attributed_text:
-    path: ../attributed_text
+#  attributed_text:
+#    path: ../attributed_text
 
 dev_dependencies:
   flutter_lints: ^2.0.1
