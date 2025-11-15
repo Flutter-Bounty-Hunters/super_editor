@@ -482,10 +482,8 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         // The height animation is already at zero, so reversing it won't trigger
         // the dismissal callback. Therefore, we need to null about the active panel, ourselves.
         _activePanel = null;
-        print("Panel is already closed - null'ing out the acive panel");
       } else {
         // Note: The _activePanel will be null'ed out when the reverse is complete.
-        print("Animating panel down");
         _panelHeightController.reverse();
       }
 
@@ -542,7 +540,6 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
         if (!wantsToShowKeyboardPanel) {
           // Now that the keyboard is fully closed, and we don't want a panel, close the panel
           // in case it happens to be open.
-          print("Animating panel closed");
           _panelHeightController.reverse();
         }
 

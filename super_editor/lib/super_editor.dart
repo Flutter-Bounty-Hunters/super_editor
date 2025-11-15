@@ -125,6 +125,17 @@ export 'src/infrastructure/serialization/markdown/super_editor_paste_markdown.da
 export 'src/infrastructure/serialization/markdown/super_editor_syntax.dart';
 export 'src/infrastructure/serialization/markdown/table.dart';
 
+// Quill Serialization
+export 'src/infrastructure/serialization/quill/parsing/block_formats.dart';
+export 'src/infrastructure/serialization/quill/parsing/inline_formats.dart';
+export 'src/infrastructure/serialization/quill/parsing/parser.dart';
+
+export 'src/infrastructure/serialization/quill/serializing/serializing.dart';
+export 'src/infrastructure/serialization/quill/serializing/serializers.dart';
+
+export 'src/infrastructure/serialization/quill/content/formatting.dart';
+export 'src/infrastructure/serialization/quill/content/multimedia.dart';
+
 // HTML Serialization
 export 'src/infrastructure/serialization/html/document_to_html.dart';
 export 'src/infrastructure/serialization/html/html_blockquotes.dart';
