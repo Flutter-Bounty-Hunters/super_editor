@@ -110,22 +110,37 @@ class BlockSelector {
   static const all = BlockSelector._();
 
   const BlockSelector(this._blockType)
-      : _precedingBlockType = null,
+      : _parentBlockType = null,
+        _precedingBlockType = null,
         _followingBlockType = null,
         _indexMatcher = null;
 
   const BlockSelector._({
     String? blockType,
+    String? parentBlockType,
     String? precedingBlockType,
     String? followingBlockType,
     _BlockMatcher? indexMatcher,
   })  : _blockType = blockType,
+        _parentBlockType = parentBlockType,
         _precedingBlockType = precedingBlockType,
         _followingBlockType = followingBlockType,
         _indexMatcher = indexMatcher;
 
   /// The desired type of block, or `null` to match any block.
   final String? _blockType;
+
+  /// Type of block that contains the desired block.
+  final String? _parentBlockType;
+
+  /// Returns a modified version of this selector that only selects blocks
+  /// that are children of the given [parentBlockType].
+  BlockSelector childOf(String parentBlockType) => BlockSelector._(
+        blockType: _blockType,
+        parentBlockType: parentBlockType,
+        precedingBlockType: _precedingBlockType,
+        followingBlockType: _followingBlockType,
+      );
 
   /// Type of block that appears immediately before the desired block.
   final String? _precedingBlockType;
@@ -134,6 +149,7 @@ class BlockSelector {
   /// that appear immediately after the given [_blockType].
   BlockSelector after(String precedingBlockType) => BlockSelector._(
         blockType: _blockType,
+        parentBlockType: _parentBlockType,
         precedingBlockType: precedingBlockType,
         followingBlockType: _followingBlockType,
       );
@@ -145,6 +161,7 @@ class BlockSelector {
   /// that appear immediately before the given [_blockType].
   BlockSelector before(String followingBlockType) => BlockSelector._(
         blockType: _blockType,
+        parentBlockType: _parentBlockType,
         precedingBlockType: _precedingBlockType,
         followingBlockType: followingBlockType,
       );
@@ -153,6 +170,7 @@ class BlockSelector {
 
   BlockSelector first() => BlockSelector._(
         blockType: _blockType,
+        parentBlockType: _parentBlockType,
         precedingBlockType: _precedingBlockType,
         followingBlockType: _followingBlockType,
         indexMatcher: const _FirstBlockMatcher(),
@@ -160,6 +178,7 @@ class BlockSelector {
 
   BlockSelector last() => BlockSelector._(
         blockType: _blockType,
+        parentBlockType: _parentBlockType,
         precedingBlockType: _precedingBlockType,
         followingBlockType: _followingBlockType,
         indexMatcher: const _LastBlockMatcher(),
@@ -167,6 +186,7 @@ class BlockSelector {
 
   BlockSelector atIndex(int index) => BlockSelector._(
         blockType: _blockType,
+        parentBlockType: _parentBlockType,
         precedingBlockType: _precedingBlockType,
         followingBlockType: _followingBlockType,
         indexMatcher: _IndexBlockMatcher(index),
@@ -174,8 +194,9 @@ class BlockSelector {
 
   /// Returns `true` if this selector matches the block for the given [node], or
   /// `false`, otherwise.
-  bool matches(Document document, DocumentNode node) {
-    if (_blockType != null && (node.getMetadataValue("blockType") as NamedAttribution?)?.name != _blockType) {
+  bool matches(Document document, NodePath path, DocumentNode node) {
+    if (_blockType != null &&
+        (node.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _blockType) {
       return false;
     }
 
@@ -183,23 +204,47 @@ class BlockSelector {
       return false;
     }
 
+    if (_parentBlockType != null) {
+      if (_blockTypeForNodeAtPath(document, path.parent) != _parentBlockType) {
+        return false;
+      }
+    }
+
     if (_precedingBlockType != null) {
-      final nodeBefore = document.getNodeBefore(node);
-      if (nodeBefore == null ||
-          (nodeBefore.getMetadataValue("blockType") as NamedAttribution?)?.name != _precedingBlockType) {
+      final previousNodePath = _nodePathForNextNode(document, path, backward: true);
+      if (_blockTypeForNodeAtPath(document, previousNodePath) != _precedingBlockType) {
         return false;
       }
     }
 
     if (_followingBlockType != null) {
-      final nodeAfter = document.getNodeAfter(node);
-      if (nodeAfter == null ||
-          (nodeAfter.getMetadataValue("blockType") as NamedAttribution?)?.name != _followingBlockType) {
+      final nextNodePath = _nodePathForNextNode(document, path);
+      if (_blockTypeForNodeAtPath(document, nextNodePath) != _followingBlockType) {
         return false;
       }
     }
 
     return true;
+  }
+
+  String? _blockTypeForNodeAtPath(Document document, NodePath? path) {
+    if (path == null) {
+      return null;
+    }
+    final node = document.getNodeAtPath(path);
+    final blockType = node?.getMetadataValue(NodeMetadata.blockType);
+    if (blockType is NamedAttribution) {
+      return blockType.name;
+    }
+    return null;
+  }
+
+  NodePath? _nodePathForNextNode(Document doc, NodePath path, {bool backward = false}) {
+    final previous = doc.getLeafNodes(reversed: backward, sincePath: path).firstOrNull;
+    if (previous != null && previous.$1.parent == path.parent) {
+      return previous.$1;
+    }
+    return null;
   }
 
   @override

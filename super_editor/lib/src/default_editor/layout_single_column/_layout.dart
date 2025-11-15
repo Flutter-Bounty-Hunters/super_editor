@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 import '_presenter.dart';
@@ -661,6 +662,24 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   @override
+  DocumentComponent? getLeafComponent(DocumentPosition position) {
+    final parent = getComponentByNodeId(position.nodeId);
+    if (parent is CompositeComponent) {
+      final child = (parent as CompositeComponent).getLeafComponentByNodePosition(position.nodePosition);
+      if (child is! DocumentComponent) {
+        final warningText = 'WARNING: found child component but it\'s not a DocumentComponent: ${child.runtimeType}';
+        editorLayoutLog.info(warningText);
+        if (kDebugMode) {
+          throw Exception(warningText);
+        }
+        return null;
+      }
+      return child;
+    }
+    return parent;
+  }
+
+  @override
   Offset getDocumentOffsetFromAncestorOffset(Offset ancestorOffset, [RenderObject? ancestor]) {
     return (boxContext.findRenderObject() as RenderBox).globalToLocal(ancestorOffset, ancestor: ancestor);
   }
@@ -935,7 +954,7 @@ class _PresenterComponentBuilderState extends State<_PresenterComponentBuilder> 
 /// Builds a component widget for the given [componentViewModel] and
 /// binds it to the given [componentKey].
 ///
-/// The specific widget that's build is determined by the given
+/// The specific widget that's built is determined by the given
 /// [componentBuilders]. The component widget is rebuilt whenever the
 /// given [presenter] reports that the
 class _Component extends StatelessWidget {
@@ -973,7 +992,28 @@ class _Component extends StatelessWidget {
     final componentContext = SingleColumnDocumentComponentContext(
       context: context,
       componentKey: componentKey,
+      buildChildComponent: _createChildBuilder(context),
     );
+
+    final component = _buildComponent(
+      componentContext,
+      componentBuilders,
+      componentViewModel,
+      showDebugPaint: showDebugPaint,
+    );
+    if (component != null) {
+      return component;
+    }
+
+    return const SizedBox();
+  }
+
+  Widget? _buildComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    List<ComponentBuilder> componentBuilders,
+    SingleColumnLayoutComponentViewModel componentViewModel, {
+    bool showDebugPaint = false,
+  }) {
     for (final componentBuilder in componentBuilders) {
       var component = componentBuilder.createComponent(componentContext, componentViewModel);
       if (component != null) {
@@ -993,7 +1033,34 @@ class _Component extends StatelessWidget {
         return showDebugPaint ? _wrapWithDebugWidget(component) : component;
       }
     }
-    return const SizedBox();
+
+    return null;
+  }
+
+  ComponentWidgetBuilder _createChildBuilder(BuildContext context) {
+    return (SingleColumnLayoutComponentViewModel componentViewModel) {
+      final childComponentKey = GlobalKey<DocumentComponent>();
+
+      // TODO: We should do something similar to _PresenterComponentBuilder to build only single child when its changed
+      // but that also requires changing SingleColumnLayoutPresenterChangeListener API (to include information about
+      // children changes)
+      return (
+        childComponentKey,
+        _buildComponent(
+              SingleColumnDocumentComponentContext(
+                context: context,
+                // FIXME: Normally this key is tied to a node and is cached. But child components don't have nodes...
+                componentKey: childComponentKey,
+                // Recursively generate functions to build deeper and deeper children.
+                buildChildComponent: _createChildBuilder(context),
+              ),
+              componentBuilders,
+              componentViewModel,
+              showDebugPaint: showDebugPaint,
+            ) ??
+            const SizedBox(),
+      );
+    };
   }
 
   Widget _wrapWithDebugWidget(Widget component) {

@@ -151,7 +151,8 @@ class ListItemComponentBuilder implements ComponentBuilder {
   const ListItemComponentBuilder();
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+      PresenterContext context, Document document, DocumentNode node) {
     if (node is! ListItemNode) {
       return null;
     }
@@ -982,7 +983,7 @@ class IndentListItemCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(nodeId),
+        NodeChangeEvent(NodePath.withNodeId(nodeId)),
       )
     ]);
   }
@@ -1021,7 +1022,7 @@ class UnIndentListItemCommand extends EditCommand {
 
       executor.logChanges([
         DocumentEdit(
-          NodeChangeEvent(nodeId),
+          NodeChangeEvent(NodePath.withNodeId(nodeId)),
         )
       ]);
     } else {
@@ -1137,7 +1138,7 @@ class ConvertListItemToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(listItem.id),
+        NodeChangeEvent(NodePath.withNodeId(listItem.id)),
       )
     ]);
   }
@@ -1180,7 +1181,7 @@ class ConvertParagraphToListItemCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(paragraphNode.id),
+        NodeChangeEvent(NodePath.withNodeId(paragraphNode.id)),
       )
     ]);
   }
@@ -1222,7 +1223,7 @@ class ChangeListItemTypeCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(existingListItem.id),
+        NodeChangeEvent(NodePath.withNodeId(existingListItem.id)),
       )
     ]);
   }
@@ -1306,10 +1307,10 @@ class SplitListItemCommand extends EditCommand {
     executor.logChanges([
       SplitListItemIntention.start(),
       DocumentEdit(
-        NodeChangeEvent(nodeId),
+        NodeChangeEvent(NodePath.withNodeId(nodeId)),
       ),
       DocumentEdit(
-        NodeInsertedEvent(newNodeId, document.getNodeIndexById(newNodeId)),
+        NodeInsertedEvent(NodePath.withNodeId(newNodeId), document.getNodeIndexById(newNodeId)),
       ),
       SplitListItemIntention.end(),
     ]);

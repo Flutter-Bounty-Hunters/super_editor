@@ -15,6 +15,8 @@ import 'package:super_editor/src/core/edit_context.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -33,7 +35,7 @@ import 'selection_upstream_downstream.dart';
 import 'text_tools.dart';
 
 @immutable
-class TextNode extends DocumentNode {
+class TextNode extends DocumentNode implements ImeNodeSerialization {
   TextNode({
     required this.id,
     required this.text,
@@ -200,6 +202,21 @@ class TextNode extends DocumentNode {
 
   @override
   int get hashCode => super.hashCode ^ id.hashCode ^ text.hashCode;
+
+  @override
+  int imeOffsetFromNodePosition(TextNodePosition position) {
+    return position.offset;
+  }
+
+  @override
+  NodePosition nodePositionFromImeOffset(int imeOffset) {
+    return TextNodePosition(offset: imeOffset);
+  }
+
+  @override
+  String toImeText() {
+    return text.toPlainText();
+  }
 }
 
 extension TextNodeExtensions on DocumentNode {
@@ -1618,7 +1635,7 @@ class AddTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: AttributionChange.added,
               range: range,
               attributions: attributions,
@@ -1748,7 +1765,7 @@ class RemoveTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1925,7 +1942,7 @@ class ToggleTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodeId: node.id,
+              nodePath: NodePath.withNodeId(node.id),
               change: wasAttributionAdded ? AttributionChange.added : AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1946,11 +1963,11 @@ class ToggleTextAttributionsCommand extends EditCommand {
 /// A [NodeChangeEvent] for the addition or removal of a set of attributions.
 class AttributionChangeEvent extends NodeChangeEvent {
   AttributionChangeEvent({
-    required String nodeId,
+    required NodePath nodePath,
     required this.change,
     required this.range,
     required this.attributions,
-  }) : super(nodeId);
+  }) : super(nodePath);
 
   final AttributionChange change;
   final SpanRange range;
@@ -1958,10 +1975,11 @@ class AttributionChangeEvent extends NodeChangeEvent {
 
   @override
   String describe() =>
-      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodeId) - ${range.start} -> ${range.end}: $attributions";
+      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodePath) - ${range.start} -> ${range.end}: $attributions";
 
   @override
-  String toString() => "AttributionChangeEvent ('$nodeId' - ${range.start} -> ${range.end} ($change): '$attributions')";
+  String toString() =>
+      "AttributionChangeEvent ('$nodePath' - ${range.start} -> ${range.end} ($change): '$attributions')";
 
   @override
   bool operator ==(Object other) =>
@@ -2017,7 +2035,7 @@ class ChangeSingleColumnLayoutComponentStylesCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(node.id),
+        NodeChangeEvent(NodePath.withNodeId(node.id)),
       ),
     ]);
   }
@@ -2065,7 +2083,7 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
     }
 
     final range = selection.normalize(context.document);
-    if (range.start.nodeId == range.end.nodeId && range.start.nodePosition is! TextNodePosition) {
+    if (range.start.nodeId == range.end.nodeId && range.start.leafNodePosition is! TextNodePosition) {
       // Selection is in a single node, and it's not a text node. We can't insert text here.
       return;
     }
@@ -2082,7 +2100,8 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
       );
 
       final caret = context.composer.selection!.extent;
-      if (caret.nodePosition is! TextNodePosition) {
+      // For CompositeNodes this should not be the case, as DeleteSelectionCommand won't delete TextNode inside CompositeNode
+      if (caret.leafNodePosition is! TextNodePosition) {
         // After deleting an expanded selection, we ended up with a caret
         // sitting in a non-text node. Insert a text node to accept the new
         // text.
@@ -2117,7 +2136,7 @@ class InsertTextRequest implements EditRequest {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2133,7 +2152,7 @@ class InsertTextCommand extends EditCommand {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2145,19 +2164,19 @@ class InsertTextCommand extends EditCommand {
 
   @override
   String describe() =>
-      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.nodePosition as TextNodePosition).offset} - '$textToInsert'";
+      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.leafNodePosition as TextNodePosition).offset} - '$textToInsert'";
 
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
 
-    var textNode = document.getNodeById(documentPosition.nodeId);
+    var textNode = document.getLeafNode(documentPosition);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textPosition = documentPosition.nodePosition as TextPosition;
+    final textPosition = documentPosition.leafNodePosition as TextPosition;
     final textOffset = textPosition.offset;
 
     textNode = textNode.copyTextNodeWith(
@@ -2171,15 +2190,12 @@ class InsertTextCommand extends EditCommand {
         },
       ),
     );
-    document.replaceNodeById(
-      textNode.id,
-      textNode,
-    );
+    document.replaceLeafNodeByPosition(documentPosition, textNode);
 
     executor.logChanges([
       DocumentEdit(
         TextInsertionEvent(
-          nodeId: textNode.id,
+          nodePath: NodePath.withDocumentPosition(documentPosition),
           offset: textOffset,
           text: AttributedText(textToInsert),
         ),
@@ -2189,9 +2205,8 @@ class InsertTextCommand extends EditCommand {
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: textNode.id,
-            nodePosition: TextNodePosition(
+          position: documentPosition.copyWithLeafPosition(
+            TextNodePosition(
               offset: textOffset + textToInsert.length,
               affinity: textPosition.affinity,
             ),
@@ -2207,10 +2222,10 @@ class InsertTextCommand extends EditCommand {
 
 class TextInsertionEvent extends NodeChangeEvent {
   TextInsertionEvent({
-    required String nodeId,
+    required NodePath nodePath,
     required this.offset,
     required this.text,
-  }) : super(nodeId);
+  }) : super(nodePath);
 
   final int offset;
   final AttributedText text;
@@ -2235,20 +2250,20 @@ class TextInsertionEvent extends NodeChangeEvent {
 }
 
 class TextDeletedEvent extends NodeChangeEvent {
-  const TextDeletedEvent(
-    String nodeId, {
+  TextDeletedEvent(
+    NodePath nodePath, {
     required this.offset,
     required this.deletedText,
-  }) : super(nodeId);
+  }) : super(nodePath);
 
   final int offset;
   final AttributedText deletedText;
 
   @override
-  String describe() => "Deleted text ($nodeId) @ $offset: ${deletedText.toPlainText()}";
+  String describe() => "Deleted text ($nodePath) @ $offset: ${deletedText.toPlainText()}";
 
   @override
-  String toString() => "TextDeletedEvent ('$nodeId' - $offset -> '${deletedText.toPlainText()}')";
+  String toString() => "TextDeletedEvent ('$nodePath' - $offset -> '${deletedText.toPlainText()}')";
 
   @override
   bool operator ==(Object other) =>
@@ -2666,7 +2681,7 @@ class ConvertTextNodeToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(extentNode.id),
+        NodeChangeEvent(NodePath.withNodeId(extentNode.id)),
       ),
     ]);
   }
@@ -2691,7 +2706,7 @@ class InsertAttributedTextCommand extends EditCommand {
     required this.documentPosition,
     required this.textToInsert,
     this.createdAt,
-  }) : assert(documentPosition.nodePosition is TextPosition);
+  }) : assert(documentPosition.leafNodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final AttributedText textToInsert;
@@ -2703,13 +2718,13 @@ class InsertAttributedTextCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    final textNode = document.getNodeById(documentPosition.nodeId);
+    final textNode = document.getLeafNode(documentPosition);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textOffset = (documentPosition.nodePosition as TextPosition).offset;
+    final textOffset = (documentPosition.leafNodePosition as TextPosition).offset;
 
     late final AttributedText finalTextToInsert;
     if (createdAt != null) {
@@ -2722,8 +2737,8 @@ class InsertAttributedTextCommand extends EditCommand {
       finalTextToInsert = textToInsert;
     }
 
-    document.replaceNodeById(
-      textNode.id,
+    document.replaceLeafNodeByPosition(
+      documentPosition,
       textNode.copyTextNodeWith(
         text: textNode.text.insert(
           textToInsert: finalTextToInsert,
@@ -2735,7 +2750,7 @@ class InsertAttributedTextCommand extends EditCommand {
     executor.logChanges([
       DocumentEdit(
         TextInsertionEvent(
-          nodeId: textNode.id,
+          nodePath: NodePath.withDocumentPosition(documentPosition),
           offset: textOffset,
           text: textToInsert,
         ),
@@ -3324,6 +3339,6 @@ bool _isTextEntryNode({
   required DocumentSelection selection,
 }) {
   final extentPosition = selection.extent;
-  final extentNode = document.getNodeById(extentPosition.nodeId);
+  final extentNode = document.getLeafNode(selection.extent);
   return extentNode is TextNode;
 }

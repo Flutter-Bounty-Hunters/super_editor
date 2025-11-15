@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -79,27 +80,23 @@ class DocumentImeSerializer {
       }
 
       final node = selectedNodes[i];
-      if (node is! TextNode) {
-        buffer.write('~');
-        characterCount += 1;
-
-        final imeRange = TextRange(start: characterCount - 1, end: characterCount);
-        imeRangesToDocTextNodes[imeRange] = node.id;
-        docTextNodesToImeRanges[node.id] = imeRange;
-
-        continue;
+      String nodeImeText;
+      if (node is ImeNodeSerialization) {
+        nodeImeText = (node as ImeNodeSerialization).toImeText();
+      } else {
+        nodeImeText = '~';
       }
 
       // Cache mappings between the IME text range and the document position
       // so that we can easily convert between the two, when requested.
-      final imeRange = TextRange(start: characterCount, end: characterCount + node.text.length);
-      editorImeLog.finer("IME range $imeRange -> text node content '${node.text.toPlainText()}'");
+      final imeRange = TextRange(start: characterCount, end: characterCount + nodeImeText.length);
+      editorImeLog.finer("IME range $imeRange -> text node content '$nodeImeText'");
       imeRangesToDocTextNodes[imeRange] = node.id;
       docTextNodesToImeRanges[node.id] = imeRange;
 
       // Concatenate this node's text with the previous nodes.
-      buffer.write(node.text.toPlainText());
-      characterCount += node.text.length;
+      buffer.write(nodeImeText);
+      characterCount += nodeImeText.length;
     }
 
     imeText = buffer.toString();
@@ -267,10 +264,10 @@ class DocumentImeSerializer {
       if (range.start <= imePosition.offset && imePosition.offset <= range.end) {
         final node = _doc.getNodeById(imeRangesToDocTextNodes[range]!)!;
 
-        if (node is TextNode) {
+        if (node is ImeNodeSerialization) {
           return DocumentPosition(
             nodeId: imeRangesToDocTextNodes[range]!,
-            nodePosition: TextNodePosition(offset: imePosition.offset - range.start),
+            nodePosition: (node as ImeNodeSerialization).nodePositionFromImeOffset(imePosition.offset - range.start),
           );
         } else {
           if (imePosition.offset <= range.start) {
@@ -367,8 +364,10 @@ class DocumentImeSerializer {
       }
     }
 
-    if (nodePosition is TextNodePosition) {
-      return TextPosition(offset: imeRange.start + (docPosition.nodePosition as TextNodePosition).offset);
+    final node = _doc.getNodeById(docPosition.nodeId)!;
+    if (node is ImeNodeSerialization) {
+      final imeOffset = (node as ImeNodeSerialization).imeOffsetFromNodePosition(nodePosition);
+      return TextPosition(offset: imeRange.start + imeOffset);
     }
 
     throw Exception("Super Editor doesn't know how to convert a $nodePosition into an IME-compatible selection");
