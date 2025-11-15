@@ -100,7 +100,8 @@ class CommonEditorOperations {
   }) {
     DocumentPosition? position;
     if (findNearestPosition) {
-      position = documentLayoutResolver().getDocumentPositionNearestToOffset(documentOffset);
+      position = documentLayoutResolver()
+          .getDocumentPositionNearestToOffset(documentOffset);
     } else {
       position = documentLayoutResolver().getDocumentPositionAtOffset(documentOffset);
     }
@@ -2510,17 +2511,31 @@ class PasteEditorCommand extends EditCommand {
       ]);
     }
 
-    // Place the caret at the end of the pasted content.
-    final pastedNode = document.getNodeById(previousNode.id)!;
-    // ^ re-query the node where we pasted content because nodes are immutable.
-
+    late DocumentPosition documentPositionAfterPaste;
+    if (parsedContent.length > 1) {
+      // Place the caret at the end of the pasted content.
+      final pastedNode = document.getNodeById(previousNode.id)!;
+      // ^ re-query the node where we pasted content because nodes are immutable.
+      documentPositionAfterPaste = DocumentPosition(
+        nodeId: pastedNode.id,
+        nodePosition: pastedNode.endPosition,
+      );
+    } else {
+      // The user only pasted content without any newlines in it. Place the
+      // caret in the existing node at the end of the pasted text. This is
+      // guaranteed to be a TextNode.
+      documentPositionAfterPaste = DocumentPosition(
+        nodeId: _pastePosition.nodeId,
+        nodePosition: TextNodePosition(
+          offset:
+              pasteTextOffset + (_parsedContent!.first as TextNode).text.length,
+        ),
+      );
+    }
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: pastedNode.id,
-            nodePosition: pastedNode.endPosition,
-          ),
+          position: documentPositionAfterPaste,
         ),
         SelectionChangeType.insertContent,
         SelectionReason.userInteraction,
