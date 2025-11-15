@@ -1,4 +1,7 @@
+import 'dart:collection';
+
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
@@ -121,77 +124,85 @@ abstract class Document implements Iterable<DocumentNode> {
 
 /// A path of node ids that can identify a specific node in a document
 /// An alternative to `nodeId` for hierarchy structure
-class NodePath {
+class NodePath with IterableMixin<String> {
   /// List of nodeIds
-  final List<String> _path;
+  final List<String> _segments;
 
-  Iterable<String> get path => _path;
-  int get length => _path.length;
-  String getAt(int index) => _path[index];
-
-  NodePath(this._path);
+  NodePath(Iterable<String> segments) : _segments = List.unmodifiable(segments) {
+    assert(!_segments.any((s) => s.isEmpty), 'All segments of NodePath must be non-empty string');
+  }
 
   factory NodePath.withNodeId(String nodeId) {
     return NodePath([nodeId]);
   }
 
+  /// Creates NodePath from root-level DocumentPosition
   factory NodePath.withDocumentPosition(DocumentPosition position) {
     return NodePath.withNodePosition(position.nodeId, position.nodePosition);
   }
 
-  factory NodePath.withNodePosition(String nodeId, NodePosition position) {
+  /// Creates NodePath from root-level [nodeId] and [nodePosition]
+  factory NodePath.withNodePosition(String nodeId, NodePosition nodePosition) {
     final ids = [nodeId];
-    var nodePosition = position;
-    while (nodePosition is CompositeNodePosition) {
-      ids.add(nodePosition.childNodeId);
-      nodePosition = nodePosition.childNodePosition;
+    var currentNodePosition = nodePosition;
+    while (currentNodePosition is CompositeNodePosition) {
+      ids.add(currentNodePosition.childNodeId);
+      currentNodePosition = currentNodePosition.childNodePosition;
     }
     return NodePath(ids);
   }
 
-  bool get isRoot => _path.length == 1;
+  @override
+  Iterator<String> get iterator => _segments.iterator;
 
-  String get rootNodeId => _path.first;
+  String operator [](int index) => _segments[index];
 
-  String get leafNodeId => _path.last;
+  @override
+  String get first => _segments.first;
 
-  NodePath? toLeafParentPath() {
-    if (length > 1) {
-      return NodePath(_path.slice(0, length - 1));
+  @override
+  String get last => _segments.last;
+
+  @override
+  bool get isEmpty => _segments.isEmpty;
+
+  @override
+  bool get isNotEmpty => _segments.isNotEmpty;
+
+  @override
+  int get length => _segments.length;
+
+  bool get isRoot => length == 1;
+
+  String get rootNodeId => first;
+
+  String get leafNodeId => last;
+
+  /// Returns leaf parent NodePath. If path is for root node, then returns null
+  NodePath? get parent {
+    if (isRoot) {
+      return null;
     }
-    return null;
+    return NodePath(_segments.sublist(0, length - 1));
+  }
+
+  NodePath child(String childId) {
+    return NodePath([..._segments, childId]);
   }
 
   @override
   String toString() {
-    return isRoot ? rootNodeId : _path.join('.');
+    return isRoot ? rootNodeId : _segments.join('.');
   }
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) {
-      return true;
-    }
-    if (other is! NodePath || runtimeType != other.runtimeType) {
-      return false;
-    }
-    if (_path.length != other._path.length) {
-      return false;
-    }
-    for (var i = 0; i < _path.length; i += 1) {
-      if (_path[i] != other._path[i]) {
-        return false;
-      }
-    }
-    return true;
+    return identical(this, other) ||
+        (other is NodePath && runtimeType == other.runtimeType && listEquals(_segments, other._segments));
   }
 
   @override
-  int get hashCode => _path.hashCode;
-
-  NodePath append(String childId) {
-    return NodePath([..._path, childId]);
-  }
+  int get hashCode => Object.hashAll(_segments);
 }
 
 /// Listener that's notified when a document changes.
@@ -386,7 +397,7 @@ class DocumentPosition {
   }) {
     var resultPosition = nodePosition;
     for (var i = nodePath.length - 1; i > 0; i -= 1) {
-      resultPosition = CompositeNodePosition(nodePath.getAt(i), resultPosition);
+      resultPosition = CompositeNodePosition(nodePath[i], resultPosition);
     }
     return DocumentPosition(nodeId: nodePath.rootNodeId, nodePosition: resultPosition);
   }

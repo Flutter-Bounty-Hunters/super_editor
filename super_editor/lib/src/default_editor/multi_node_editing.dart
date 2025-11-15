@@ -312,10 +312,10 @@ class InsertNodeAtIndexCommand extends EditCommand {
       final parent = document.getNodeAtPath(parentPath!) as CompositeNode;
       final childNode = parent.getChildAt(nodeIndex);
       document.insertNodeAfterPath(
-        existingNodePath: parentPath!.append(childNode.id),
+        existingNodePath: parentPath!.child(childNode.id),
         newNode: newNode,
       );
-      insertedNodePath = parentPath!.append(newNode.id);
+      insertedNodePath = parentPath!.child(newNode.id);
     } else {
       document.insertNodeAt(nodeIndex, newNode);
       insertedNodePath = NodePath.withNodeId(newNode.id);

@@ -1211,8 +1211,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   @override
   DocumentNode? getNodeAtPath(NodePath path) {
     var node = getNodeById(path.rootNodeId);
-    for (var i = 1; i < path.length; i += 1) {
-      final childId = path.getAt(i);
+    for (final childId in path.skip(1)) {
       assert(
         node is CompositeNode,
         'Unable to get node at $path, when $childId is not CompositeNode (${node.runtimeType} was given)',
@@ -1224,7 +1223,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   int getNodeIndexInParent(NodePath path) {
-    final parentPath = path.toLeafParentPath();
+    final parentPath = path.parent;
     if (parentPath == null) {
       return getNodeIndexById(path.rootNodeId);
     }
@@ -1237,13 +1236,20 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   CompositeNode? getLeafNodeParent(DocumentPosition position) {
-    final path = NodePath.withDocumentPosition(position).toLeafParentPath();
+    final path = NodePath.withDocumentPosition(position).parent;
     if (path == null) {
       return null;
     }
     final node = getNodeAtPath(path);
     assert(node is CompositeNode, 'Unexpected Leaf Parent Node "${node.runtimeType}". CompositeNode expected');
     return node as CompositeNode;
+  }
+
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? sincePath}) sync* {
+    final iterator = _LeafNodeIterator(this, sincePath: sincePath, reversed: reversed);
+    while (iterator.moveNext()) {
+      yield iterator.current;
+    }
   }
 
   @override
@@ -1402,7 +1408,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       final node = getNodeById(path.rootNodeId);
       assert(node is CompositeNode);
       replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
-        nodePath: path.toLeafParentPath()!,
+        nodePath: path.parent!,
         childrenReplacer: (CompositeNode leafNode, List<DocumentNode> children) {
           return children.map((c) => c.id == path.leafNodeId ? newNode : c).toList();
         },
@@ -1428,7 +1434,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         newNode: newNode,
       );
     } else {
-      final leafParentPath = existingNodePath.toLeafParentPath()!;
+      final leafParentPath = existingNodePath.parent!;
       final leafParent = getNodeAtPath(leafParentPath) as CompositeNode;
       final insertIndex = leafParent.getChildIndexByNodeId(existingNodePath.leafNodeId);
 
@@ -1540,4 +1546,111 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   int get hashCode => _nodes.hashCode;
+}
+
+/// Iterates through all Leaf Nodes of the Document (Depth-First Search)
+class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
+  final MutableDocument _document;
+
+  final _parents = <CompositeNode>[];
+  final _indices = <int>[];
+
+  final int _increment;
+
+  NodePath? _currentPath;
+  DocumentNode? _currentNode;
+
+  bool _skipMovingNext = false;
+
+  _LeafNodeIterator(
+    this._document, {
+    /// Starts iteration from path (including). Otherwise start from beginning
+    NodePath? sincePath,
+
+    /// Specifies iteration direction
+    bool? reversed,
+  }) : _increment = reversed == true ? -1 : 1 {
+    if (sincePath != null) {
+      var node = _document.getNodeById(sincePath.rootNodeId);
+      _indices.add(_document.getNodeIndexById(sincePath.rootNodeId));
+      for (final childId in sincePath.skip(1)) {
+        _parents.add(node as CompositeNode);
+        _indices.add(node.getChildIndexByNodeId(childId));
+        node = node.getChildByNodeId(childId);
+      }
+      _currentNode = node;
+      _currentPath = sincePath;
+      // Skip moving next, as initial [current] value was defined by [sincePath]
+      _skipMovingNext = true;
+    }
+  }
+
+  @override
+  get current => (_currentPath!, _currentNode!);
+
+  @override
+  bool moveNext() {
+    if (_skipMovingNext) {
+      _skipMovingNext = false;
+      return true;
+    }
+    if (_currentNode == null) {
+      _addStartIndexForCurrentParent();
+    }
+    if (_moveWithinCurrentParent()) {
+      _currentPath = NodePath([..._parents.map((p) => p.id), _currentNode!.id]);
+      return true;
+    }
+    return false;
+  }
+
+  bool _moveWithinCurrentParent() {
+    final index = _indices.last;
+    final newIndex = index + _increment;
+
+    if (newIndex >= 0 && newIndex < _currentChildren.length) {
+      // Moving within current parent
+      _indices[_indices.length - 1] = newIndex;
+      return _fallToLeaf();
+    } else {
+      if (_parents.isNotEmpty) {
+        // Moving up
+        _parents.removeLast();
+        _indices.removeLast();
+        // Going next within new parent
+        return _moveWithinCurrentParent();
+      } else {
+        // We reached end of document
+        return false;
+      }
+    }
+  }
+
+  bool _fallToLeaf() {
+    var index = _indices.last;
+    final node = _currentChildren.elementAt(index);
+
+    if (node is CompositeNode) {
+      // current node is a CompositeNode, go deeper
+      _parents.add(node);
+      _addStartIndexForCurrentParent();
+      return _moveWithinCurrentParent();
+    } else {
+      // leaf node found, finish search
+      _currentNode = node;
+      return true;
+    }
+  }
+
+  void _addStartIndexForCurrentParent() {
+    if (_increment > 0) {
+      _indices.add(-_increment);
+    } else {
+      _indices.add(_currentChildren.length - _increment - 1);
+    }
+  }
+
+  Iterable<DocumentNode> get _currentChildren {
+    return _parents.isNotEmpty ? _parents.last.children : _document._nodes;
+  }
 }

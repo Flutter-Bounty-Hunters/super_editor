@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
@@ -100,15 +101,7 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel implem
   }
 
   bool hasSameChildren(CompositeNodeViewModel other) {
-    if (children.length != other.children.length) {
-      return false;
-    }
-    for (var i = 0; i < children.length; i += 1) {
-      if (children[i] != other.children[i]) {
-        return false;
-      }
-    }
-    return true;
+    return listEquals(children, other.children);
   }
 
   @override
@@ -273,30 +266,39 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
       'Invalid NodePathIterator state. `current` should point to children of current CompositeNode',
     );
 
-    var stack = <CompositeNode>[];
-    var currentNode = this;
-    stack.add(currentNode);
-    for (var i = 1; i < nodePath.length; i += 1) {
-      final childId = nodePath.getAt(i);
-      final child = currentNode.getChildByNodeId(childId);
-      assert(
-        child is CompositeNode,
-        'nodePath should be path to leaf parent, but $childId is not CompositeNode (${child.runtimeType})',
-      );
-      currentNode = child as CompositeNode;
-      stack.add(currentNode);
+    // If CompositeNode is just the root node, replace its children directly
+    if (nodePath.isRoot) {
+      return copyWithChildren(childrenReplacer(this, children.toList()));
     }
 
-    var adjustedNode = currentNode.copyWithChildren(
-      childrenReplacer(currentNode, currentNode.children.toList()),
+    // Traverse down: root -> ... -> parent of leaf
+    var current = this;
+    final parents = <CompositeNode>[];
+
+    for (final childId in nodePath.skip(1)) {
+      final child = current.getChildByNodeId(childId);
+      if (child is! CompositeNode) {
+        throw Exception(
+          'Expected CompositeNode at path $nodePath, but "$childId" is ${child.runtimeType}',
+        );
+      }
+      parents.add(current);
+      current = child;
+    }
+
+    // Replace children in the target node (leaf parent)
+    var updated = current.copyWithChildren(
+      childrenReplacer(current, current.children.toList()),
     );
-    for (var i = stack.length - 2; i >= 0; i -= 1) {
-      final child = stack[i];
-      adjustedNode =
-          child.copyWithChildren(child.children.map((c) => c.id == adjustedNode.id ? adjustedNode : c).toList());
+
+    // Rebuild up the tree: replace child in each parent
+    for (final parent in parents.reversed) {
+      updated = parent.copyWithChildren(
+        parent.children.map((c) => c.id == updated.id ? updated : c).toList(),
+      );
     }
 
-    return adjustedNode;
+    return updated;
   }
 
   @override
