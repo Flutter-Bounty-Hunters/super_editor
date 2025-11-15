@@ -546,14 +546,7 @@ packages:
       path: "../../super_editor"
       relative: true
     source: path
-    version: "0.3.0-dev.38"
-  super_editor_quill:
-    dependency: "direct main"
-    description:
-      path: "../../super_editor_quill"
-      relative: true
-    source: path
-    version: "0.1.0-dev.10"
+    version: "0.3.0-dev.40"
   super_keyboard:
     dependency: transitive
     description:
