@@ -39,24 +39,20 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
         for (final componentViewModel in viewModel.componentViewModels)
           _styleComponent(
             document,
+            NodePath.withNodeId(componentViewModel.nodeId),
             document.getNodeById(componentViewModel.nodeId)!,
-            null,
             componentViewModel.copy(),
           ),
       ],
     );
   }
 
-  // TODO: We need to pass DocumentPosition here, not just [node] in order to
-  // before / next API get working.
   SingleColumnLayoutComponentViewModel _styleComponent(
     Document document,
+    NodePath path,
     DocumentNode node,
-    DocumentNode? parent,
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
-    // print("_styleComponent() - node: $node, viewModel: $viewModel");
-
     // Combine all applicable style rules into a single set of styles
     // for this component.
     final aggregateStyles = <String, dynamic>{
@@ -64,7 +60,7 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
       Styles.inlineWidgetBuilders: _stylesheet.inlineWidgetBuilders,
     };
     for (final rule in _stylesheet.rules) {
-      if (rule.selector.matches(document, node, parent)) {
+      if (rule.selector.matches(document, path, node)) {
         _mergeStyles(
           existingStyles: aggregateStyles,
           newStyles: rule.styler(document, node),
@@ -74,11 +70,11 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
 
     viewModel.applyStyles(aggregateStyles);
 
+    // Recursively apply styles to the children of CompositeNode
     if (node is CompositeNode && viewModel is CompositeNodeViewModel) {
-      // print(" - this is a composite node. Styling recursively.");
       for (int i = 0; i < node.children.length; i += 1) {
-        // print(" - styling sub-view model: ${viewModel.children[i]}");
-        _styleComponent(document, node.getChildAt(i), node, viewModel.children[i]);
+        final child = node.getChildAt(i);
+        _styleComponent(document, path.child(child.id), child, viewModel.children[i]);
       }
     }
 

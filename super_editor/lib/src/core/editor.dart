@@ -1245,6 +1245,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     return node as CompositeNode;
   }
 
+  @override
   Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? sincePath}) sync* {
     final iterator = _LeafNodeIterator(this, sincePath: sincePath, reversed: reversed);
     while (iterator.moveNext()) {
@@ -1560,11 +1561,9 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
   NodePath? _currentPath;
   DocumentNode? _currentNode;
 
-  bool _skipMovingNext = false;
-
   _LeafNodeIterator(
     this._document, {
-    /// Starts iteration from path (including). Otherwise start from beginning
+    /// Starts iteration from path (excluding [sincePath]). Otherwise start from beginning
     NodePath? sincePath,
 
     /// Specifies iteration direction
@@ -1580,8 +1579,6 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
       }
       _currentNode = node;
       _currentPath = sincePath;
-      // Skip moving next, as initial [current] value was defined by [sincePath]
-      _skipMovingNext = true;
     }
   }
 
@@ -1590,10 +1587,6 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
 
   @override
   bool moveNext() {
-    if (_skipMovingNext) {
-      _skipMovingNext = false;
-      return true;
-    }
     if (_currentNode == null) {
       _addStartIndexForCurrentParent();
     }

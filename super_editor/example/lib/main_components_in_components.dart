@@ -141,6 +141,12 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
               },
             ),
             StyleRule(
+              BlockSelector('paragraph').childOf('banner').after(horizontalRuleBlockType.name),
+              (doc, docNode) {
+                return {Styles.textStyle: const TextStyle(color: Colors.white60)};
+              },
+            ),
+            StyleRule(
               BlockSelector(horizontalRuleBlockType.name).childOf("banner"),
               (doc, docNode) {
                 return {

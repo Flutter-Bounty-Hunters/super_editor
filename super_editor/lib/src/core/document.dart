@@ -103,6 +103,9 @@ abstract class Document implements Iterable<DocumentNode> {
   /// Returns null if node at [position] is a root node
   CompositeNode? getLeafNodeParent(DocumentPosition position);
 
+  /// Iterates all leaf nodes of the document.
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? sincePath});
+
   /// Returns all [DocumentNode]s from [position1] to [position2], including
   /// the nodes at [position1] and [position2].
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2);
