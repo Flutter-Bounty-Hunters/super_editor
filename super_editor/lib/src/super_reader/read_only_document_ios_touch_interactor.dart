@@ -194,7 +194,7 @@ class SuperReaderIosDocumentTouchInteractor extends StatefulWidget {
     required this.readerContext,
     required this.documentKey,
     required this.getDocumentLayout,
-    required this.scrollController,
+    this.scrollController,
     required this.fillViewport,
     this.contentTapHandler,
     this.dragAutoScrollBoundary = const AxisOffset.symmetric(54),
@@ -209,7 +209,7 @@ class SuperReaderIosDocumentTouchInteractor extends StatefulWidget {
   final GlobalKey documentKey;
   final DocumentLayout Function() getDocumentLayout;
 
-  final ScrollController scrollController;
+  final ScrollController? scrollController;
 
   /// Optional handler that responds to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.
@@ -270,7 +270,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
     _handleAutoScrolling = DragHandleAutoScroller(
       vsync: this,
       dragAutoScrollBoundary: widget.dragAutoScrollBoundary,
-      getScrollPosition: () => scrollPosition,
+      getScrollPosition: () => scrollPosition!,
       getViewportBox: () => viewportBox,
     );
 
@@ -393,7 +393,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
   /// If this widget doesn't have an ancestor `Scrollable`, then this
   /// widget includes a `ScrollView` and the `ScrollView`'s position
   /// is returned.
-  ScrollPosition get scrollPosition => _ancestorScrollPosition ?? widget.scrollController.position;
+  ScrollPosition? get scrollPosition => _ancestorScrollPosition ?? widget.scrollController?.position;
 
   /// Returns the `RenderBox` for the scrolling viewport.
   ///
@@ -432,7 +432,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
   }
 
   void _onTapDown(TapDownDetails details) {
-    if (scrollPosition.isScrollingNotifier.value) {
+    if (scrollPosition?.isScrollingNotifier.value == true) {
       // The user tapped while the document was scrolling.
       // Cancel the scroll momentum.
       (scrollPosition as ScrollPositionWithSingleContext).goIdle();
@@ -686,7 +686,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
     _handleAutoScrolling.startAutoScrollHandleMonitoring();
 
-    scrollPosition.addListener(_onAutoScrollChange);
+    scrollPosition?.addListener(_onAutoScrollChange);
   }
 
   bool _isOverBaseHandle(Offset interactorOffset) {
@@ -728,7 +728,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
     if (_isLongPressInProgress) {
       final fingerDragDelta = _globalDragOffset! - _globalStartDragOffset!;
-      final scrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
+      final scrollDelta = _dragStartScrollOffset! - (scrollPosition?.pixels ?? 0.0);
       final fingerDocumentOffset = _docLayout.getDocumentOffsetFromAncestorOffset(details.globalPosition);
       final fingerDocumentPosition = _docLayout.getDocumentPositionNearestToOffset(
         _startDragPositionOffset! + fingerDragDelta - Offset(0, scrollDelta),
@@ -749,7 +749,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
   void _updateSelectionForNewDragHandleLocation() {
     final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
-    final dragScrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
+    final dragScrollDelta = _dragStartScrollOffset! - (scrollPosition?.pixels ?? 0.0);
     final docDragPosition = _docLayout
         .getDocumentPositionNearestToOffset(_startDragPositionOffset! + docDragDelta - Offset(0, dragScrollDelta));
 
@@ -769,11 +769,11 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
   }
 
   void _onPanEnd(DragEndDetails details) {
-    scrollPosition.removeListener(_onAutoScrollChange);
+    scrollPosition?.removeListener(_onAutoScrollChange);
   }
 
   void _onPanCancel() {
-    scrollPosition.removeListener(_onAutoScrollChange);
+    scrollPosition?.removeListener(_onAutoScrollChange);
 
     if (_dragMode != null) {
       _onDragSelectionEnd();
@@ -788,7 +788,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
     }
 
     _handleAutoScrolling.stopAutoScrollHandleMonitoring();
-    scrollPosition.removeListener(_onAutoScrollChange);
+    scrollPosition?.removeListener(_onAutoScrollChange);
   }
 
   void _onLongPressEnd() {
@@ -878,11 +878,11 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
     if (_globalTapDownOffset != null) {
       // A drag isn't happening. Magnify the position that the user tapped.
-      docPositionToMagnify =
-          _docLayout.getDocumentPositionNearestToOffset(_globalTapDownOffset! + Offset(0, scrollPosition.pixels));
+      docPositionToMagnify = _docLayout
+          .getDocumentPositionNearestToOffset(_globalTapDownOffset! + Offset(0, (scrollPosition?.pixels ?? 0.0)));
     } else {
       final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
-      final dragScrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
+      final dragScrollDelta = _dragStartScrollOffset! - (scrollPosition?.pixels ?? 0.0);
       docPositionToMagnify = _docLayout
           .getDocumentPositionNearestToOffset(_startDragPositionOffset! + docDragDelta - Offset(0, dragScrollDelta));
     }
@@ -919,7 +919,7 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
     // account for the fact that this interactor is moving within
     // the ancestor scrollable, despite the fact that the user's
     // finger/mouse position hasn't changed.
-    _dragStartScrollOffset = scrollPosition.pixels;
+    _dragStartScrollOffset = (scrollPosition?.pixels ?? 0.0);
   }
 
   void _setSelection(DocumentSelection selection) {
@@ -944,8 +944,8 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
   @override
   Widget build(BuildContext context) {
-    if (widget.scrollController.hasClients) {
-      if (widget.scrollController.positions.length > 1) {
+    if (widget.scrollController?.hasClients == true) {
+      if (widget.scrollController!.positions.length > 1) {
         // During Hot Reload, if the gesture mode was changed,
         // the widget might be built while the old gesture interactor
         // scroller is still attached to the _scrollController.

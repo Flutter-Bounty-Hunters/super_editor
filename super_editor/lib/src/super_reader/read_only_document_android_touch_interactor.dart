@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -38,8 +37,7 @@ import 'package:super_editor/src/super_reader/reader_context.dart';
 import 'package:super_editor/src/super_textfield/metrics.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import '../core/editor.dart';
-import '../default_editor/text_tools.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 
 /// Read-only document gesture interactor that's designed for Android touch input, e.g.,
 /// drag to scroll, and handles to control selection.
@@ -58,7 +56,7 @@ class ReadOnlyAndroidDocumentTouchInteractor extends StatefulWidget {
     required this.documentKey,
     required this.getDocumentLayout,
     required this.selectionLinks,
-    required this.scrollController,
+    this.scrollController,
     this.contentTapHandler,
     this.dragAutoScrollBoundary = const AxisOffset.symmetric(54),
     required this.handleColor,
@@ -86,7 +84,7 @@ class ReadOnlyAndroidDocumentTouchInteractor extends StatefulWidget {
   /// a link when the user taps on text with a link attribution.
   final ContentTapDelegate? contentTapHandler;
 
-  final ScrollController scrollController;
+  final ScrollController? scrollController;
 
   /// The closest that the user's selection drag gesture can get to the
   /// document boundary before auto-scrolling.
@@ -168,7 +166,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     _handleAutoScrolling = DragHandleAutoScroller(
       vsync: this,
       dragAutoScrollBoundary: widget.dragAutoScrollBoundary,
-      getScrollPosition: () => scrollPosition,
+      getScrollPosition: () => scrollPosition!,
       getViewportBox: () => viewportBox,
     );
 
@@ -312,11 +310,11 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     // know why the ScrollPosition would be replaced. In the meantime, adding this listener
     // keeps the toolbar positioning logic working.
     // TODO: rely solely on a ScrollPosition listener, not a ScrollController listener.
-    widget.scrollController.addListener(_onScrollChange);
+    widget.scrollController?.addListener(_onScrollChange);
   }
 
   void _teardownScrollController() {
-    widget.scrollController.removeListener(_onScrollChange);
+    widget.scrollController?.removeListener(_onScrollChange);
   }
 
   void _ensureSelectionExtentIsVisible() {
@@ -395,7 +393,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     final newScrollPosition = scrollPosition;
     if (newScrollPosition != _activeScrollPosition) {
       _activeScrollPosition?.removeListener(_onScrollChange);
-      newScrollPosition.addListener(_onScrollChange);
+      newScrollPosition?.addListener(_onScrollChange);
       _activeScrollPosition = newScrollPosition;
     }
   }
@@ -418,7 +416,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
   /// If this widget doesn't have an ancestor `Scrollable`, then this
   /// widget includes a `ScrollView` and the `ScrollView`'s position
   /// is returned.
-  ScrollPosition get scrollPosition => _ancestorScrollPosition ?? widget.scrollController.position;
+  ScrollPosition? get scrollPosition => _ancestorScrollPosition ?? widget.scrollController?.position;
 
   /// Returns the `RenderBox` for the scrolling viewport.
   ///
@@ -691,7 +689,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     // account for the fact that this interactor is moving within
     // the ancestor scrollable, despite the fact that the user's
     // finger/mouse position hasn't changed.
-    _dragStartScrollOffset = scrollPosition.pixels;
+    _dragStartScrollOffset = scrollPosition?.pixels ?? 0.0;
     _startDragPositionOffset = _dragStartInDoc!;
 
     if (_isLongPressInProgress) {
@@ -703,7 +701,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
 
     _handleAutoScrolling.startAutoScrollHandleMonitoring();
 
-    scrollPosition.addListener(_updateDragSelection);
+    scrollPosition?.addListener(_updateDragSelection);
 
     _editingController
       ..hideToolbar()
@@ -716,7 +714,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
       _globalDragOffset = details.globalPosition;
 
       final fingerDragDelta = _globalDragOffset! - _globalStartDragOffset!;
-      final scrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
+      final scrollDelta = _dragStartScrollOffset! - (scrollPosition?.pixels ?? 0);
       final fingerDocumentOffset = _docLayout.getDocumentOffsetFromAncestorOffset(details.globalPosition);
       final fingerDocumentPosition = _docLayout.getDocumentPositionNearestToOffset(
         _startDragPositionOffset! + fingerDragDelta - Offset(0, scrollDelta),
@@ -772,7 +770,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     _longPressMagnifierGlobalOffset.value = null;
 
     _handleAutoScrolling.stopAutoScrollHandleMonitoring();
-    scrollPosition.removeListener(_updateDragSelection);
+    scrollPosition?.removeListener(_updateDragSelection);
 
     _editingController
       ..allowHandles()
@@ -831,11 +829,11 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
     // account for the fact that this interactor is moving within
     // the ancestor scrollable, despite the fact that the user's
     // finger/mouse position hasn't changed.
-    _dragStartScrollOffset = scrollPosition.pixels;
+    _dragStartScrollOffset = scrollPosition?.pixels ?? 0.0;
 
     _handleAutoScrolling.startAutoScrollHandleMonitoring();
 
-    scrollPosition.addListener(_updateDragSelection);
+    scrollPosition?.addListener(_updateDragSelection);
   }
 
   void _onHandleDragUpdate(Offset globalOffset) {
@@ -854,7 +852,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
 
   void _updateSelectionForNewDragHandleLocation() {
     final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
-    final dragScrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
+    final dragScrollDelta = _dragStartScrollOffset! - (scrollPosition?.pixels ?? 0.0);
     final docDragPosition = _docLayout
         .getDocumentPositionNearestToOffset(_startDragPositionOffset! + docDragDelta - Offset(0, dragScrollDelta));
 
@@ -875,7 +873,7 @@ class _ReadOnlyAndroidDocumentTouchInteractorState extends State<ReadOnlyAndroid
 
   void _onHandleDragEnd() {
     _handleAutoScrolling.stopAutoScrollHandleMonitoring();
-    scrollPosition.removeListener(_updateDragSelection);
+    scrollPosition?.removeListener(_updateDragSelection);
 
     _editingController.hideMagnifier();
 

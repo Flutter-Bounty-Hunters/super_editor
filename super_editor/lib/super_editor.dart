@@ -16,6 +16,7 @@ export 'src/core/styles.dart';
 
 // Chat
 export 'src/chat/message_page_scaffold.dart';
+export 'src/chat/super_chat_bubble.dart';
 
 // Super Editor
 export 'src/default_editor/ai/content_fading.dart';
