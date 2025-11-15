@@ -32,6 +32,7 @@ dependencies:
   attributed_text: ^0.4.5
   characters: ^1.3.0
   collection: ^1.15.0
+  dart_quill_delta: ^9.4.1
   follow_the_leader: ^0.5.2
   http: ^1.2.2
   linkify: ^5.0.0
@@ -48,6 +49,8 @@ dependencies:
     sdk: flutter
   flutter_test_robots: ^0.0.24
   clock: ^1.1.1
+  matcher: ^0.12.16+1
+  text_table: ^4.0.3
 
 #dependency_overrides:
 #  # Override to local mono-repo path so devs can test this repo
