@@ -25,7 +25,7 @@ DocumentSelection? getWordSelection({
   _log.log('getWordSelection', '_getWordSelection()');
   _log.log('getWordSelection', ' - doc position: $docPosition');
 
-  final component = docLayout.getLeafComponent(docPosition);
+  final component = docLayout.getComponentByNodePath(docPosition.nodePath);
   if (component is! TextComposable) {
     return null;
   }
@@ -86,7 +86,7 @@ DocumentSelection? getParagraphSelection({
   _log.log('getParagraphSelection', '_getWordSelection()');
   _log.log('getParagraphSelection', ' - doc position: $docPosition');
 
-  final component = docLayout.getLeafComponent(docPosition);
+  final component = docLayout.getComponentByNodePath(docPosition.nodePath);
   if (component is! TextComposable) {
     return null;
   }

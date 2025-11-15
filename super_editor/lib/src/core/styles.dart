@@ -240,7 +240,7 @@ class BlockSelector {
   }
 
   NodePath? _nodePathForNextNode(Document doc, NodePath path, {bool backward = false}) {
-    final previous = doc.getLeafNodes(reversed: backward, sincePath: path).firstOrNull;
+    final previous = doc.getLeafNodes(reversed: backward, since: path).firstOrNull;
     if (previous != null && previous.$1.parent == path.parent) {
       return previous.$1;
     }

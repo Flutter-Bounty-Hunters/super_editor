@@ -662,21 +662,21 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   @override
-  DocumentComponent? getLeafComponent(DocumentPosition position) {
-    final parent = getComponentByNodeId(position.nodeId);
-    if (parent is CompositeComponent) {
-      final child = (parent as CompositeComponent).getLeafComponentByNodePosition(position.nodePosition);
-      if (child is! DocumentComponent) {
-        final warningText = 'WARNING: found child component but it\'s not a DocumentComponent: ${child.runtimeType}';
+  DocumentComponent? getComponentByNodePath(NodePath nodePath) {
+    var component = getComponentByNodeId(nodePath.rootNodeId);
+    for (final childId in nodePath.skip(1)) {
+      if (component is! DocumentComponent) {
+        final warningText =
+            'WARNING: found child component but it\'s not a DocumentComponent: ${component.runtimeType}';
         editorLayoutLog.info(warningText);
         if (kDebugMode) {
           throw Exception(warningText);
         }
         return null;
       }
-      return child;
+      component = (component as CompositeComponent).getChildComponentById(childId);
     }
-    return parent;
+    return component;
   }
 
   @override

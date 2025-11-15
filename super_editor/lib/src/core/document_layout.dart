@@ -95,8 +95,8 @@ abstract class DocumentLayout {
   DocumentComponent? getComponentByNodeId(String nodeId);
 
   /// Returns the [DocumentComponent] that renders leaf [DocumentNode] within [CompositeNode]
-  /// or root [DocumentNode] when position is not [CompositeNodePosition] (similar to getComponentByNodeId)
-  DocumentComponent? getLeafComponent(DocumentPosition position);
+  /// or root [DocumentNode] based on [nodePath]
+  DocumentComponent? getComponentByNodePath(NodePath nodePath);
 
   /// Converts [ancestorOffset] from the [ancestor]'s coordinate space to the
   /// same location on the screen within this [DocumentLayout]'s coordinate space.
@@ -458,11 +458,13 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
   }
 
   @override
-  DocumentComponent<StatefulWidget>? getLeafComponentByNodePosition(NodePosition position) {
+  DocumentComponent? getChildComponentById(String childId) {
     if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getLeafComponentByNodePosition(position);
+      return (_childDocumentComponent as CompositeComponent).getChildComponentById(childId);
     }
-    return this;
+    throw Exception(
+      'Unable to find child component of ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
   }
 }
 

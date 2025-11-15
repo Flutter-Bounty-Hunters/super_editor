@@ -97,14 +97,11 @@ abstract class Document implements Iterable<DocumentNode> {
   /// Returns the [DocumentNode] at the given [position], following
   /// [CompositeNodes] recursively, until a leaf node is reached
   /// If node at position is a root node - works exactly as [getNode]
+  @Deprecated('Use getNodeAtPath instead')
   DocumentNode? getLeafNode(DocumentPosition position);
 
-  /// Returns the [CompositeNode] that holds leaf node at given [position] as a child.
-  /// Returns null if node at [position] is a root node
-  CompositeNode? getLeafNodeParent(DocumentPosition position);
-
   /// Iterates all leaf nodes of the document.
-  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? sincePath});
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since});
 
   /// Returns all [DocumentNode]s from [position1] to [position2], including
   /// the nodes at [position1] and [position2].
@@ -122,7 +119,7 @@ abstract class Document implements Iterable<DocumentNode> {
   void removeListener(DocumentChangeListener listener);
 
   /// Returns [true] if document can delete specified leaf node (based on [isDeletable] and [canDeleteChild] methods).
-  bool canDeleteNode(DocumentPosition position);
+  bool canDeleteNode(NodePath path);
 }
 
 /// A path of node ids that can identify a specific node in a document
@@ -191,6 +188,14 @@ class NodePath with IterableMixin<String> {
 
   NodePath child(String childId) {
     return NodePath([..._segments, childId]);
+  }
+
+  NodePath replaceLeaf(String newNodeId) {
+    if (isRoot) {
+      return NodePath([newNodeId]);
+    } else {
+      return NodePath([...parent!, newNodeId]);
+    }
   }
 
   @override

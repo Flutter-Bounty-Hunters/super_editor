@@ -2108,12 +2108,15 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
         final newTextNodeId = Editor.createNodeId();
         executor.executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodeId: caret.nodeId,
+            existingNodePath: caret.nodePath,
             newNode: ParagraphNode(id: newTextNodeId, text: AttributedText()),
           ),
         );
 
-        insertionPosition = DocumentPosition(nodeId: newTextNodeId, nodePosition: const TextNodePosition(offset: 0));
+        insertionPosition = DocumentPosition.withPath(
+          nodePath: caret.nodePath.replaceLeaf(newTextNodeId),
+          nodePosition: const TextNodePosition(offset: 0),
+        );
       } else {
         insertionPosition = caret;
       }
@@ -2364,7 +2367,7 @@ class InsertNewlineInCodeBlockAtCaretCommand extends BaseInsertNewlineAtCaretCom
         // Insert a new empty paragraph after the code block.
         ..executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodeId: node.id,
+            existingNodePath: NodePath.withNodeId(node.id),
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2430,20 +2433,21 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     DocumentPosition caretPosition,
     NodePosition caretNodePosition,
   ) {
-    if (caretNodePosition is! UpstreamDownstreamNodePosition && caretNodePosition is! TextNodePosition) {
+    final leafPosition = caretNodePosition.leafPosition;
+    if (leafPosition is! UpstreamDownstreamNodePosition && leafPosition is! TextNodePosition) {
       // We don't know how to deal with this kind of node.
       return;
     }
 
-    if (caretNodePosition is UpstreamDownstreamNodePosition) {
+    if (leafPosition is UpstreamDownstreamNodePosition) {
       // The caret is sitting at the edge of an upstream/downstream node.
-      _insertNewlineInBinaryNode(context, executor, caretPosition, caretNodePosition);
+      _insertNewlineInBinaryNode(context, executor, caretPosition, leafPosition);
       return;
     }
 
-    final node = context.document.getNodeById(caretPosition.nodeId);
-    if (caretNodePosition is TextNodePosition && node is TextNode) {
-      _insertNewlineInTextNode(context, executor, node, caretPosition, caretNodePosition);
+    final node = context.document.getLeafNode(caretPosition);
+    if (leafPosition is TextNodePosition && node is TextNode) {
+      _insertNewlineInTextNode(context, executor, node, caretPosition, leafPosition);
       return;
     }
   }
@@ -2454,12 +2458,14 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     DocumentPosition caretPosition,
     UpstreamDownstreamNodePosition caretNodePosition,
   ) {
+    final caretNodePath = caretPosition.nodePath;
+    final newNodePath = caretNodePath.replaceLeaf(newNodeId);
     if (caretNodePosition.affinity == TextAffinity.upstream) {
       // Insert an empty paragraph before the block node.
       executor
         ..executeCommand(
           InsertNodeBeforeNodeCommand(
-            existingNodeId: caretPosition.nodeId,
+            existingNodePath: caretNodePath,
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2469,8 +2475,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         ..executeCommand(
           ChangeSelectionCommand(
             DocumentSelection.collapsed(
-              position: DocumentPosition(
-                nodeId: newNodeId,
+              position: DocumentPosition.withPath(
+                nodePath: newNodePath,
                 nodePosition: const TextNodePosition(offset: 0),
               ),
             ),
@@ -2483,7 +2489,7 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
       executor
         ..executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodeId: caretPosition.nodeId,
+            existingNodePath: caretNodePath,
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2493,8 +2499,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         ..executeCommand(
           ChangeSelectionCommand(
             DocumentSelection.collapsed(
-              position: DocumentPosition(
-                nodeId: newNodeId,
+              position: DocumentPosition.withPath(
+                nodePath: newNodePath,
                 nodePosition: const TextNodePosition(offset: 0),
               ),
             ),
@@ -2515,12 +2521,13 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     // Split the paragraph into two. This includes headers, blockquotes, and
     // any other block-level paragraph.
     final endOfParagraph = textNode.endPosition;
+    final insertPath = caretPosition.nodePath.parent?.child(newNodeId) ?? NodePath.withNodeId(newNodeId);
 
     editorOpsLog.finer("Splitting paragraph in two.");
     executor
       ..executeCommand(
         SplitParagraphCommand(
-          nodeId: caretPosition.nodeId,
+          nodePath: caretPosition.nodePath,
           splitPosition: caretTextPosition,
           newNodeId: newNodeId,
           replicateExistingMetadata: caretTextPosition.offset != endOfParagraph.offset,
@@ -2530,8 +2537,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         // Place the caret at the beginning of the new node.
         ChangeSelectionCommand(
           DocumentSelection.collapsed(
-            position: DocumentPosition(
-              nodeId: newNodeId,
+            position: DocumentPosition.withPath(
+              nodePath: insertPath,
               nodePosition: const TextNodePosition(offset: 0),
             ),
           ),
@@ -2718,7 +2725,8 @@ class InsertAttributedTextCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    final textNode = document.getLeafNode(documentPosition);
+    final nodePath = documentPosition.nodePath;
+    final textNode = document.getNodeAtPath(nodePath);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
@@ -2737,8 +2745,8 @@ class InsertAttributedTextCommand extends EditCommand {
       finalTextToInsert = textToInsert;
     }
 
-    document.replaceLeafNodeByPosition(
-      documentPosition,
+    document.replaceNodeByPath(
+      nodePath,
       textNode.copyTextNodeWith(
         text: textNode.text.insert(
           textToInsert: finalTextToInsert,
@@ -2750,7 +2758,7 @@ class InsertAttributedTextCommand extends EditCommand {
     executor.logChanges([
       DocumentEdit(
         TextInsertionEvent(
-          nodePath: NodePath.withDocumentPosition(documentPosition),
+          nodePath: nodePath,
           offset: textOffset,
           text: textToInsert,
         ),

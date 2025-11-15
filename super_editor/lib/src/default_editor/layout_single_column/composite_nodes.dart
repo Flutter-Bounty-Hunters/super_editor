@@ -259,7 +259,7 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
   /// then returns a new root [CompositeNode]
   CompositeNode copyAndReplaceLeafChildren({
     required NodePath nodePath,
-    required List<DocumentNode> Function(CompositeNode leafNode, List<DocumentNode> leafChildren) childrenReplacer,
+    required List<DocumentNode> Function(CompositeNode parent, List<DocumentNode> children) childrenReplacer,
   }) {
     assert(
       nodePath.rootNodeId == id,
@@ -540,5 +540,5 @@ extension NodePositionCompositeEx on NodePosition {
 }
 
 abstract class CompositeComponent {
-  DocumentComponent? getLeafComponentByNodePosition(NodePosition position);
+  DocumentComponent? getChildComponentById(String childId);
 }

@@ -3,6 +3,7 @@ import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
@@ -344,7 +345,7 @@ class DeleteUpstreamAtBeginningOfBlockNodeCommand extends EditCommand {
       // The caret is sitting on the downstream edge of block-level content. Delete the
       // whole block by replacing it with an empty paragraph.
       executor.executeCommand(
-        ReplaceNodeWithEmptyParagraphWithCaretCommand(position: deletionPosition),
+        ReplaceNodeWithEmptyParagraphWithCaretCommand(nodePath: deletionPosition.nodePath),
       );
       return;
     }
@@ -361,7 +362,7 @@ class DeleteUpstreamAtBeginningOfBlockNodeCommand extends EditCommand {
 
     if (nodeBefore is TextNode && nodeBefore.text.isEmpty) {
       executor.executeCommand(
-        DeleteNodeCommand(nodeId: nodeBefore.id),
+        DeleteNodeCommand(nodePath: NodePath.withNodeId(nodeBefore.id)),
       );
       return;
     }
@@ -370,7 +371,7 @@ class DeleteUpstreamAtBeginningOfBlockNodeCommand extends EditCommand {
     if (!componentBefore.isVisualSelectionSupported()) {
       // The node/component above is not selectable. Delete it.
       executor.executeCommand(
-        DeleteNodeCommand(nodeId: nodeBefore.id),
+        DeleteNodeCommand(nodePath: NodePath.withNodeId(nodeBefore.id)),
       );
       return;
     }

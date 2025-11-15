@@ -1164,24 +1164,19 @@ class EditInspector {
     }
 
     final textInsertionEvent = lastSpaceInsertion.change as TextInsertionEvent;
-    if (textInsertionEvent.nodeId != newSelection.extent.nodeId) {
-      // The selection is in a different node than where tex was inserted. This indicates
+    if (textInsertionEvent.nodePath != newSelection.extent.nodePath) {
+      // The selection is in a different node than where text was inserted. This indicates
       // something other than a user typing.
       return null;
     }
 
-    if (!textInsertionEvent.nodePath.isRoot) {
-      // Is not yet implemented
-      return null;
-    }
-
-    final newCaretOffset = (newSelection.extent.nodePosition as TextNodePosition).offset;
+    final newCaretOffset = (newSelection.extent.leafNodePosition as TextNodePosition).offset;
     if (textInsertionEvent.offset + textInsertionEvent.text.length != newCaretOffset) {
       return null;
     }
 
     return UserTypedText(
-      textInsertionEvent.nodeId,
+      textInsertionEvent.nodePath,
       textInsertionEvent.offset,
       textInsertionEvent.text,
     );
@@ -1191,9 +1186,13 @@ class EditInspector {
 }
 
 class UserTypedText {
-  const UserTypedText(this.nodeId, this.offset, this.text);
+  const UserTypedText(this.nodePath, this.offset, this.text);
 
-  final String nodeId;
+  final NodePath nodePath;
+
+  @Deprecated('Use nodePath instead')
+  String get nodeId => nodePath.rootNodeId;
+
   final int offset;
   final AttributedText text;
 }

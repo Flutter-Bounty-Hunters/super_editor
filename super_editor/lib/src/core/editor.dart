@@ -1212,6 +1212,9 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   DocumentNode? getNodeAtPath(NodePath path) {
     var node = getNodeById(path.rootNodeId);
     for (final childId in path.skip(1)) {
+      if (node == null) {
+        return null;
+      }
       assert(
         node is CompositeNode,
         'Unable to get node at $path, when $childId is not CompositeNode (${node.runtimeType} was given)',
@@ -1232,25 +1235,43 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
+  @Deprecated('user getNodeAtPath')
   DocumentNode? getLeafNode(DocumentPosition position) => getNodeAtPath(NodePath.withDocumentPosition(position));
 
   @override
-  CompositeNode? getLeafNodeParent(DocumentPosition position) {
-    final path = NodePath.withDocumentPosition(position).parent;
-    if (path == null) {
-      return null;
-    }
-    final node = getNodeAtPath(path);
-    assert(node is CompositeNode, 'Unexpected Leaf Parent Node "${node.runtimeType}". CompositeNode expected');
-    return node as CompositeNode;
-  }
-
-  @override
-  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? sincePath}) sync* {
-    final iterator = _LeafNodeIterator(this, sincePath: sincePath, reversed: reversed);
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since}) sync* {
+    final iterator = _LeafNodeIterator(this, sincePath: since, reversed: reversed);
     while (iterator.moveNext()) {
       yield iterator.current;
     }
+  }
+
+  List<(NodePath, DocumentNode)> getLeafNodesInside(DocumentPosition position1, DocumentPosition position2) {
+    final result = <(NodePath, DocumentNode)>[];
+    final startPath = position1.nodePath;
+    final endPath = position2.nodePath;
+    var success = false;
+
+    final node1 = getNodeAtPath(startPath);
+    if (node1 == null) {
+      throw Exception('No such position in document: $position1');
+    }
+    result.add((startPath, node1));
+    if (startPath == endPath) {
+      return result;
+    }
+
+    for (final node in getLeafNodes(since: startPath)) {
+      result.add(node);
+      if (node.$1 == endPath) {
+        success = true;
+        break;
+      }
+    }
+    if (!success) {
+      throw Exception('Unable to find $endPath below $startPath. Make sure positions are normalized and nodes exists');
+    }
+    return result;
   }
 
   @override
@@ -1322,19 +1343,47 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  bool canDeleteNode(DocumentPosition position) {
-    final node = getLeafNode(position);
+  bool canDeleteNode(NodePath path) {
+    final node = getNodeAtPath(path);
     if (node == null) {
       return false;
     }
-    final parent = getLeafNodeParent(position);
+    final parent = path.parent != null ? getNodeAtPath(path.parent!) as CompositeNode : null;
     return parent?.canDeleteChild(node.id) ?? node.isDeletable;
+  }
+
+  /// Deletes node at [nodePath] and returns path and node that was actually deleted
+  /// (sometimes deleting a node leads parent deletion, in that case parent node would be returned)
+  (NodePath, DocumentNode)? deleteNodeAtPath(NodePath nodePath) {
+    if (nodePath.isRoot) {
+      final nodeToDelete = getNodeAtPath(nodePath);
+      if (nodeToDelete == null) {
+        throw Exception('Unable to delete node. No node at path $nodePath');
+      }
+      final deleted = deleteNode(nodePath.rootNodeId);
+      return deleted ? (nodePath, nodeToDelete) : null;
+    } else {
+      final parent = getNodeAtPath(nodePath.parent!) as CompositeNode;
+      final nodeToDelete = parent.getChildByNodeId(nodePath.leafNodeId);
+      if (nodeToDelete == null) {
+        // children does not exists at given path
+        return null;
+      }
+      if (parent.children.length == 1) {
+        // We are about to remove last children of CompositeNode.
+        // this is not supported now. CompositeNode must have at least one child
+        // Trying to remove parent instead.
+        return deleteNodeAtPath(nodePath.parent!);
+      }
+      _replaceChildrenAtPath(nodePath.parent!, (parent, children) {
+        return children.where((c) => c.id != nodePath.leafNodeId).toList();
+      });
+      return (nodePath, nodeToDelete);
+    }
   }
 
   /// Deletes the given [node] from the [Document].
   bool deleteNode(String nodeId) {
-    bool isRemoved = false;
-
     final index = getNodeIndexById(nodeId);
     if (index < 0) {
       return false;
@@ -1343,7 +1392,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     _nodes.removeAt(index);
     _refreshNodeIdCaches();
 
-    return isRemoved;
+    return true;
   }
 
   /// Deletes all nodes from the [Document].
@@ -1420,8 +1469,25 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   /// Replaces leaf node based on [position]. All CompositeNodes are copied and
   /// given newNode is replaced by its id
+  @Deprecated('Use replaceNodeByPath instead')
   void replaceLeafNodeByPosition(DocumentPosition position, DocumentNode newNode) {
     return replaceNodeByPath(NodePath.withDocumentPosition(position), newNode);
+  }
+
+  /// Inserts [newNode] immediately at given index.
+  void insertNodeAtPath({NodePath? parent, required DocumentNode newNode, required int index}) {
+    if (parent == null) {
+      return insertNodeAt(index, newNode);
+    } else {
+      if (getNodeAtPath(parent) == null) {
+        throw Exception('Unable to insert into parent "$parent". This node does not exists');
+      }
+      return _replaceChildrenAtPath(parent, (parent, children) {
+        final newChildren = List.of(children);
+        newChildren.insert(index, newNode);
+        return newChildren;
+      });
+    }
   }
 
   /// Inserts [newNode] immediately after the given [existingNode].
@@ -1435,23 +1501,32 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         newNode: newNode,
       );
     } else {
-      final leafParentPath = existingNodePath.parent!;
-      final leafParent = getNodeAtPath(leafParentPath) as CompositeNode;
-      final insertIndex = leafParent.getChildIndexByNodeId(existingNodePath.leafNodeId);
+      return _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
+        final insertIndex = parent.getChildIndexByNodeId(existingNodePath.leafNodeId) + 1;
+        final newChildren = List.of(children);
+        newChildren.insert(insertIndex, newNode);
+        return newChildren;
+      });
+    }
+  }
 
-      final node = getNodeById(existingNodePath.rootNodeId);
-      assert(node is CompositeNode);
-
-      final replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
-        nodePath: leafParentPath,
-        childrenReplacer: (CompositeNode leafNode, List<DocumentNode> children) {
-          final newChildren = List.of(children);
-          newChildren.insert(insertIndex, newNode);
-          return newChildren;
-        },
+  /// Inserts [newNode] immediately after the given [existingNode].
+  void insertNodeBeforePath({
+    required NodePath existingNodePath,
+    required DocumentNode newNode,
+  }) {
+    if (existingNodePath.isRoot) {
+      return insertNodeBefore(
+        existingNodeId: existingNodePath.rootNodeId,
+        newNode: newNode,
       );
-
-      replaceNodeById(existingNodePath.rootNodeId, replacement);
+    } else {
+      return _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
+        final insertIndex = parent.getChildIndexByNodeId(existingNodePath.leafNodeId);
+        final newChildren = List.of(children);
+        newChildren.insert(insertIndex, newNode);
+        return newChildren;
+      });
     }
   }
 
@@ -1523,6 +1598,21 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     _refreshNodeIdCaches();
 
     _didReset = true;
+  }
+
+  void _replaceChildrenAtPath(
+    NodePath path,
+    List<DocumentNode> Function(CompositeNode parent, List<DocumentNode>) replacer,
+  ) {
+    final node = getNodeById(path.rootNodeId);
+    assert(node is CompositeNode);
+    final replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
+      nodePath: path,
+      childrenReplacer: (CompositeNode parent, List<DocumentNode> children) {
+        return replacer(parent, children);
+      },
+    );
+    replaceNodeById(path.rootNodeId, replacement);
   }
 
   /// Updates all the maps which use the node id as the key.

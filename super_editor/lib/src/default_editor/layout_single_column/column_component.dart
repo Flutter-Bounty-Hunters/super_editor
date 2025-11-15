@@ -363,7 +363,7 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
       return null;
     }
 
-    final nextChild = widget.children[childIndex - 1];
+    final nextChild = widget.children[childIndex + 1];
     // The next position right must be the beginning position of the next component.
     // TODO: This assumes left-to-right content ordering, which isn't true for some
     //       languages. Revisit this when/if we need RTL support for this behavior.
@@ -452,15 +452,8 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
   }
 
   @override
-  DocumentComponent<StatefulWidget>? getLeafComponentByNodePosition(NodePosition position) {
-    if (position is CompositeNodePosition) {
-      final child = childByNodeId(position.childNodeId)!;
-      if (child.component is CompositeComponent) {
-        return (child.component as CompositeComponent).getLeafComponentByNodePosition(position.childNodePosition);
-      }
-      assert(position.childNodePosition is! CompositeNodePosition);
-      return child.component;
-    }
-    return this;
+  DocumentComponent? getChildComponentById(String childId) {
+    final child = childByNodeId(childId)!;
+    return child.component;
   }
 }
