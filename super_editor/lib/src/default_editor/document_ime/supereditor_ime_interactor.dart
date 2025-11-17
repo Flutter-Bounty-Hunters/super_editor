@@ -260,6 +260,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     _focusNode = (widget.focusNode ?? FocusNode());
 
     _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
+    print("IME interactor: initState() - registering IME ID: $_myImeId");
     _registerInput(_myImeId);
     SuperIme.instance.addListener(_onSharedImeChange);
     _setupDocumentImeInputClient();
@@ -298,14 +299,21 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (widget.inputRole != oldWidget.inputRole) {
+      final didOwnIme = SuperIme.instance.isOwner(_myImeId);
+
       // We changed roles. Release our previous claim to the shared IME.
       SuperIme.instance.releaseOwnership(_myImeId);
 
-      // Create a new IME input ID and re-take IME ownership.
+      // Create a new IME input ID with the new role.
       _unregisterInput(_myImeId);
       _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
+      print("IME interactor: didUpdateWidget() - taking ownership of IME ($_myImeId)");
       _registerInput(_myImeId);
-      SuperIme.instance.takeOwnership(_myImeId);
+
+      if (didOwnIme) {
+        // Re-take IME ownership.
+        SuperIme.instance.takeOwnership(_myImeId);
+      }
     }
 
     if (widget.editContext != oldWidget.editContext) {
@@ -388,9 +396,12 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   void _onSharedImeChange() {
+    print("IME Interactor: _onSharedImeChange()");
     // TODO: If we're no longer the owner, do we need to close the IME connection, or did that
     // already happen?
     if (!SuperIme.instance.isOwner(_myImeId)) {
+      // We don't own the IME. Update our accounting.
+      print("IME Interactor: we don't own the IME");
       _ownedImeConnection.value = null;
 
       _documentImeConnection.value = null;
@@ -400,12 +411,15 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (!SuperIme.instance.isInputAttachedToOS(_myImeId)) {
+      // We own the IME, but our connection to the OS was closed.
+      print("IME Interactor: we own the IME but we're not connected to the OS");
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
       widget.isImeConnected?.value = false;
       return;
     }
 
+    print("IME Interactor: we own the IME and we're connected. Updating isImeConnected");
     _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;

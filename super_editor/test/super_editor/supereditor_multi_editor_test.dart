@@ -15,8 +15,8 @@ void main() {
 
       await _buildTextScaleScaffold(
         tester,
-        editor1: _buildSuperEditor(tester, key: editor1Key),
-        editor2: _buildSuperEditor(tester, key: editor2Key),
+        editor1: _buildSuperEditor(tester, "super-editor-1", key: editor1Key),
+        editor2: _buildSuperEditor(tester, "super-editor-2", key: editor2Key),
       );
 
       // Select different text in each editor.
@@ -188,13 +188,15 @@ void main() {
 }
 
 Widget _buildSuperEditor(
-  WidgetTester tester, {
+  WidgetTester tester,
+  String inputRole, {
   Key? key,
 }) {
   return tester //
       .createDocument()
       .withSingleParagraph()
       .withKey(key)
+      .withInputRole(inputRole)
       // Testing concurrent selections across multiple editors requires
       // that each editor leave their selection alone when losing focus
       // or closing the IME.

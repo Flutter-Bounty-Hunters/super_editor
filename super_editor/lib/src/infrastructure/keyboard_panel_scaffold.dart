@@ -382,7 +382,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
           SuperKeyboard.instance.mobileGeometry.value.keyboardState != KeyboardState.open) {
         // If the user called hideKeyboardPanel() just before calling this method then the panel
         // will animate down even though we don't want it to. It's currently still at 100% so we've
-        // cause it in time to stop it from animating down.
+        // caught it in time to stop it from animating down.
         _panelHeightController.stop();
       }
 

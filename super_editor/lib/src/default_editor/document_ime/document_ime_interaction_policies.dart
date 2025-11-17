@@ -106,6 +106,8 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
 
   void _onFocusChange() {
     print("IME interaction policies - _onFocusChange()");
+    print(" - has focus? ${_focusNode.hasFocus}");
+    print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
     if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
       // We have focus but we don't own the IME. Take it over.
       print("Taking ownership of ime on focus: ${widget.inputId}");
@@ -288,6 +290,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
     widget.focusNode.addListener(_onFocusChange);
 
+    print("IME Interaction Policies - initState(): Has selection? ${widget.selection.value != null}");
     widget.selection.addListener(_onSelectionChange);
     if (widget.selection.value != null) {
       _onSelectionChange();
@@ -334,6 +337,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   }
 
   void _onFocusChange() {
+    print("DocumentSelectionOpenAndCloseImePolicy: onFocusChange() - has focus? ${widget.focusNode.hasFocus}");
     if (!widget.isEnabled) {
       return;
     }
@@ -353,6 +357,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   }
 
   void _onSelectionChange() {
+    print("DocumentSelectionOpenAndCloseImePolicy: _onSelectionChange() - has selection? ${widget.selection.value}");
     if (!widget.isEnabled) {
       return;
     }
@@ -360,6 +365,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
     if (widget.selection.value != null && widget.focusNode.hasPrimaryFocus && widget.openKeyboardOnSelectionChange) {
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
+      print("DocumentSelectionOpenAndCloseImePolicy: Opening keyboard because we have a selection");
       if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
