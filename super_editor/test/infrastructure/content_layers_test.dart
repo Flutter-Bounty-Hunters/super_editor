@@ -13,7 +13,7 @@ void main() {
     testWidgets("build without any layers", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -36,7 +36,7 @@ void main() {
     testWidgets("build with a single underlay and is same size as content", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: SizedBox.fromSize(size: _windowSize),
           ),
@@ -52,7 +52,7 @@ void main() {
     testWidgets("build with a single overlay and is same size as content", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: SizedBox.fromSize(size: _windowSize),
           ),
@@ -68,7 +68,7 @@ void main() {
     testWidgets("build with a single underlay and overlay and they are the same size as content", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: SizedBox.fromSize(size: _windowSize),
           ),
@@ -87,7 +87,7 @@ void main() {
     testWidgets("build with multiple underlays and overlays and they are the same size as content", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: SizedBox.fromSize(size: _windowSize),
           ),
@@ -119,7 +119,7 @@ void main() {
 
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (onBuildScheduled) => _RebuildableWidget(
             rebuildSignal: contentRebuildSignal,
             buildTracker: contentBuildTracker,
@@ -167,7 +167,7 @@ void main() {
 
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => _LayoutTrackingWidget(
             onLayout: () {
               didContentLayout.value = true;
@@ -208,7 +208,7 @@ void main() {
 
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (onBuildScheduled) => _RebuildableWidget(
             rebuildSignal: rebuildSignal,
             buildTracker: buildTracker,
@@ -262,7 +262,7 @@ void main() {
 
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           // Place a couple stateful widgets above the _RebuildableWidget to ensure that
           // when a widget deeper in the tree rebuilds, we still rebuild ContentLayers.
           content: (_) => _NoRebuildWidget(
@@ -329,7 +329,7 @@ void main() {
 
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => _RebuildableWidget(
             key: contentKey,
             rebuildSignal: rebuildSignal,
@@ -402,7 +402,7 @@ void main() {
     testWidgets("lets layers access inherited widgets", (tester) async {
       await _pumpScaffold(
         tester,
-        child: ContentLayers(
+        child: SliverContentLayers(
           content: (_) => SliverToBoxAdapter(
             child: SizedBox.fromSize(size: _windowSize),
           ),
