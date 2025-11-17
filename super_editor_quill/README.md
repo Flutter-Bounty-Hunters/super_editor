@@ -1,6 +1,9 @@
 # Super Editor Quill
 Extensions on Super Editor to support the Quill Deltas document format.
 
+## DEPRECATED
+Use `super_editor` directly, instead. We've moved all of this code into `super_editor`.
+
 ## What is Quill?
 Quill is an open source JavaScript text editor created by Facebook.
 

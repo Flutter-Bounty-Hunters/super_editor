@@ -1,6 +1,6 @@
 name: super_editor_quill
 description: "Quill extensions for Super Editor"
-version: 0.1.0-dev.10
+version: 0.1.0-dev.11
 homepage: https://github.com/superlistapp/super_editor
 funding:
   - https://flutterbountyhunters.com
@@ -23,7 +23,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  super_editor: ^0.3.0-dev.18
+  super_editor: ">=0.3.0-dev.18 <0.3.0-dev.41"
   logging: ^1.3.0
   dart_quill_delta: ^9.4.1
   collection: ^1.18.0

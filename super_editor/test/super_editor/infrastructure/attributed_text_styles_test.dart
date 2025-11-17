@@ -1,8 +1,6 @@
-import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
+import 'package:super_editor/super_editor.dart';
 
 void main() {
   group('Attributed Text', () {

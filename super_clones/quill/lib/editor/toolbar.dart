@@ -10,7 +10,6 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:overlord/overlord.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_quill/super_editor_quill.dart';
 
 class FormattingToolbar extends StatefulWidget {
   const FormattingToolbar({
