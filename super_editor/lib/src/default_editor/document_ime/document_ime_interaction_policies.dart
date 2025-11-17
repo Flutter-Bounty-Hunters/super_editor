@@ -366,6 +366,12 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
       print("DocumentSelectionOpenAndCloseImePolicy: Opening keyboard because we have a selection");
+
+      if (!SuperIme.instance.isOwner(widget.inputId)) {
+        print("DocumentSelectionOpenAndCloseImePolicy: Taking ownership of IME because we weren't the owner.");
+        SuperIme.instance.takeOwnership(widget.inputId);
+      }
+
       if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {

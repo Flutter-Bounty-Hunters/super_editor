@@ -312,6 +312,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
       if (didOwnIme) {
         // Re-take IME ownership.
+        print(
+            "IME Interactor: Transitioning ownership from previous role (${oldWidget.inputRole}) to new role (${widget.inputRole})");
         SuperIme.instance.takeOwnership(_myImeId);
       }
     }
