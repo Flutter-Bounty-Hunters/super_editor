@@ -36,25 +36,20 @@ class SuperMessage extends StatefulWidget {
     super.key,
     this.focusNode,
     required this.editor,
-    Stylesheet? stylesheet,
-    SelectionStyles? selectionStyles,
+    SuperMessageStyles? styles,
     this.customStylePhases = const [],
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperMessageDocumentOverlayBuilders,
     this.selectionLayerLinks,
     this.componentBuilders = defaultComponentBuilders,
     this.debugPaint = const DebugPaintConfig(),
-  })  : stylesheet = stylesheet ?? defaultChatStylesheet,
-        selectionStyles = selectionStyles ?? defaultChatSelectionStyles;
+  }) : styles = styles ?? SuperMessageStyles();
 
   final FocusNode? focusNode;
 
   final Editor editor;
 
-  final Stylesheet stylesheet;
-
-  /// Styles applied to selected content.
-  final SelectionStyles selectionStyles;
+  final SuperMessageStyles styles;
 
   /// Custom style phases that are added to the standard style phases.
   ///
@@ -99,15 +94,16 @@ class SuperMessage extends StatefulWidget {
 }
 
 class _SuperMessageState extends State<SuperMessage> {
+  late SuperMessageContext _messageContext;
+
   final _documentLayoutKey = GlobalKey(debugLabel: 'SuperMessage-DocumentLayout');
 
+  Brightness? _mostRecentPresenterBrightness;
   SingleColumnLayoutPresenter? _presenter;
   late SingleColumnStylesheetStyler _docStylesheetStyler;
   final _customUnderlineStyler = CustomUnderlineStyler();
   late SingleColumnLayoutCustomComponentStyler _docLayoutPerComponentBlockStyler;
   late SingleColumnLayoutSelectionStyler _docLayoutSelectionStyler;
-
-  late SuperMessageContext _messageContext;
 
   // Leader links that connect leader widgets near the user's selection
   // to carets, handles, and other things that want to follow the selection.
@@ -119,9 +115,18 @@ class _SuperMessageState extends State<SuperMessage> {
   void initState() {
     super.initState();
 
-    _initializePresenter();
-
     _selectionLinks = widget.selectionLayerLinks ?? SelectionLayerLinks();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final brightness = MediaQuery.platformBrightnessOf(context);
+    if (brightness != _mostRecentPresenterBrightness) {
+      _mostRecentPresenterBrightness = brightness;
+      _initializePresenter();
+    }
   }
 
   @override
@@ -152,7 +157,9 @@ class _SuperMessageState extends State<SuperMessage> {
     }
 
     _docStylesheetStyler = SingleColumnStylesheetStyler(
-      stylesheet: widget.stylesheet,
+      stylesheet: _mostRecentPresenterBrightness == Brightness.dark
+          ? widget.styles.darkStylesheet
+          : widget.styles.lightStylesheet,
     );
 
     _docLayoutPerComponentBlockStyler = SingleColumnLayoutCustomComponentStyler();
@@ -160,8 +167,12 @@ class _SuperMessageState extends State<SuperMessage> {
     _docLayoutSelectionStyler = SingleColumnLayoutSelectionStyler(
       document: widget.editor.document,
       selection: widget.editor.composer.selectionNotifier,
-      selectionStyles: widget.selectionStyles,
-      selectedTextColorStrategy: widget.stylesheet.selectedTextColorStrategy,
+      selectionStyles: _mostRecentPresenterBrightness == Brightness.dark
+          ? widget.styles.darkSelectionStyles
+          : widget.styles.lightSelectionStyles,
+      selectedTextColorStrategy: _mostRecentPresenterBrightness == Brightness.dark
+          ? widget.styles.darkStylesheet.selectedTextColorStrategy
+          : widget.styles.lightStylesheet.selectedTextColorStrategy,
     );
 
     _presenter = SingleColumnLayoutPresenter(
@@ -222,128 +233,7 @@ class _SuperMessageState extends State<SuperMessage> {
   }
 }
 
-class SuperMessageContext {
-  const SuperMessageContext(this.editor, this._getDocumentLayout);
-
-  final Editor editor;
-
-  /// The document layout that is a visual representation of the document.
-  ///
-  /// This member might change over time.
-  DocumentLayout get documentLayout => _getDocumentLayout();
-  final DocumentLayout Function() _getDocumentLayout;
-}
-
-// FIXME: De-dup this with SuperReader
-/// A [SuperMessageDocumentLayerBuilder] that builds a [SelectionLeadersDocumentLayer], which positions
-/// leader widgets at the base and extent of the user's selection, so that other widgets
-/// can position themselves relative to the user's selection.
-class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
-  const _SelectionLeadersDocumentLayerBuilder({
-    required this.links,
-    // TODO(srawlins): `unused_element`, when reporting a parameter, is being
-    // renamed to `unused_element_parameter`. For now, ignore each; when the SDK
-    // constraint is >= 3.6.0, just ignore `unused_element_parameter`.
-    // ignore: unused_element, unused_element_parameter
-    this.showDebugLeaderBounds = false,
-  });
-
-  /// Collections of [LayerLink]s, which are given to leader widgets that are
-  /// positioned at the selection bounds, and around the full selection.
-  final SelectionLayerLinks links;
-
-  /// Whether to paint colorful bounds around the leader widgets, for debugging purposes.
-  final bool showDebugLeaderBounds;
-
-  @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
-    print("Running build() on _SelectionLeadersDocumentLayerBuilder");
-    return SelectionLeadersDocumentLayer(
-      document: messageContext.editor.document,
-      selection: messageContext.editor.composer.selectionNotifier,
-      links: links,
-      showDebugLeaderBounds: showDebugLeaderBounds,
-    );
-  }
-}
-
-/// Default list of document overlays that are displayed on top of the document
-/// layout in a [SuperMessage].
-const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBuilder>[
-  // Adds a Leader around the document selection at a focal point for the
-  // iOS floating toolbar.
-  SuperMessageIosToolbarFocalPointDocumentLayerBuilder(),
-  // Displays caret and drag handles, specifically for iOS.
-  SuperMessageIosHandlesDocumentLayerBuilder(),
-];
-
-/// Builds widgets that are displayed at the same position and size as
-/// the document layout within a [SuperMessage].
-abstract class SuperMessageDocumentLayerBuilder {
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext);
-}
-
-/// A [SuperMessageDocumentLayerBuilder] that builds a [IosToolbarFocalPointDocumentLayer], which
-/// positions a `Leader` widget around the document selection, as a focal point for an
-/// iOS floating toolbar.
-class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
-  const SuperMessageIosToolbarFocalPointDocumentLayerBuilder({
-    // TODO(srawlins): `unused_element`, when reporting a parameter, is being
-    // renamed to `unused_element_parameter`. For now, ignore each; when the SDK
-    // constraint is >= 3.6.0, just ignore `unused_element_parameter`.
-    // ignore: unused_element, unused_element_parameter
-    this.showDebugLeaderBounds = false,
-  });
-
-  /// Whether to paint colorful bounds around the leader widget.
-  final bool showDebugLeaderBounds;
-
-  @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
-    return IosToolbarFocalPointDocumentLayer(
-      document: messageContext.editor.document,
-      selection: messageContext.editor.composer.selectionNotifier,
-      toolbarFocalPointLink: SuperReaderIosControlsScope.rootOf(context).toolbarFocalPoint,
-      showDebugLeaderBounds: showDebugLeaderBounds,
-    );
-  }
-}
-
-/// A [SuperMessageLayerBuilder], which builds a [IosHandlesDocumentLayer],
-/// which displays iOS-style handles.
-class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
-  const SuperMessageIosHandlesDocumentLayerBuilder({
-    this.handleColor,
-  });
-
-  final Color? handleColor;
-
-  @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
-    if (defaultTargetPlatform != TargetPlatform.iOS) {
-      return const ContentLayerProxyWidget(child: SizedBox());
-    }
-
-    return IosHandlesDocumentLayer(
-      document: messageContext.editor.document,
-      documentLayout: messageContext.documentLayout,
-      selection: messageContext.editor.composer.selectionNotifier,
-      changeSelection: (newSelection, changeType, reason) {
-        messageContext.editor.execute([
-          ChangeSelectionRequest(
-            newSelection,
-            changeType,
-            reason,
-          ),
-        ]);
-      },
-      handleColor: handleColor ?? Theme.of(context).primaryColor,
-      shouldCaretBlink: ValueNotifier<bool>(false),
-    );
-  }
-}
-
-final defaultChatStylesheet = Stylesheet(
+final defaultLightChatStylesheet = Stylesheet(
   rules: [
     StyleRule(
       BlockSelector.all,
@@ -419,7 +309,174 @@ final defaultChatStylesheet = Stylesheet(
   inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
 );
 
-/// Default visual styles related to content selection.
-const defaultChatSelectionStyles = SelectionStyles(
+const defaultLightChatSelectionStyles = SelectionStyles(
   selectionColor: Color(0xFFACCEF7),
 );
+
+final defaultDarkChatStylesheet = defaultLightChatStylesheet.copyWith(
+  addRulesAfter: [
+    StyleRule(
+      BlockSelector.all,
+      (doc, docNode) {
+        return {
+          Styles.textStyle: const TextStyle(
+            color: Colors.white,
+          ),
+        };
+      },
+    ),
+    StyleRule(
+      const BlockSelector("blockquote"),
+      (doc, docNode) {
+        return {
+          Styles.textStyle: const TextStyle(
+            color: Colors.grey,
+          ),
+        };
+      },
+    ),
+  ],
+  inlineTextStyler: defaultInlineTextStyler,
+  inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
+);
+
+const defaultDarkChatSelectionStyles = SelectionStyles(
+  selectionColor: Color(0xFFACCEF7),
+);
+
+/// Default list of document overlays that are displayed on top of the document
+/// layout in a [SuperMessage].
+const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBuilder>[
+  // Adds a Leader around the document selection at a focal point for the
+  // iOS floating toolbar.
+  SuperMessageIosToolbarFocalPointDocumentLayerBuilder(),
+  // Displays caret and drag handles, specifically for iOS.
+  SuperMessageIosHandlesDocumentLayerBuilder(),
+];
+
+/// Styles that apply to a given [SuperMessage], including a document stylesheet,
+/// and selection styles, for both light and dark modes.
+class SuperMessageStyles {
+  SuperMessageStyles({
+    Stylesheet? lightStylesheet,
+    SelectionStyles? lightSelectionStyles,
+    Stylesheet? darkStylesheet,
+    SelectionStyles? darkSelectionStyles,
+  })  : lightStylesheet = lightStylesheet ?? defaultLightChatStylesheet,
+        lightSelectionStyles = lightSelectionStyles ?? defaultLightChatSelectionStyles,
+        darkStylesheet = darkStylesheet ?? defaultDarkChatStylesheet,
+        darkSelectionStyles = darkSelectionStyles ?? defaultDarkChatSelectionStyles;
+
+  late final Stylesheet lightStylesheet;
+  late final SelectionStyles lightSelectionStyles;
+
+  late final Stylesheet darkStylesheet;
+  late final SelectionStyles darkSelectionStyles;
+}
+
+/// A collection of artifacts that are available within every [SuperMessage].
+///
+/// The primary purpose of [SuperMessageContext] is to pass these artifacts to
+/// document overlay layers and underlay layers, such as a layer that paints
+/// selection boxes or the caret.
+class SuperMessageContext {
+  const SuperMessageContext(this.editor, this._getDocumentLayout);
+
+  final Editor editor;
+
+  /// The document layout that is a visual representation of the document.
+  ///
+  /// This member might change over time.
+  DocumentLayout get documentLayout => _getDocumentLayout();
+  final DocumentLayout Function() _getDocumentLayout;
+}
+
+/// A [SuperMessageDocumentLayerBuilder] that builds a [SelectionLeadersDocumentLayer], which positions
+/// leader widgets at the base and extent of the user's selection, so that other widgets
+/// can position themselves relative to the user's selection.
+class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
+  const _SelectionLeadersDocumentLayerBuilder({
+    required this.links,
+    // ignore: unused_element_parameter
+    this.showDebugLeaderBounds = false,
+  });
+
+  /// Collections of [LayerLink]s, which are given to leader widgets that are
+  /// positioned at the selection bounds, and around the full selection.
+  final SelectionLayerLinks links;
+
+  /// Whether to paint colorful bounds around the leader widgets, for debugging purposes.
+  final bool showDebugLeaderBounds;
+
+  @override
+  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+    return SelectionLeadersDocumentLayer(
+      document: messageContext.editor.document,
+      selection: messageContext.editor.composer.selectionNotifier,
+      links: links,
+      showDebugLeaderBounds: showDebugLeaderBounds,
+    );
+  }
+}
+
+/// Builds widgets that are displayed at the same position and size as
+/// the document layout within a [SuperMessage].
+abstract class SuperMessageDocumentLayerBuilder {
+  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext);
+}
+
+/// A [SuperMessageDocumentLayerBuilder] that builds a [IosToolbarFocalPointDocumentLayer], which
+/// positions a `Leader` widget around the document selection, as a focal point for an
+/// iOS floating toolbar.
+class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
+  const SuperMessageIosToolbarFocalPointDocumentLayerBuilder({
+    this.showDebugLeaderBounds = false,
+  });
+
+  /// Whether to paint colorful bounds around the leader widget.
+  final bool showDebugLeaderBounds;
+
+  @override
+  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+    return IosToolbarFocalPointDocumentLayer(
+      document: messageContext.editor.document,
+      selection: messageContext.editor.composer.selectionNotifier,
+      toolbarFocalPointLink: SuperReaderIosControlsScope.rootOf(context).toolbarFocalPoint,
+      showDebugLeaderBounds: showDebugLeaderBounds,
+    );
+  }
+}
+
+/// A [SuperMessageLayerBuilder], which builds a [IosHandlesDocumentLayer],
+/// which displays iOS-style handles.
+class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
+  const SuperMessageIosHandlesDocumentLayerBuilder({
+    this.handleColor,
+  });
+
+  final Color? handleColor;
+
+  @override
+  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) {
+      return const ContentLayerProxyWidget(child: SizedBox());
+    }
+
+    return IosHandlesDocumentLayer(
+      document: messageContext.editor.document,
+      documentLayout: messageContext.documentLayout,
+      selection: messageContext.editor.composer.selectionNotifier,
+      changeSelection: (newSelection, changeType, reason) {
+        messageContext.editor.execute([
+          ChangeSelectionRequest(
+            newSelection,
+            changeType,
+            reason,
+          ),
+        ]);
+      },
+      handleColor: handleColor ?? Theme.of(context).primaryColor,
+      shouldCaretBlink: ValueNotifier<bool>(false),
+    );
+  }
+}

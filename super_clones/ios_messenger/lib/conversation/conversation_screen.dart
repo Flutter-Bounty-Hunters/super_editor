@@ -34,39 +34,43 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      child: Stack(
-        children: [
-          MessagePageScaffold(
-            controller: _messagePageController,
-            bottomSheetMinimumTopGap: 150,
-            bottomSheetMinimumHeight: 148,
-            contentBuilder: (contentContext, bottomSpacing) {
-              return MediaQuery.removePadding(
-                context: contentContext,
-                removeBottom: true,
-                // ^ Remove bottom padding because if we don't, when the keyboard
-                //   opens to edit the bottom sheet, this content behind the bottom
-                //   sheet adds some phantom space at the bottom, slightly pushing
-                //   it up for no reason.
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: ColoredBox(color: Colors.black)),
-                    Positioned.fill(child: _ChatThread(bottomSheetHeight: bottomSpacing)),
-                  ],
-                ),
-              );
-            },
-            bottomSheetBuilder: (messageContext) {
-              return _MessageComposer();
+    return MediaQuery(
+      // Simulate a dark platform brightness.
+      data: MediaQuery.of(context).copyWith(platformBrightness: Brightness.dark),
+      child: Material(
+        child: Stack(
+          children: [
+            MessagePageScaffold(
+              controller: _messagePageController,
+              bottomSheetMinimumTopGap: 150,
+              bottomSheetMinimumHeight: 148,
+              contentBuilder: (contentContext, bottomSpacing) {
+                return MediaQuery.removePadding(
+                  context: contentContext,
+                  removeBottom: true,
+                  // ^ Remove bottom padding because if we don't, when the keyboard
+                  //   opens to edit the bottom sheet, this content behind the bottom
+                  //   sheet adds some phantom space at the bottom, slightly pushing
+                  //   it up for no reason.
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: ColoredBox(color: Colors.black)),
+                      Positioned.fill(child: _ChatThread(bottomSheetHeight: bottomSpacing)),
+                    ],
+                  ),
+                );
+              },
+              bottomSheetBuilder: (messageContext) {
+                return _MessageComposer();
 
-              // return _EditorBottomSheet(
-              //   messagePageController: _messagePageController,
-              // );
-            },
-          ),
-          _buildAppBar(),
-        ],
+                // return _EditorBottomSheet(
+                //   messagePageController: _messagePageController,
+                // );
+              },
+            ),
+            _buildAppBar(),
+          ],
+        ),
       ),
     );
   }
@@ -159,16 +163,6 @@ class _ChatThreadState extends State<_ChatThread> {
       //   message appears at the bottom, and you want to retain the
       //   scroll offset near the newest messages, not the oldest.
       itemBuilder: (context, index) {
-        // if (index == 8) {
-        //   // Arbitrarily placed text field to test moving focus between a non-editor
-        //   // and the editor.
-        //   return TextField(
-        //     decoration: InputDecoration(
-        //       hintText: "Content text field...",
-        //     ),
-        //   );
-        // }
-
         final message = _conversation[_conversation.length - index - 1];
 
         return Padding(
@@ -184,14 +178,7 @@ class _ChatThreadState extends State<_ChatThread> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  child: SuperMessage(
-                    editor: createDefaultDocumentEditor(document: message.message),
-                    stylesheet: defaultChatStylesheet.copyWith(
-                      inlineTextStyler: (attributions, style) {
-                        return style.copyWith(color: Colors.white);
-                      },
-                    ),
-                  ),
+                  child: SuperMessage(editor: createDefaultDocumentEditor(document: message.message)),
                 ),
               ),
             ),
