@@ -34,15 +34,15 @@ class _MessagePageScaffoldDemoState extends State<MessagePageScaffoldDemo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   backgroundColor: Colors.red,
-      //   elevation: 0,
-      //   actions: [
-      //     IconButton(onPressed: _showChaosMonkeyDemo, icon: Icon(Icons.pets)),
-      //     IconButton(onPressed: _showTextFieldDemo, icon: Icon(Icons.format_line_spacing)),
-      //     IconButton(onPressed: _showSuperEditorDemo, icon: Icon(Icons.edit)),
-      //   ],
-      // ),
+      appBar: AppBar(
+        backgroundColor: Colors.red,
+        elevation: 0,
+        actions: [
+          IconButton(onPressed: _showChaosMonkeyDemo, icon: Icon(Icons.pets)),
+          IconButton(onPressed: _showTextFieldDemo, icon: Icon(Icons.format_line_spacing)),
+          IconButton(onPressed: _showSuperEditorDemo, icon: Icon(Icons.edit)),
+        ],
+      ),
       extendBodyBehindAppBar: true,
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
