@@ -73,30 +73,17 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   @override
   bool get isConnectedToIme => SuperIme.instance.isInputAttachedToOS(widget.inputId);
 
-  bool _didScheduleOpenPostFrameCallback = false;
-
   @override
   void open({
     required int viewId,
   }) {
     print("SoftwareKeyboardOpener - open()");
-    // if (_didScheduleOpenPostFrameCallback) {
-    //   print(" - we've already scheduled an open post frame callback, ignoring.");
-    //   return;
-    // }
-    // _didScheduleOpenPostFrameCallback = true;
 
-    // Wait until end of frame to try to open the keyboard so that all IME ownership
-    // changes have time to finish, and we can check if we're the final owner.
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   print("SoftwareKeyboardOpener - running post frame callback for open()");
-    //   _didScheduleOpenPostFrameCallback = false;
-    //
-    // if (!_ownsIme) {
-    //   print("Can't open because we don't have IME ownership");
-    //   editorImeLog.info("[SoftwareKeyboard] - tried to show keyboard, but we don't own IME (${widget.inputId})");
-    //   return;
-    // }
+    // FIXME: THIS IS WHAT SOLVED THE KEYBOARD CLOSING GLITCH IN NEW CHAT MESSAGES IN CLICKUP
+    if (!_ownsIme) {
+      print("Taking ownership of IME so we can open the keyboard");
+      SuperIme.instance.takeOwnership(widget.inputId);
+    }
 
     print("Opening IME connection and showing keyboard");
     editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
@@ -106,7 +93,6 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
       widget.createImeConfiguration(),
       showKeyboard: true,
     );
-    // });
   }
 
   @override

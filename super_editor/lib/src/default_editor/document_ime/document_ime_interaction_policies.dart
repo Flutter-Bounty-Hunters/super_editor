@@ -358,6 +358,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
   void _onSelectionChange() {
     print("DocumentSelectionOpenAndCloseImePolicy: _onSelectionChange() - has selection? ${widget.selection.value}");
+    print(" - is this widget enabled? ${widget.isEnabled}");
     if (!widget.isEnabled) {
       return;
     }
@@ -373,6 +374,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       }
 
       if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
+        print("DocumentSelectionOpenAndCloseImePolicy: IME isn't attached OS. Will open connection at end of frame.");
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
             return;
@@ -397,6 +399,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
           );
         }, debugLabel: 'Open IME Connection on Selection Change');
       } else {
+        print("DocumentSelectionOpenAndCloseImePolicy: Already have ownership - telling IME to show keyboard");
         SuperIme.instance.getImeConnectionForOwner(widget.inputId)!.show();
       }
     } else if (SuperIme.instance.isInputAttachedToOS(widget.inputId) &&
@@ -406,7 +409,10 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       // closed whenever the editor loses its selection. Close the keyboard.
       editorPoliciesLog
           .info("[${widget.runtimeType}] - closing the IME keyboard because the document selection was cleared");
+      print("document_ime_interaction_policies: Clearing IME connection");
       SuperIme.instance.clearConnection(widget.inputId);
+    } else {
+      print("DocumentSelectionOpenAndCloseImePolicy: No policies were activated.");
     }
   }
 
