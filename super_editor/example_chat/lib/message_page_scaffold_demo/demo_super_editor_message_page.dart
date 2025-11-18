@@ -1,8 +1,4 @@
-import 'dart:math';
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_keyboard/super_keyboard.dart';
 
@@ -34,278 +30,77 @@ class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        MessagePageScaffold(
-          controller: _messagePageController,
-          bottomSheetMinimumTopGap: 150,
-          bottomSheetMinimumHeight: 148,
-          contentBuilder: (contentContext, bottomSpacing) {
-            return MediaQuery.removePadding(
-              context: contentContext,
-              removeBottom: true,
-              // ^ Remove bottom padding because if we don't, when the keyboard
-              //   opens to edit the bottom sheet, this content behind the bottom
-              //   sheet adds some phantom space at the bottom, slightly pushing
-              //   it up for no reason.
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ColoredBox(color: Colors.black),
-                  ),
-                  Positioned.fill(
-                    child: _ChatThread(
-                      bottomSheetHeight: bottomSpacing,
-                    ),
-                  ),
-                ],
+    return MessagePageScaffold(
+      controller: _messagePageController,
+      bottomSheetMinimumTopGap: 150,
+      bottomSheetMinimumHeight: 148,
+      contentBuilder: (contentContext, bottomSpacing) {
+        return MediaQuery.removePadding(
+          context: contentContext,
+          removeBottom: true,
+          // ^ Remove bottom padding because if we don't, when the keyboard
+          //   opens to edit the bottom sheet, this content behind the bottom
+          //   sheet adds some phantom space at the bottom, slightly pushing
+          //   it up for no reason.
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(color: Colors.purpleAccent.shade100),
               ),
-            );
-          },
-          bottomSheetBuilder: (messageContext) {
-            return _MessageComposer();
-
-            // return _EditorBottomSheet(
-            //   messagePageController: _messagePageController,
-            // );
-          },
-        ),
-        _buildAppBar(),
-      ],
-    );
-  }
-
-  Widget _buildAppBar() {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarBrightness: Brightness.dark, // iOS
-        statusBarIconBrightness: Brightness.light, // Android
-      ),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaY: 10, sigmaX: 10),
-          child: ColoredBox(
-            color: Colors.grey.shade900.withValues(alpha: 0.8),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.chevron_left),
-                      iconSize: 40,
-                      color: Colors.blueAccent,
-                      onPressed: () {},
-                    ),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Jason",
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                          Text(
-                            "Orlando, FL",
-                            style: TextStyle(color: Colors.grey, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, right: 8),
-                      child: IconButton(
-                        icon: Icon(Icons.video_camera_back_outlined),
-                        iconSize: 30,
-                        color: Colors.blueAccent,
-                        onPressed: () {},
-                      ),
-                    ),
-                  ],
-                ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: bottomSpacing,
+                child: _ChatThread(),
               ),
-            ),
+            ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A simulated chat conversation thread, which is simulated as a bottom-aligned
-/// list of tiles.
-class _ChatThread extends StatefulWidget {
-  const _ChatThread({
-    required this.bottomSheetHeight,
-  });
-
-  final double bottomSheetHeight;
-
-  @override
-  State<_ChatThread> createState() => _ChatThreadState();
-}
-
-class _ChatThreadState extends State<_ChatThread> {
-  final _conversation = _createConversation();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: EdgeInsets.only(
-        top: 164, // FIXME: This value needs to be the height of the app bar.
-        bottom: widget.bottomSheetHeight,
-      ),
-      itemCount: _conversation.length,
-      reverse: true,
-      // ^ The list starts at the bottom and grows upward. This is how
-      //   we should layout chat conversations where the most recent
-      //   message appears at the bottom, and you want to retain the
-      //   scroll offset near the newest messages, not the oldest.
-      itemBuilder: (context, index) {
-        // if (index == 8) {
-        //   // Arbitrarily placed text field to test moving focus between a non-editor
-        //   // and the editor.
-        //   return TextField(
-        //     decoration: InputDecoration(
-        //       hintText: "Content text field...",
-        //     ),
-        //   );
-        // }
-
-        final message = _conversation[_conversation.length - index - 1];
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Align(
-            alignment: message.sender == _Actor.me ? Alignment.bottomRight : Alignment.bottomLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 300),
-              child: Container(
-                decoration: ShapeDecoration(
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  color: message.sender == _Actor.me ? Colors.blueAccent.shade200 : Colors.grey.shade900,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  child: SuperMessage(
-                    editor: createDefaultDocumentEditor(
-                      document: message.message,
-                    ),
-                    stylesheet: defaultChatStylesheet.copyWith(
-                      inlineTextStyler: (attributions, style) {
-                        return style.copyWith(color: Colors.white);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+        );
+      },
+      bottomSheetBuilder: (messageContext) {
+        return _EditorBottomSheet(
+          messagePageController: _messagePageController,
         );
       },
     );
   }
 }
 
-class _MessageComposer extends StatefulWidget {
-  const _MessageComposer();
+/// A simulated chat conversation thread, which is simulated as a bottom-aligned
+/// list of tiles.
+class _ChatThread extends StatelessWidget {
+  const _ChatThread();
 
-  @override
-  State<_MessageComposer> createState() => _MessageComposerState();
-}
-
-class _MessageComposerState extends State<_MessageComposer> {
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaY: 10, sigmaX: 10),
-        child: ColoredBox(
-          color: Colors.black.withValues(alpha: 0.8),
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: max(
-                MediaQuery.viewPaddingOf(context).bottom,
-                MediaQuery.viewInsetsOf(context).bottom,
-              ),
+    return ListView.builder(
+      reverse: true,
+      // ^ The list starts at the bottom and grows upward. This is how
+      //   we should layout chat conversations where the most recent
+      //   message appears at the bottom, and you want to retain the
+      //   scroll offset near the newest messages, not the oldest.
+      itemBuilder: (context, index) {
+        if (index == 8) {
+          // Arbitrarily placed text field to test moving focus between a non-editor
+          // and the editor.
+          return TextField(
+            decoration: InputDecoration(
+              hintText: "Content text field...",
             ),
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8, right: 8, top: 4, bottom: 16),
-              child: Row(
-                spacing: 12,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey.shade900,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.add,
-                        color: Colors.grey.shade200,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
-                        ),
-                        isCollapsed: true,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                        hintText: "iMessage",
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.only(right: 6.0),
-                          child: Icon(
-                            Icons.mic,
-                            size: 20,
-                          ),
-                        ),
-                        suffixIconColor: Colors.grey.shade600,
-                        suffixIconConstraints: BoxConstraints(maxHeight: 32),
-                      ),
-                      cursorColor: Colors.blueAccent.shade200,
-                      cursorWidth: 2,
-                      keyboardAppearance: Brightness.dark,
-                    ),
-                  ),
-                ],
-              ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Material(
+            color: Colors.white.withValues(alpha: 0.5),
+            child: ListTile(
+              title: Text("Item $index"),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -816,57 +611,3 @@ class SuperEditorFocusOnTap extends StatelessWidget {
 enum _Panel {
   thePanel;
 }
-
-List<_Message> _createConversation() {
-  const conversation = <(_Actor, String)>[
-    (_Actor.other, "Yo, you free this weekend?"),
-    (_Actor.other, "Got an idea 👀"),
-    (_Actor.me, "Oh? What’s up?"),
-    (_Actor.other, "Top Gun 2. IMAX. Mach 10. Let’s go."),
-    (_Actor.me, "LOL ok you sold that fast"),
-    (_Actor.me, "I’m in"),
-    (_Actor.other, "Nice. Saturday evening work?"),
-    (_Actor.me, "Yeah that should be good."),
-    (_Actor.me, "I just need to check one thing but pretty sure I’m free."),
-    (_Actor.other, "Cool cool."),
-    (_Actor.other, "Thinking AMC downtown — best seats + non-depressing popcorn."),
-    (_Actor.me, "😂 Accurate"),
-    (_Actor.me, "What time?"),
-    (_Actor.other, "7:45 show"),
-    (_Actor.other, "Want me to grab tickets?"),
-    (_Actor.me, "Yeah please! I’ll pay you back."),
-    (_Actor.other, "Done."),
-    (_Actor.other, "Also trying to avoid front row neck-snapping this time."),
-    (_Actor.me, "THANK you"),
-    (_Actor.me, "My spine still remembers last time"),
-    (_Actor.other, "Lol"),
-    (_Actor.other, "Got us the perfect row. Optimal jet-noise zone."),
-    (_Actor.me, "Legendary."),
-    (_Actor.me, "I’ll drive?"),
-    (_Actor.other, "Works for me. I’ll bring snacks."),
-    (_Actor.me, "Saturday = TOP GUN DAY 🛩️🔥"),
-    (_Actor.me, "It’s happening"),
-    (_Actor.other, "LET’S GOOOO"),
-  ];
-
-  return <_Message>[
-    for (final pair in conversation) //
-      _Message(
-        pair.$1,
-        MutableDocument(
-          nodes: [
-            ParagraphNode(id: Editor.createNodeId(), text: AttributedText(pair.$2)),
-          ],
-        ),
-      ),
-  ];
-}
-
-class _Message {
-  const _Message(this.sender, this.message);
-
-  final _Actor sender;
-  final MutableDocument message;
-}
-
-enum _Actor { me, other }
