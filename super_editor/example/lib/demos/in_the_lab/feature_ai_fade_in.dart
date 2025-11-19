@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:example/demos/in_the_lab/in_the_lab_scaffold.dart';
 import 'package:flutter/material.dart' hide ListenableBuilder;
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 
 class AiFadeInFeatureDemo extends StatefulWidget {
   const AiFadeInFeatureDemo({super.key});

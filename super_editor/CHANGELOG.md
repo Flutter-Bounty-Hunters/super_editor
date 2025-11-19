@@ -1,3 +1,36 @@
+## [0.3.0-dev.40]
+### Nov 13, 2025
+* BREAKING: Moved all `super_editor_markdown` code into `super_editor`. Will now
+   deprecate `super_editor_markdown` in favor of just using `super_editor`.
+
+## [0.3.0-dev.39]
+### Nov 13, 2025
+* FIX: `MessagePageScaffold` bottom sheet animation glitches fixed.
+* ADJUSTMENT: `MessagePageScaffold` now has an optional maximum intrinsic height when 
+   not in "expanded" mode.
+* FIX: When an `Editable` or listener responding to an `Editable` can now immediately 
+   submit `Editor` requests without blowing up.
+* ADJUSTMENT: Don't require a `MutableDocument` or `MutableDocumentComposer` when calling
+   `createDefaultEditor()`.
+* FIX: Move remaining `OverlayController.show()` calls to post frame callbacks.
+
+## [0.3.0-dev.38]
+### Nov 9, 2025
+* BREAKING, FIX: Rework `SuperEditorPlugin` lifecycle because we discovered that when
+   one `SuperEditor` widget gets replaced by another, the new widget runs `initState()`
+   before the old widget runs `dispose()`. This resulted in plugins ending up in a detached
+   state when they should have been attached. This release adds some reference counting
+   so that detachment only happens when it truly should.
+* BREAKING, ADJUSTMENT: Related to the plugin lifecycle work, `EditContext.remove()` was
+   adjusted to prevent accidentally removing a resource that was just added. The API change
+   now expects you to pass the key to remove, and the value you want to remove for that key.
+   If the current value doesn't match what is provided, then the removal doesn't happen.
+
+## [0.3.0-dev.37]
+### Nov 5, 2025
+* ADJUSTMENT: Upgrade `super_keyboard` to `v0.3.0`.
+* ADJUSTMENT: Upgrade `follow_the_leader` to `v0.5.2`.
+
 ## [0.3.0-dev.36]
 ### Oct 29, 2025
 * ADJUSTMENT: Change Android toolbar to look like latest Android OS version.

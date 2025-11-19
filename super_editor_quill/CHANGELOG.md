@@ -1,3 +1,8 @@
+## [0.1.0-dev.11]
+### Nov 15, 2025
+**FINAL RELEASE:** This release is an announcement that we've moved all the code from
+this package into `super_editor`. Please use `super_editor` instead.
+
 ## 0.1.0-dev.10
 * Adjustment: Make it possible to serialize text inline placeholders as inline embeds.
 * Fix: Exception when serializing an empty document.

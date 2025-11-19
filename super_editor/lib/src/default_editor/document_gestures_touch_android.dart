@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -19,8 +19,8 @@ import 'package:super_editor/src/document_operations/selection_operations.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/flutter/build_context.dart';
-import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/flutter/eager_pan_gesture_recognizer.dart';
+import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/android/android_document_controls.dart';
@@ -1403,14 +1403,16 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
   @override
   void initState() {
     super.initState();
-    _overlayController.show();
+
     widget.selection.addListener(_onSelectionChange);
+
     _collapsedHandleGestureDelegate = DocumentHandleGestureDelegate(
       onTap: _toggleToolbarOnCollapsedHandleTap,
       onPanStart: (details) => _onHandlePanStart(details, HandleType.collapsed),
       onPanUpdate: _onHandlePanUpdate,
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.collapsed),
     );
+
     _upstreamHandleGesturesDelegate = DocumentHandleGestureDelegate(
       onTap: () {
         // Register tap down to win gesture arena ASAP.
@@ -1420,6 +1422,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.upstream),
       onPanCancel: () => _onHandlePanCancel(HandleType.upstream),
     );
+
     _downstreamHandleGesturesDelegate = DocumentHandleGestureDelegate(
       onTap: () {
         // Register tap down to win gesture arena ASAP.
@@ -1429,6 +1432,12 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.downstream),
       onPanCancel: () => _onHandlePanCancel(HandleType.downstream),
     );
+
+    onNextFrame((_) {
+      // Call `show()` at the end of the frame because calling during a build
+      // process blows up.
+      _overlayController.show();
+    });
   }
 
   @override
@@ -1441,7 +1450,6 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
       toolbarVerticalOffsetAbove: 20,
       toolbarVerticalOffsetBelow: 90,
     );
-    widget.selection.addListener(_onSelectionChange);
   }
 
   @override

@@ -16,6 +16,7 @@ export 'src/core/styles.dart';
 
 // Chat
 export 'src/chat/message_page_scaffold.dart';
+export 'src/chat/super_message.dart';
 
 // Super Editor
 export 'src/default_editor/ai/content_fading.dart';
@@ -73,6 +74,8 @@ export 'src/infrastructure/attributed_text_styles.dart';
 export 'src/infrastructure/attribution_layout_bounds.dart';
 export 'src/infrastructure/composable_text.dart';
 export 'src/infrastructure/content_layers.dart';
+export 'src/infrastructure/content_layers_for_boxes.dart';
+export 'src/infrastructure/content_layers_for_slivers.dart';
 export 'src/infrastructure/documents/document_layers.dart';
 export 'src/infrastructure/documents/document_scroller.dart';
 export 'src/infrastructure/documents/selection_leader_document_layer.dart';
@@ -113,6 +116,28 @@ export 'src/super_reader/read_only_document_mouse_interactor.dart';
 export 'src/super_reader/reader_context.dart';
 export 'src/super_reader/super_reader.dart';
 export 'src/super_reader/tasks.dart';
+
+// Markdown Serialization
+export 'src/infrastructure/serialization/markdown/document_to_markdown_serializer.dart';
+export 'src/infrastructure/serialization/markdown/image_syntax.dart';
+export 'src/infrastructure/serialization/markdown/markdown_inline_parser.dart';
+export 'src/infrastructure/serialization/markdown/markdown_inline_upstream_plugin.dart';
+export 'src/infrastructure/serialization/markdown/markdown_to_attributed_text_parsing.dart';
+export 'src/infrastructure/serialization/markdown/markdown_to_document_parsing.dart';
+export 'src/infrastructure/serialization/markdown/super_editor_paste_markdown.dart';
+export 'src/infrastructure/serialization/markdown/super_editor_syntax.dart';
+export 'src/infrastructure/serialization/markdown/table.dart';
+
+// Quill Serialization
+export 'src/infrastructure/serialization/quill/parsing/block_formats.dart';
+export 'src/infrastructure/serialization/quill/parsing/inline_formats.dart';
+export 'src/infrastructure/serialization/quill/parsing/parser.dart';
+
+export 'src/infrastructure/serialization/quill/serializing/serializing.dart';
+export 'src/infrastructure/serialization/quill/serializing/serializers.dart';
+
+export 'src/infrastructure/serialization/quill/content/formatting.dart';
+export 'src/infrastructure/serialization/quill/content/multimedia.dart';
 
 // HTML Serialization
 export 'src/infrastructure/serialization/html/document_to_html.dart';

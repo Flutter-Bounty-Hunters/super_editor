@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_quill/super_editor_quill.dart';
 
 /// The background color of the window panes, such as the background of the
 /// app header/ribbon.

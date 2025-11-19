@@ -14,14 +14,10 @@ dependencies:
   cupertino_icons: ^1.0.6
   super_editor:
     path: ../../super_editor
-  super_editor_markdown:
-    path: ../../super_editor_markdown
 
 dependency_overrides:
   super_editor:
     path: ../../super_editor
-  super_editor_markdown:
-    path: ../../super_editor_markdown
   super_text_layout:
     path: ../../super_text_layout
 

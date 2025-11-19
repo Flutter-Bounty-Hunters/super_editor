@@ -2,7 +2,6 @@ import 'package:feather/deltas/deltas_display.dart';
 import 'package:feather/editor/editor.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 
 class FeatherApp extends StatelessWidget {
   const FeatherApp({super.key});

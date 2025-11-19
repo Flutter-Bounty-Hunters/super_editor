@@ -1,3 +1,16 @@
+## [0.2.2]
+### Nov 15, 2025
+**FINAL RELEASE:** This release is an announcement that we've moved all the code from
+this package into `super_editor`. Please use `super_editor` instead.
+
+## [0.2.1]
+### Nov 13, 2025
+**FINAL RELEASE:** This release is an announcement that we've moved all the code from
+this package into `super_editor`. Please use `super_editor` instead.
+
+NOTE: This release was pulled back because we needed to add an upper constraint on the
+version of `super_editor` used by this package, to prevent duplicate imports.
+
 ## [0.2.0]
 ### Aug 27, 2025
 * ADJUSTMENT: Inline Markdown parsing is now configurable with a couple properties added to the document parser.
