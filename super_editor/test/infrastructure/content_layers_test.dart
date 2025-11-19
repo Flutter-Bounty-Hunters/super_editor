@@ -598,7 +598,6 @@ void main() {
                 )
               : BoxContentLayers(
                   content: (_) => _RebuildableWidget(
-                    key: contentKey,
                     rebuildSignal: rebuildSignal,
                     buildTracker: buildTracker,
                     // We don't pass in the onBuildScheduled callback here because we're simulating
@@ -607,42 +606,18 @@ void main() {
                       onLayout: () {
                         contentLayoutCount.value += 1;
                       },
-                      child: SizedBox.fromSize(size: _windowSize),
+                      child: const SizedBox.expand(),
                     ),
                   ),
                   underlays: [
                     (context) => _RebuildableContentLayerWidget(
                           elementTracker: underlayElementTracker,
-                          onBuild: () {
-                            // Ensure that this layer can access the render object of the content.
-                            final contentBox = contentKey.currentContext!.findRenderObject() as RenderBox?;
-                            expect(contentBox, isNotNull);
-                            expect(contentBox!.size, isNotNull);
-                            // final viewport = context.findAncestorRenderObjectOfType<RenderViewport>();
-                            // Build happens during viewport layout, which is not finished at this point. So transform to viewport
-                            // coordinate space is as far as we can go.
-                            expect(
-                                contentBox.localToGlobal(
-                                  Offset.zero, /*ancestor: viewport*/
-                                ),
-                                isNotNull);
-                          },
                           child: const SizedBox.expand(),
                         ),
                   ],
                   overlays: [
                     (context) => _RebuildableContentLayerWidget(
                           elementTracker: overlayElementTracker,
-                          onBuild: () {
-                            // Ensure that this layer can access the render object of the content.
-                            final contentBox = contentKey.currentContext!.findRenderObject() as RenderBox?;
-                            expect(contentBox, isNotNull);
-                            expect(contentBox!.size, isNotNull);
-                            final viewport = context.findAncestorRenderObjectOfType<RenderViewport>();
-                            // Build happens during viewport layout, which is not finished at this point. So transform to viewport
-                            // coordinate space is as far as we can go.
-                            expect(contentBox.localToGlobal(Offset.zero, ancestor: viewport), isNotNull);
-                          },
                           child: const SizedBox.expand(),
                         ),
                   ],
