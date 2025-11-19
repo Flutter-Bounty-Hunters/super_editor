@@ -618,10 +618,14 @@ void main() {
                             final contentBox = contentKey.currentContext!.findRenderObject() as RenderBox?;
                             expect(contentBox, isNotNull);
                             expect(contentBox!.size, isNotNull);
-                            final viewport = context.findAncestorRenderObjectOfType<RenderViewport>();
+                            // final viewport = context.findAncestorRenderObjectOfType<RenderViewport>();
                             // Build happens during viewport layout, which is not finished at this point. So transform to viewport
                             // coordinate space is as far as we can go.
-                            expect(contentBox.localToGlobal(Offset.zero, ancestor: viewport), isNotNull);
+                            expect(
+                                contentBox.localToGlobal(
+                                  Offset.zero, /*ancestor: viewport*/
+                                ),
+                                isNotNull);
                           },
                           child: const SizedBox.expand(),
                         ),
