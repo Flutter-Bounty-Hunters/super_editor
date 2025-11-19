@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/composable_text.dart';
@@ -25,12 +24,12 @@ DocumentSelection? getWordSelection({
   _log.log('getWordSelection', '_getWordSelection()');
   _log.log('getWordSelection', ' - doc position: $docPosition');
 
-  final component = docLayout.getComponentByNodePath(docPosition.nodePath);
+  final component = docLayout.getComponentByNodeId(docPosition.nodeId);
   if (component is! TextComposable) {
     return null;
   }
 
-  final nodePosition = docPosition.leafNodePosition;
+  final nodePosition = docPosition.nodePosition;
   if (nodePosition is! TextNodePosition) {
     return null;
   }
@@ -42,8 +41,14 @@ DocumentSelection? getWordSelection({
 
   _log.log('getWordSelection', ' - word selection: $wordNodeSelection');
   return DocumentSelection(
-    base: docPosition.copyWithLeafPosition(wordNodeSelection.base),
-    extent: docPosition.copyWithLeafPosition(wordNodeSelection.extent),
+    base: DocumentPosition(
+      nodeId: docPosition.nodeId,
+      nodePosition: wordNodeSelection.base,
+    ),
+    extent: DocumentPosition(
+      nodeId: docPosition.nodeId,
+      nodePosition: wordNodeSelection.extent,
+    ),
   );
 }
 
@@ -86,12 +91,12 @@ DocumentSelection? getParagraphSelection({
   _log.log('getParagraphSelection', '_getWordSelection()');
   _log.log('getParagraphSelection', ' - doc position: $docPosition');
 
-  final component = docLayout.getComponentByNodePath(docPosition.nodePath);
+  final component = docLayout.getComponentByNodeId(docPosition.nodeId);
   if (component is! TextComposable) {
     return null;
   }
 
-  final nodePosition = docPosition.leafNodePosition;
+  final nodePosition = docPosition.nodePosition;
   if (nodePosition is! TextNodePosition) {
     return null;
   }
@@ -99,8 +104,14 @@ DocumentSelection? getParagraphSelection({
   final paragraphNodeSelection = (component as TextComposable).getContiguousTextSelectionAt(nodePosition);
 
   return DocumentSelection(
-    base: docPosition.copyWithLeafPosition(paragraphNodeSelection.base),
-    extent: docPosition.copyWithLeafPosition(paragraphNodeSelection.extent),
+    base: DocumentPosition(
+      nodeId: docPosition.nodeId,
+      nodePosition: paragraphNodeSelection.base,
+    ),
+    extent: DocumentPosition(
+      nodeId: docPosition.nodeId,
+      nodePosition: paragraphNodeSelection.extent,
+    ),
   );
 }
 

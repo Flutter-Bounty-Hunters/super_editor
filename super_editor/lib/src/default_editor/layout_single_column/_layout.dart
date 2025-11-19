@@ -644,21 +644,36 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
   @override
   DocumentComponent? getComponentByNodeId(String nodeId) {
-    final key = _nodeIdsToComponentKeys[nodeId];
+    final path = widget.presenter.document.getNodePathById(nodeId);
+    if (path == null) {
+      editorLayoutLog.info('WARNING: could not find NodePath for node ID: $nodeId');
+      return null;
+    }
+    var currentId = path.rootNodeId;
+    var key = _nodeIdsToComponentKeys[currentId];
     if (key == null) {
       editorLayoutLog.info('WARNING: could not find component for node ID: $nodeId');
       return null;
     }
-    if (key.currentState is! DocumentComponent) {
-      editorLayoutLog.info(
-          'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: ${key.currentState}, widget: ${key.currentWidget}, context: ${key.currentContext}');
+    var state = key.currentState;
+    for (var childId in path.skip(1)) {
+      if (state is! CompositeComponent) {
+        editorLayoutLog.info('WARNING: found component but it\'s not a CompositeComponent: $childId, state: $state');
+        return null;
+      }
+      state = (state as CompositeComponent).getChildComponentById(childId);
+    }
+    if (state is! DocumentComponent) {
+      editorLayoutLog
+          .info('WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: $state');
       if (kDebugMode) {
         throw Exception(
-            'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: ${key.currentState}, widget: ${key.currentWidget}, context: ${key.currentContext}');
+            'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: $state');
       }
       return null;
     }
-    return key.currentState as DocumentComponent;
+
+    return state;
   }
 
   @override

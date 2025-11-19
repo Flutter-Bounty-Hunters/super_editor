@@ -602,7 +602,7 @@ class ChangeParagraphAlignmentCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(nodeId)),
+        NodeChangeEvent(nodeId),
       ),
     ]);
   }
@@ -658,26 +658,26 @@ class ChangeParagraphBlockTypeCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(nodeId)),
+        NodeChangeEvent(nodeId),
       ),
     ]);
   }
 }
 
-/// [EditRequest] to combine the [ParagraphNode] with [firstNodePath] with the [ParagraphNode] after it, which
-/// should have the [secondNodePath].
+/// [EditRequest] to combine the [ParagraphNode] with [firstNodeId] with the [ParagraphNode] after it, which
+/// should have the [secondNodeId].
 class CombineParagraphsRequest implements EditRequest {
   CombineParagraphsRequest({
-    required this.firstNodePath,
-    required this.secondNodePath,
-  }) : assert(firstNodePath != secondNodePath);
+    required this.firstNodeId,
+    required this.secondNodeId,
+  }) : assert(firstNodeId != secondNodeId);
 
-  final NodePath firstNodePath;
-  final NodePath secondNodePath;
+  final String firstNodeId;
+  final String secondNodeId;
 }
 
-/// Combines two consecutive `ParagraphNode`s, indicated by `firstNode`
-/// and `secondNode`, respectively.
+/// Combines two consecutive `ParagraphNode`s, indicated by `firstNodeId`
+/// and `secondNodeId`, respectively.
 ///
 /// If the specified nodes are not sequential, or are sequential
 /// in reverse order, the command fizzles.
@@ -685,12 +685,12 @@ class CombineParagraphsRequest implements EditRequest {
 /// If both nodes are not `ParagraphNode`s, the command fizzles.
 class CombineParagraphsCommand extends EditCommand {
   CombineParagraphsCommand({
-    required this.firstNodePath,
-    required this.secondNodePath,
-  }) : assert(firstNodePath != secondNodePath);
+    required this.firstNodeId,
+    required this.secondNodeId,
+  }) : assert(firstNodeId != secondNodeId);
 
-  final NodePath firstNodePath;
-  final NodePath secondNodePath;
+  final String firstNodeId;
+  final String secondNodeId;
 
   @override
   HistoryBehavior get historyBehavior => HistoryBehavior.undoable;
@@ -698,23 +698,19 @@ class CombineParagraphsCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     editorDocLog.info('Executing CombineParagraphsCommand');
-    editorDocLog.info(' - merging "$firstNodePath" <- "$secondNodePath"');
+    editorDocLog.info(' - merging "$firstNodeId" <- "$secondNodeId"');
     final document = context.document;
-    final secondNode = document.getNodeAtPath(secondNodePath);
+    final secondNode = document.getNodeById(secondNodeId);
     if (secondNode is! TextNode) {
       editorDocLog.info('WARNING: Cannot merge node of type: $secondNode into node above.');
       return;
     }
 
-    if (firstNodePath.parent != secondNodePath.parent) {
-      editorDocLog.info(
-        '$firstNodePath and $secondNodePath has different parents. '
-        'Probably $secondNodePath is at the top of of CompositeNode. Cannot merge with node above.',
-      );
+    DocumentNode? nodeAbove = document.getNodeBefore(secondNode);
+    if (nodeAbove == null) {
+      editorDocLog.info('At top of document. Cannot merge with node above.');
       return;
     }
-
-    DocumentNode? nodeAbove;
 
     // Search for a node above the second node that has the id equal to `firstNodeId`.
     //
@@ -728,26 +724,14 @@ class CombineParagraphsCommand extends EditCommand {
     //
     // Because of this, we need to loop until we find the node instead of just
     // comparing with the node immediately above the second node.
-    for (final (path, node) in document.getLeafNodes(reversed: true, since: secondNodePath)) {
-      if (path == firstNodePath) {
-        nodeAbove = node;
-        break;
-      }
-      if (document.canDeleteNode(path)) {
-        // Found deletable node above secondNode, but it is not the firstNode.
-        // that's unexpected.
-        editorDocLog.info(
-          'WARNING: Cannot merge node $firstNodePath and $secondNodePath, because there is a deletable $path node',
-        );
-        return;
-      }
+    while (nodeAbove != null && nodeAbove.id != firstNodeId) {
+      nodeAbove = document.getNodeBefore(nodeAbove);
     }
 
     if (nodeAbove == null) {
-      editorDocLog.info('At top of document. Cannot merge with node above.');
+      editorDocLog.info('The specified `firstNodeId` is not the node before `secondNodeId`.');
       return;
     }
-
     if (nodeAbove is! TextNode) {
       editorDocLog.info('Cannot merge ParagraphNode into node of type: $nodeAbove');
       return;
@@ -764,34 +748,33 @@ class CombineParagraphsCommand extends EditCommand {
     if (isTopNodeEmpty && nodeAbove is ParagraphNode) {
       // If the top node was empty, we want to retain everything in the
       // bottom node, including the block attribution and styles.
-      document.replaceNodeByPath(
-        firstNodePath,
+      document.replaceNodeById(
+        nodeAbove.id,
         nodeAbove.copyTextNodeWith(
           text: nodeAbove.text.copyAndAppend(secondNode.text),
           metadata: secondNode.metadata,
         ),
       );
     } else {
-      document.replaceNodeByPath(
-        firstNodePath,
+      document.replaceNodeById(
+        nodeAbove.id,
         nodeAbove.copyTextNodeWith(
           text: nodeAbove.text.copyAndAppend(secondNode.text),
         ),
       );
     }
 
-    final removed = document.deleteNodeAtPath(secondNodePath);
-    if (removed == null) {
-      print('ERROR: Failed to delete the currently selected node from the document.');
+    bool didRemove = document.deleteNode(secondNode.id);
+    if (!didRemove) {
       editorDocLog.info('ERROR: Failed to delete the currently selected node from the document.');
     }
 
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(secondNodePath, secondNode),
+        NodeRemovedEvent(secondNode.id, secondNode),
       ),
       DocumentEdit(
-        NodeChangeEvent(firstNodePath),
+        NodeChangeEvent(nodeAbove.id),
       ),
     ]);
   }
@@ -799,14 +782,14 @@ class CombineParagraphsCommand extends EditCommand {
 
 class SplitParagraphRequest implements EditRequest {
   SplitParagraphRequest({
-    required this.nodePath,
+    required this.nodeId,
     required this.splitPosition,
     required this.newNodeId,
     required this.replicateExistingMetadata,
     this.attributionsToExtendToNewParagraph = defaultAttributionsToExtendToNewParagraph,
   });
 
-  final NodePath nodePath;
+  final String nodeId;
   final TextPosition splitPosition;
   final String newNodeId;
   final bool replicateExistingMetadata;
@@ -838,14 +821,14 @@ final _defaultAttributionsToExtend = {
 /// original node.
 class SplitParagraphCommand extends EditCommand {
   SplitParagraphCommand({
-    required this.nodePath,
+    required this.nodeId,
     required this.splitPosition,
     required this.newNodeId,
     required this.replicateExistingMetadata,
     this.attributionsToExtendToNewParagraph = defaultAttributionsToExtendToNewParagraph,
   });
 
-  final NodePath nodePath;
+  final String nodeId;
   final TextPosition splitPosition;
   final String newNodeId;
   final bool replicateExistingMetadata;
@@ -860,7 +843,7 @@ class SplitParagraphCommand extends EditCommand {
     editorDocLog.info('Executing SplitParagraphCommand');
 
     final document = context.document;
-    final node = document.getNodeAtPath(nodePath);
+    final node = document.getNodeById(nodeId);
     if (node is! ParagraphNode) {
       editorDocLog.info('WARNING: Cannot split paragraph for node of type: $node.');
       return;
@@ -899,7 +882,10 @@ class SplitParagraphCommand extends EditCommand {
     // Change the current nodes content to just the text before the caret.
     editorDocLog.info(' - changing the original paragraph text due to split');
     final updatedNode = node.copyParagraphWith(text: startText);
-    document.replaceNodeByPath(nodePath, updatedNode);
+    document.replaceNodeById(
+      node.id,
+      updatedNode,
+    );
 
     // Create a new node that will follow the current node. Set its text
     // to the text that was removed from the current node. And create a
@@ -913,18 +899,20 @@ class SplitParagraphCommand extends EditCommand {
 
     // Insert the new node after the current node.
     editorDocLog.info(' - inserting new node in document');
-    document.insertNodeAfterPath(existingNodePath: nodePath, newNode: newNode);
+    document.insertNodeAfter(
+      existingNodeId: updatedNode.id,
+      newNode: newNode,
+    );
 
     editorDocLog.info(' - inserted new node: ${newNode.id} after old one: ${node.id}');
 
-    final insertedNodePath = nodePath.replaceLeaf(newNodeId);
     // Move the caret to the new node.
     final composer = context.find<MutableDocumentComposer>(Editor.composerKey);
     final oldSelection = composer.selection;
     final oldComposingRegion = composer.composingRegion.value;
     final newSelection = DocumentSelection.collapsed(
-      position: DocumentPosition.withPath(
-        nodePath: insertedNodePath,
+      position: DocumentPosition(
+        nodeId: newNodeId,
         nodePosition: const TextNodePosition(offset: 0),
       ),
     );
@@ -934,10 +922,10 @@ class SplitParagraphCommand extends EditCommand {
 
     final documentChanges = [
       DocumentEdit(
-        NodeChangeEvent(nodePath),
+        NodeChangeEvent(node.id),
       ),
       DocumentEdit(
-        NodeInsertedEvent(insertedNodePath, document.getNodeIndexInParent(insertedNodePath)),
+        NodeInsertedEvent(newNodeId, document.getNodeIndexById(newNodeId)),
       ),
       SelectionChangeEvent(
         oldSelection: oldSelection,
@@ -1021,7 +1009,7 @@ class DeleteUpstreamAtBeginningOfParagraphCommand extends EditCommand {
     if (!componentBefore.isVisualSelectionSupported()) {
       // The node/component above is not selectable. Delete it.
       executor.executeCommand(
-        DeleteNodeCommand(nodePath: NodePath.withNodeId(nodeBefore.id)),
+        DeleteNodeCommand(nodeId: nodeBefore.id),
       );
       return;
     }
@@ -1033,7 +1021,7 @@ class DeleteUpstreamAtBeginningOfParagraphCommand extends EditCommand {
       // node is not a TextNode. Delete the current TextNode and move the
       // selection up to the preceding node if exist.
       executor.executeCommand(
-        DeleteNodeCommand(nodePath: NodePath.withNodeId(node.id)),
+        DeleteNodeCommand(nodeId: node.id),
       );
     }
   }
@@ -1070,8 +1058,8 @@ class DeleteUpstreamAtBeginningOfParagraphCommand extends EditCommand {
     executor
       ..executeCommand(
         CombineParagraphsCommand(
-          firstNodePath: NodePath.withNodeId(nodeAbove.id),
-          secondNodePath: NodePath.withNodeId(node.id),
+          firstNodeId: nodeAbove.id,
+          secondNodeId: node.id,
         ),
       )
       ..executeCommand(
@@ -1216,7 +1204,7 @@ class DeleteParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(NodePath.withNodeId(node.id), node),
+        NodeRemovedEvent(node.id, node),
       )
     ]);
   }
@@ -1402,7 +1390,7 @@ class SetParagraphIndentCommand extends EditCommand {
     // Log all changes.
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
+        NodeChangeEvent(paragraph.id),
       ),
     ]);
   }
@@ -1437,7 +1425,7 @@ class IndentParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
+        NodeChangeEvent(paragraph.id),
       ),
     ]);
   }
@@ -1521,7 +1509,7 @@ class UnIndentParagraphCommand extends EditCommand {
     // Log all changes.
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(paragraph.id)),
+        NodeChangeEvent(paragraph.id),
       ),
     ]);
   }

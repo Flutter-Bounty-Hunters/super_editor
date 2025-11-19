@@ -13,7 +13,6 @@ import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/horizontal_rule.dart';
 import 'package:super_editor/src/default_editor/image.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
@@ -315,8 +314,7 @@ class HorizontalRuleConversionReaction extends EditReaction {
     }
 
     final textInsertionEvent = edit.change as TextInsertionEvent;
-    final paragraphPath = textInsertionEvent.nodePath;
-    final paragraph = document.getNodeAtPath(paragraphPath) as TextNode;
+    final paragraph = document.getNodeById(textInsertionEvent.nodeId) as TextNode;
     final match = _hrPattern.firstMatch(paragraph.text.toPlainText())?.group(0);
     if (match == null) {
       return;
@@ -329,21 +327,21 @@ class HorizontalRuleConversionReaction extends EditReaction {
     requestDispatcher.execute([
       DeleteContentRequest(
         documentRange: DocumentRange(
-          start: DocumentPosition.withPath(nodePath: paragraphPath, nodePosition: const TextNodePosition(offset: 0)),
-          end: DocumentPosition.withPath(nodePath: paragraphPath, nodePosition: TextNodePosition(offset: match.length)),
+          start: DocumentPosition(nodeId: paragraph.id, nodePosition: const TextNodePosition(offset: 0)),
+          end: DocumentPosition(nodeId: paragraph.id, nodePosition: TextNodePosition(offset: match.length)),
         ),
       ),
       InsertNodeAtIndexRequest(
-        parentPath: paragraphPath.parent,
-        nodeIndex: document.getNodeIndexInParent(paragraphPath),
+        parentNodeId: document.getNodePathById(paragraph.id)?.parent?.nodeId,
+        nodeIndex: document.getNodeIndexById(paragraph.id),
         newNode: HorizontalRuleNode(
           id: Editor.createNodeId(),
         ),
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
-          position: DocumentPosition.withPath(
-            nodePath: paragraphPath,
+          position: DocumentPosition(
+            nodeId: paragraph.id,
             nodePosition: const TextNodePosition(offset: 0),
           ),
         ),
@@ -600,14 +598,14 @@ class LinkifyReaction extends EditReaction {
         }
 
         final caretPosition = selection.extent;
-        if (caretPosition.leafNodeId != linkifyCandidate.nodePath.leafNodeId) {
+        if (caretPosition.nodeId != linkifyCandidate.nodeId) {
           // The selection moved to some other node. Don't linkify.
           linkifyCandidate = null;
           continue;
         }
 
         // +1 for the inserted space
-        if ((caretPosition.leafNodePosition as TextNodePosition).offset != linkifyCandidate.offset + 1) {
+        if ((caretPosition.nodePosition as TextNodePosition).offset != linkifyCandidate.offset + 1) {
           // The caret isn't sitting directly after the space. Whatever
           // these events represent, it doesn't represent the user typing
           // a URL and then press SPACE. Don't linkify.
@@ -617,7 +615,7 @@ class LinkifyReaction extends EditReaction {
 
         // The caret sits directly after an inserted space. Get the word before
         // the space from the document, and linkify, if it fits a schema.
-        final textNode = document.getNodeAtPath(linkifyCandidate.nodePath) as TextNode;
+        final textNode = document.getNodeById(linkifyCandidate.nodeId) as TextNode;
         _extractUpstreamWordAndLinkify(textNode.text, linkifyCandidate.offset);
       } else if ((edit is SubmitParagraphIntention && edit.isStart) ||
           (edit is SplitParagraphIntention && edit.isStart) ||
@@ -634,7 +632,7 @@ class LinkifyReaction extends EditReaction {
 
         final nextEdit = edits[i + 1];
         if (nextEdit is DocumentEdit && nextEdit.change is NodeChangeEvent) {
-          final editedNode = document.getNodeAtPath((nextEdit.change as NodeChangeEvent).nodePath);
+          final editedNode = document.getNodeById((nextEdit.change as NodeChangeEvent).nodeId);
           if (editedNode is TextNode) {
             _extractUpstreamWordAndLinkify(editedNode.text, editedNode.text.length);
           }
@@ -1037,8 +1035,7 @@ class DashConversionReaction extends EditReaction {
       return;
     }
 
-    final insertionNode = document.getNodeAtPath(dashInsertionEvent.nodePath) as TextNode;
-    final insertionNodePath = dashInsertionEvent.nodePath;
+    final insertionNode = document.getNodeById(dashInsertionEvent.nodeId) as TextNode;
     final upstreamCharacter = insertionNode.text.toPlainText()[dashInsertionEvent.offset - 1];
     if (upstreamCharacter != '-') {
       return;
@@ -1049,15 +1046,15 @@ class DashConversionReaction extends EditReaction {
     requestDispatcher.execute([
       DeleteContentRequest(
         documentRange: DocumentRange(
-          start: DocumentPosition.withPath(
-              nodePath: insertionNodePath, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset - 1)),
-          end: DocumentPosition.withPath(
-              nodePath: insertionNodePath, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset + 1)),
+          start: DocumentPosition(
+              nodeId: insertionNode.id, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset - 1)),
+          end: DocumentPosition(
+              nodeId: insertionNode.id, nodePosition: TextNodePosition(offset: dashInsertionEvent.offset + 1)),
         ),
       ),
       InsertTextRequest(
-        documentPosition: DocumentPosition.withPath(
-          nodePath: insertionNodePath,
+        documentPosition: DocumentPosition(
+          nodeId: insertionNode.id,
           nodePosition: TextNodePosition(
             offset: dashInsertionEvent.offset - 1,
           ),
@@ -1067,8 +1064,8 @@ class DashConversionReaction extends EditReaction {
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
-          position: DocumentPosition.withPath(
-            nodePath: insertionNodePath,
+          position: DocumentPosition(
+            nodeId: insertionNode.id,
             nodePosition: TextNodePosition(offset: dashInsertionEvent.offset),
           ),
         ),
@@ -1120,11 +1117,11 @@ class EditInspector {
       return false;
     }
 
-    if (lastSelectionChangeEvent.newSelection!.extent.leafNodeId != textInsertionEvent.nodePath.leafNodeId) {
+    if (lastSelectionChangeEvent.newSelection!.extent.nodeId != textInsertionEvent.nodeId) {
       return false;
     }
 
-    final editedNode = document.getNodeAtPath(textInsertionEvent.nodePath)!;
+    final editedNode = document.getNodeById(textInsertionEvent.nodeId)!;
     if (editedNode is! TextNode) {
       return false;
     }
@@ -1164,19 +1161,19 @@ class EditInspector {
     }
 
     final textInsertionEvent = lastSpaceInsertion.change as TextInsertionEvent;
-    if (textInsertionEvent.nodePath != newSelection.extent.nodePath) {
-      // The selection is in a different node than where text was inserted. This indicates
+    if (textInsertionEvent.nodeId != newSelection.extent.nodeId) {
+      // The selection is in a different node than where tex was inserted. This indicates
       // something other than a user typing.
       return null;
     }
 
-    final newCaretOffset = (newSelection.extent.leafNodePosition as TextNodePosition).offset;
+    final newCaretOffset = (newSelection.extent.nodePosition as TextNodePosition).offset;
     if (textInsertionEvent.offset + textInsertionEvent.text.length != newCaretOffset) {
       return null;
     }
 
     return UserTypedText(
-      textInsertionEvent.nodePath,
+      textInsertionEvent.nodeId,
       textInsertionEvent.offset,
       textInsertionEvent.text,
     );
@@ -1186,13 +1183,9 @@ class EditInspector {
 }
 
 class UserTypedText {
-  const UserTypedText(this.nodePath, this.offset, this.text);
+  const UserTypedText(this.nodeId, this.offset, this.text);
 
-  final NodePath nodePath;
-
-  @Deprecated('Use nodePath instead')
-  String get nodeId => nodePath.rootNodeId;
-
+  final String nodeId;
   final int offset;
   final AttributedText text;
 }

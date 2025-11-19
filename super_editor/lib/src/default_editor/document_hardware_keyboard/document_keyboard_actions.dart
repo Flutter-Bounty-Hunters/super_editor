@@ -469,8 +469,8 @@ ExecutionInstruction mergeNodeWithNextWhenDeleteIsPressed({
   // Send edit command.
   editContext.editor.execute([
     CombineParagraphsRequest(
-      firstNodePath: NodePath.withNodeId(node.id),
-      secondNodePath: NodePath.withNodeId(nextNode.id),
+      firstNodeId: node.id,
+      secondNodeId: nextNode.id,
     ),
     // Place the cursor at the point where the text came together.
     ChangeSelectionRequest(

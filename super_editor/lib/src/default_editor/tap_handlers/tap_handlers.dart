@@ -6,7 +6,6 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/edit_context.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/text.dart';
@@ -74,12 +73,12 @@ class SuperEditorLaunchLinkTapHandler extends ContentTapDelegate {
   }
 
   Uri? _getLinkAtPosition(DocumentPosition position) {
-    final nodePosition = position.leafNodePosition;
+    final nodePosition = position.nodePosition;
     if (nodePosition is! TextNodePosition) {
       return null;
     }
 
-    final textNode = document.getNodeAtPath(position.nodePath);
+    final textNode = document.getNodeById(position.nodeId);
     if (textNode is! TextNode) {
       editorGesturesLog
           .shout("Received a report of a tap on a TextNodePosition, but the node with that ID is a: $textNode");
@@ -138,7 +137,7 @@ class SuperEditorAddEmptyParagraphTapHandler extends ContentTapDelegate {
     final newNodeId = Editor.createNodeId();
     editor.execute([
       InsertNodeAfterNodeRequest(
-        existingNodePath: NodePath.withNodeId(node.id),
+        existingNodeId: node.id,
         newNode: ParagraphNode(
           id: newNodeId,
           text: AttributedText(),

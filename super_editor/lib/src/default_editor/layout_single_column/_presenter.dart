@@ -81,6 +81,8 @@ class SingleColumnLayoutPresenter {
 
   bool get isDirty => _earliestDirtyPhase < _pipeline.length;
 
+  Document get document => _document;
+
   late SingleColumnLayoutViewModel _viewModel;
   SingleColumnLayoutViewModel get viewModel => _viewModel;
 

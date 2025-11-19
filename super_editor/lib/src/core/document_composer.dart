@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/pausable_value_notifier.dart';
 
@@ -114,6 +115,23 @@ class MutableDocumentComposer extends DocumentComposer implements Editable {
   ///
   /// [reason] represents what caused the selection change to happen.
   void setSelectionWithReason(DocumentSelection? newSelection, [Object reason = SelectionReason.userInteraction]) {
+    // Unwrap DocumentSelection to into leaf nodes selection
+    if (newSelection != null) {
+      final adjustedBasePosition = DocumentPosition(
+        nodeId: newSelection.base.leafNodeId,
+        nodePosition: newSelection.base.leafNodePosition,
+      );
+      final adjustedExtentPosition = DocumentPosition(
+        nodeId: newSelection.extent.leafNodeId,
+        nodePosition: newSelection.extent.leafNodePosition,
+      );
+      final adjustedSelection = DocumentSelection(
+        base: adjustedBasePosition,
+        extent: adjustedExtentPosition,
+      );
+      newSelection = adjustedSelection;
+    }
+
     if (_isInTransaction && newSelection != _latestSelectionChange?.selection) {
       _didChangeSelectionDuringTransaction = true;
     }

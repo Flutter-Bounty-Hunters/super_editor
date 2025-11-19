@@ -369,7 +369,7 @@ class ConvertSelectedTextNodeCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(newNode.id)),
+        NodeChangeEvent(newNode.id),
       ),
     ]);
   }

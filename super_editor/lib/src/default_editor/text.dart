@@ -16,7 +16,6 @@ import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -1635,7 +1634,7 @@ class AddTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodePath: NodePath.withNodeId(node.id),
+              nodeId: node.id,
               change: AttributionChange.added,
               range: range,
               attributions: attributions,
@@ -1765,7 +1764,7 @@ class RemoveTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodePath: NodePath.withNodeId(node.id),
+              nodeId: node.id,
               change: AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1942,7 +1941,7 @@ class ToggleTextAttributionsCommand extends EditCommand {
         executor.logChanges([
           DocumentEdit(
             AttributionChangeEvent(
-              nodePath: NodePath.withNodeId(node.id),
+              nodeId: node.id,
               change: wasAttributionAdded ? AttributionChange.added : AttributionChange.removed,
               range: range,
               attributions: attributions,
@@ -1963,11 +1962,11 @@ class ToggleTextAttributionsCommand extends EditCommand {
 /// A [NodeChangeEvent] for the addition or removal of a set of attributions.
 class AttributionChangeEvent extends NodeChangeEvent {
   AttributionChangeEvent({
-    required NodePath nodePath,
+    required String nodeId,
     required this.change,
     required this.range,
     required this.attributions,
-  }) : super(nodePath);
+  }) : super(nodeId);
 
   final AttributionChange change;
   final SpanRange range;
@@ -1975,11 +1974,10 @@ class AttributionChangeEvent extends NodeChangeEvent {
 
   @override
   String describe() =>
-      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodePath) - ${range.start} -> ${range.end}: $attributions";
+      "${change == AttributionChange.added ? "Added" : "Removed"} attributions ($nodeId) - ${range.start} -> ${range.end}: $attributions";
 
   @override
-  String toString() =>
-      "AttributionChangeEvent ('$nodePath' - ${range.start} -> ${range.end} ($change): '$attributions')";
+  String toString() => "AttributionChangeEvent ('$nodeId' - ${range.start} -> ${range.end} ($change): '$attributions')";
 
   @override
   bool operator ==(Object other) =>
@@ -2035,7 +2033,7 @@ class ChangeSingleColumnLayoutComponentStylesCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(node.id)),
+        NodeChangeEvent(node.id),
       ),
     ]);
   }
@@ -2083,7 +2081,7 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
     }
 
     final range = selection.normalize(context.document);
-    if (range.start.nodeId == range.end.nodeId && range.start.leafNodePosition is! TextNodePosition) {
+    if (range.start.nodeId == range.end.nodeId && range.start.nodePosition is! TextNodePosition) {
       // Selection is in a single node, and it's not a text node. We can't insert text here.
       return;
     }
@@ -2100,23 +2098,19 @@ class InsertPlainTextAtCaretCommand extends EditCommand {
       );
 
       final caret = context.composer.selection!.extent;
-      // For CompositeNodes this should not be the case, as DeleteSelectionCommand won't delete TextNode inside CompositeNode
-      if (caret.leafNodePosition is! TextNodePosition) {
+      if (caret.nodePosition is! TextNodePosition) {
         // After deleting an expanded selection, we ended up with a caret
         // sitting in a non-text node. Insert a text node to accept the new
         // text.
         final newTextNodeId = Editor.createNodeId();
         executor.executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodePath: caret.nodePath,
+            existingNodeId: caret.nodeId,
             newNode: ParagraphNode(id: newTextNodeId, text: AttributedText()),
           ),
         );
 
-        insertionPosition = DocumentPosition.withPath(
-          nodePath: caret.nodePath.replaceLeaf(newTextNodeId),
-          nodePosition: const TextNodePosition(offset: 0),
-        );
+        insertionPosition = DocumentPosition(nodeId: newTextNodeId, nodePosition: const TextNodePosition(offset: 0));
       } else {
         insertionPosition = caret;
       }
@@ -2139,7 +2133,7 @@ class InsertTextRequest implements EditRequest {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.leafNodePosition is TextPosition);
+  }) : assert(documentPosition.nodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2155,7 +2149,7 @@ class InsertTextCommand extends EditCommand {
     required this.textToInsert,
     required this.attributions,
     this.createdAt,
-  }) : assert(documentPosition.leafNodePosition is TextPosition);
+  }) : assert(documentPosition.nodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final String textToInsert;
@@ -2167,19 +2161,19 @@ class InsertTextCommand extends EditCommand {
 
   @override
   String describe() =>
-      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.leafNodePosition as TextNodePosition).offset} - '$textToInsert'";
+      "Insert text - ${documentPosition.nodeId} @ ${(documentPosition.nodePosition as TextNodePosition).offset} - '$textToInsert'";
 
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
 
-    var textNode = document.getLeafNode(documentPosition);
+    var textNode = document.getNodeById(documentPosition.nodeId);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textPosition = documentPosition.leafNodePosition as TextPosition;
+    final textPosition = documentPosition.nodePosition as TextPosition;
     final textOffset = textPosition.offset;
 
     textNode = textNode.copyTextNodeWith(
@@ -2193,12 +2187,15 @@ class InsertTextCommand extends EditCommand {
         },
       ),
     );
-    document.replaceLeafNodeByPosition(documentPosition, textNode);
+    document.replaceNodeById(
+      textNode.id,
+      textNode,
+    );
 
     executor.logChanges([
       DocumentEdit(
         TextInsertionEvent(
-          nodePath: NodePath.withDocumentPosition(documentPosition),
+          nodeId: textNode.id,
           offset: textOffset,
           text: AttributedText(textToInsert),
         ),
@@ -2208,8 +2205,9 @@ class InsertTextCommand extends EditCommand {
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: documentPosition.copyWithLeafPosition(
-            TextNodePosition(
+          position: DocumentPosition(
+            nodeId: textNode.id,
+            nodePosition: TextNodePosition(
               offset: textOffset + textToInsert.length,
               affinity: textPosition.affinity,
             ),
@@ -2225,10 +2223,10 @@ class InsertTextCommand extends EditCommand {
 
 class TextInsertionEvent extends NodeChangeEvent {
   TextInsertionEvent({
-    required NodePath nodePath,
+    required String nodeId,
     required this.offset,
     required this.text,
-  }) : super(nodePath);
+  }) : super(nodeId);
 
   final int offset;
   final AttributedText text;
@@ -2253,20 +2251,20 @@ class TextInsertionEvent extends NodeChangeEvent {
 }
 
 class TextDeletedEvent extends NodeChangeEvent {
-  TextDeletedEvent(
-    NodePath nodePath, {
+  const TextDeletedEvent(
+    String nodeId, {
     required this.offset,
     required this.deletedText,
-  }) : super(nodePath);
+  }) : super(nodeId);
 
   final int offset;
   final AttributedText deletedText;
 
   @override
-  String describe() => "Deleted text ($nodePath) @ $offset: ${deletedText.toPlainText()}";
+  String describe() => "Deleted text ($nodeId) @ $offset: ${deletedText.toPlainText()}";
 
   @override
-  String toString() => "TextDeletedEvent ('$nodePath' - $offset -> '${deletedText.toPlainText()}')";
+  String toString() => "TextDeletedEvent ('$nodeId' - $offset -> '${deletedText.toPlainText()}')";
 
   @override
   bool operator ==(Object other) =>
@@ -2367,7 +2365,7 @@ class InsertNewlineInCodeBlockAtCaretCommand extends BaseInsertNewlineAtCaretCom
         // Insert a new empty paragraph after the code block.
         ..executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodePath: NodePath.withNodeId(node.id),
+            existingNodeId: node.id,
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2433,21 +2431,20 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     DocumentPosition caretPosition,
     NodePosition caretNodePosition,
   ) {
-    final leafPosition = caretNodePosition.leafPosition;
-    if (leafPosition is! UpstreamDownstreamNodePosition && leafPosition is! TextNodePosition) {
+    if (caretNodePosition is! UpstreamDownstreamNodePosition && caretNodePosition is! TextNodePosition) {
       // We don't know how to deal with this kind of node.
       return;
     }
 
-    if (leafPosition is UpstreamDownstreamNodePosition) {
+    if (caretNodePosition is UpstreamDownstreamNodePosition) {
       // The caret is sitting at the edge of an upstream/downstream node.
-      _insertNewlineInBinaryNode(context, executor, caretPosition, leafPosition);
+      _insertNewlineInBinaryNode(context, executor, caretPosition, caretNodePosition);
       return;
     }
 
-    final node = context.document.getLeafNode(caretPosition);
-    if (leafPosition is TextNodePosition && node is TextNode) {
-      _insertNewlineInTextNode(context, executor, node, caretPosition, leafPosition);
+    final node = context.document.getNodeById(caretPosition.nodeId);
+    if (caretNodePosition is TextNodePosition && node is TextNode) {
+      _insertNewlineInTextNode(context, executor, node, caretPosition, caretNodePosition);
       return;
     }
   }
@@ -2458,14 +2455,12 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     DocumentPosition caretPosition,
     UpstreamDownstreamNodePosition caretNodePosition,
   ) {
-    final caretNodePath = caretPosition.nodePath;
-    final newNodePath = caretNodePath.replaceLeaf(newNodeId);
     if (caretNodePosition.affinity == TextAffinity.upstream) {
       // Insert an empty paragraph before the block node.
       executor
         ..executeCommand(
           InsertNodeBeforeNodeCommand(
-            existingNodePath: caretNodePath,
+            existingNodeId: caretPosition.nodeId,
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2475,8 +2470,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         ..executeCommand(
           ChangeSelectionCommand(
             DocumentSelection.collapsed(
-              position: DocumentPosition.withPath(
-                nodePath: newNodePath,
+              position: DocumentPosition(
+                nodeId: newNodeId,
                 nodePosition: const TextNodePosition(offset: 0),
               ),
             ),
@@ -2489,7 +2484,7 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
       executor
         ..executeCommand(
           InsertNodeAfterNodeCommand(
-            existingNodePath: caretNodePath,
+            existingNodeId: caretPosition.nodeId,
             newNode: ParagraphNode(
               id: newNodeId,
               text: AttributedText(),
@@ -2499,8 +2494,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         ..executeCommand(
           ChangeSelectionCommand(
             DocumentSelection.collapsed(
-              position: DocumentPosition.withPath(
-                nodePath: newNodePath,
+              position: DocumentPosition(
+                nodeId: newNodeId,
                 nodePosition: const TextNodePosition(offset: 0),
               ),
             ),
@@ -2521,13 +2516,12 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
     // Split the paragraph into two. This includes headers, blockquotes, and
     // any other block-level paragraph.
     final endOfParagraph = textNode.endPosition;
-    final insertPath = caretPosition.nodePath.parent?.child(newNodeId) ?? NodePath.withNodeId(newNodeId);
 
     editorOpsLog.finer("Splitting paragraph in two.");
     executor
       ..executeCommand(
         SplitParagraphCommand(
-          nodePath: caretPosition.nodePath,
+          nodeId: caretPosition.nodeId,
           splitPosition: caretTextPosition,
           newNodeId: newNodeId,
           replicateExistingMetadata: caretTextPosition.offset != endOfParagraph.offset,
@@ -2537,8 +2531,8 @@ class DefaultInsertNewlineAtCaretCommand extends BaseInsertNewlineAtCaretCommand
         // Place the caret at the beginning of the new node.
         ChangeSelectionCommand(
           DocumentSelection.collapsed(
-            position: DocumentPosition.withPath(
-              nodePath: insertPath,
+            position: DocumentPosition(
+              nodeId: newNodeId,
               nodePosition: const TextNodePosition(offset: 0),
             ),
           ),
@@ -2688,7 +2682,7 @@ class ConvertTextNodeToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(extentNode.id)),
+        NodeChangeEvent(extentNode.id),
       ),
     ]);
   }
@@ -2713,7 +2707,7 @@ class InsertAttributedTextCommand extends EditCommand {
     required this.documentPosition,
     required this.textToInsert,
     this.createdAt,
-  }) : assert(documentPosition.leafNodePosition is TextPosition);
+  }) : assert(documentPosition.nodePosition is TextPosition);
 
   final DocumentPosition documentPosition;
   final AttributedText textToInsert;
@@ -2725,14 +2719,13 @@ class InsertAttributedTextCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    final nodePath = documentPosition.nodePath;
-    final textNode = document.getNodeAtPath(nodePath);
+    final textNode = document.getNodeById(documentPosition.nodeId);
     if (textNode is! TextNode) {
       editorDocLog.shout('ERROR: can\'t insert text in a node that isn\'t a TextNode: $textNode');
       return;
     }
 
-    final textOffset = (documentPosition.leafNodePosition as TextPosition).offset;
+    final textOffset = (documentPosition.nodePosition as TextPosition).offset;
 
     late final AttributedText finalTextToInsert;
     if (createdAt != null) {
@@ -2745,8 +2738,8 @@ class InsertAttributedTextCommand extends EditCommand {
       finalTextToInsert = textToInsert;
     }
 
-    document.replaceNodeByPath(
-      nodePath,
+    document.replaceNodeById(
+      textNode.id,
       textNode.copyTextNodeWith(
         text: textNode.text.insert(
           textToInsert: finalTextToInsert,
@@ -2758,7 +2751,7 @@ class InsertAttributedTextCommand extends EditCommand {
     executor.logChanges([
       DocumentEdit(
         TextInsertionEvent(
-          nodePath: nodePath,
+          nodeId: textNode.id,
           offset: textOffset,
           text: textToInsert,
         ),
@@ -3347,6 +3340,6 @@ bool _isTextEntryNode({
   required DocumentSelection selection,
 }) {
   final extentPosition = selection.extent;
-  final extentNode = document.getLeafNode(selection.extent);
+  final extentNode = document.getNodeById(extentPosition.nodeId);
   return extentNode is TextNode;
 }

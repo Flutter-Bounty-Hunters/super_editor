@@ -94,11 +94,8 @@ abstract class Document implements Iterable<DocumentNode> {
   /// no such node exists
   DocumentNode? getNodeAtPath(NodePath path);
 
-  /// Returns the [DocumentNode] at the given [position], following
-  /// [CompositeNodes] recursively, until a leaf node is reached
-  /// If node at position is a root node - works exactly as [getNode]
-  @Deprecated('Use getNodeAtPath instead')
-  DocumentNode? getLeafNode(DocumentPosition position);
+  /// Returns full path to the node by id. Path is a list of parent nodeId, starting from root node
+  NodePath? getNodePathById(String nodeId);
 
   /// Iterates all leaf nodes of the document.
   Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since});
@@ -176,7 +173,8 @@ class NodePath with IterableMixin<String> {
 
   String get rootNodeId => first;
 
-  String get leafNodeId => last;
+  /// Returns leaf node id
+  String get nodeId => last;
 
   /// Returns leaf parent NodePath. If path is for root node, then returns null
   NodePath? get parent {
@@ -251,20 +249,15 @@ abstract class DocumentChange {
 abstract class NodeDocumentChange extends DocumentChange {
   const NodeDocumentChange();
 
-  @Deprecated('Use rootNodeId instead or nodePath')
-  String get nodeId => nodePath.rootNodeId;
-
-  String get rootNodeId => nodePath.rootNodeId;
-
-  NodePath get nodePath;
+  String get nodeId;
 }
 
 /// A new [DocumentNode] was inserted in the [Document].
 class NodeInsertedEvent extends NodeDocumentChange {
-  const NodeInsertedEvent(this.nodePath, this.insertionIndex);
+  const NodeInsertedEvent(this.nodeId, this.insertionIndex);
 
   @override
-  final NodePath nodePath;
+  final String nodeId;
 
   /// The index inside node parent
   final int insertionIndex;
@@ -280,31 +273,31 @@ class NodeInsertedEvent extends NodeDocumentChange {
       identical(this, other) ||
       other is NodeInsertedEvent &&
           runtimeType == other.runtimeType &&
-          nodePath == other.nodePath &&
+          nodeId == other.nodeId &&
           insertionIndex == other.insertionIndex;
 
   @override
-  int get hashCode => nodePath.hashCode ^ insertionIndex.hashCode;
+  int get hashCode => nodeId.hashCode ^ insertionIndex.hashCode;
 }
 
 /// A [DocumentNode] was moved to a new index.
 class NodeMovedEvent extends NodeDocumentChange {
   const NodeMovedEvent({
-    required this.nodePath,
+    required this.nodeId,
     required this.from,
     required this.to,
   });
 
   @override
-  final NodePath nodePath;
+  final String nodeId;
   final int from;
   final int to;
 
   @override
-  String describe() => "Moved node ($nodePath): $from -> $to";
+  String describe() => "Moved node ($nodeId): $from -> $to";
 
   @override
-  String toString() => "NodeMovedEvent ($nodePath: $from -> $to)";
+  String toString() => "NodeMovedEvent ($nodeId: $from -> $to)";
 
   @override
   bool operator ==(Object other) =>
@@ -321,26 +314,25 @@ class NodeMovedEvent extends NodeDocumentChange {
 
 /// A [DocumentNode] was removed from the [Document].
 class NodeRemovedEvent extends NodeDocumentChange {
-  const NodeRemovedEvent(this.nodePath, this.removedNode);
+  const NodeRemovedEvent(this.nodeId, this.removedNode);
 
   @override
-  final NodePath nodePath;
+  final String nodeId;
 
   final DocumentNode removedNode;
 
   @override
-  String describe() => "Removed node: $nodePath";
+  String describe() => "Removed node: $nodeId";
 
   @override
-  String toString() => "NodeRemovedEvent ($nodePath)";
+  String toString() => "NodeRemovedEvent ($nodeId)";
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NodeRemovedEvent && runtimeType == other.runtimeType && nodePath == other.nodePath;
+      identical(this, other) || other is NodeRemovedEvent && runtimeType == other.runtimeType && nodeId == other.nodeId;
 
   @override
-  int get hashCode => nodePath.hashCode;
+  int get hashCode => nodeId.hashCode;
 }
 
 /// The content of a [DocumentNode] changed.
@@ -349,24 +341,23 @@ class NodeRemovedEvent extends NodeDocumentChange {
 /// it might signify a node changing its type of content, such as converting a paragraph
 /// to an image.
 class NodeChangeEvent extends NodeDocumentChange {
-  const NodeChangeEvent(this.nodePath);
+  const NodeChangeEvent(this.nodeId);
 
   @override
-  final NodePath nodePath;
+  final String nodeId;
 
   @override
-  String describe() => "Changed node: $nodePath";
+  String describe() => "Changed node: $nodeId";
 
   @override
-  String toString() => "NodeChangeEvent ($nodePath)";
+  String toString() => "NodeChangeEvent ($nodeId)";
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NodeChangeEvent && runtimeType == other.runtimeType && nodePath == other.nodePath;
+      identical(this, other) || other is NodeChangeEvent && runtimeType == other.runtimeType && nodeId == other.nodeId;
 
   @override
-  int get hashCode => nodePath.hashCode;
+  int get hashCode => nodeId.hashCode;
 }
 
 /// A logical position within a [Document].

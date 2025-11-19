@@ -983,7 +983,7 @@ class IndentListItemCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(nodeId)),
+        NodeChangeEvent(nodeId),
       )
     ]);
   }
@@ -1022,7 +1022,7 @@ class UnIndentListItemCommand extends EditCommand {
 
       executor.logChanges([
         DocumentEdit(
-          NodeChangeEvent(NodePath.withNodeId(nodeId)),
+          NodeChangeEvent(nodeId),
         )
       ]);
     } else {
@@ -1138,7 +1138,7 @@ class ConvertListItemToParagraphCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(listItem.id)),
+        NodeChangeEvent(listItem.id),
       )
     ]);
   }
@@ -1181,7 +1181,7 @@ class ConvertParagraphToListItemCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(paragraphNode.id)),
+        NodeChangeEvent(paragraphNode.id),
       )
     ]);
   }
@@ -1223,7 +1223,7 @@ class ChangeListItemTypeCommand extends EditCommand {
 
     executor.logChanges([
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(existingListItem.id)),
+        NodeChangeEvent(existingListItem.id),
       )
     ]);
   }
@@ -1307,10 +1307,10 @@ class SplitListItemCommand extends EditCommand {
     executor.logChanges([
       SplitListItemIntention.start(),
       DocumentEdit(
-        NodeChangeEvent(NodePath.withNodeId(nodeId)),
+        NodeChangeEvent(nodeId),
       ),
       DocumentEdit(
-        NodeInsertedEvent(NodePath.withNodeId(newNodeId), document.getNodeIndexById(newNodeId)),
+        NodeInsertedEvent(newNodeId, document.getNodeIndexById(newNodeId)),
       ),
       SplitListItemIntention.end(),
     ]);

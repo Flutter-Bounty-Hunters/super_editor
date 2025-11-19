@@ -518,7 +518,7 @@ extension DocumentPositionCompositeEx on DocumentPosition {
 
   NodePath get nodePath => NodePath.withDocumentPosition(this);
 
-  String get leafNodeId => nodePath.leafNodeId;
+  String get leafNodeId => nodePath.nodeId;
 }
 
 extension NodePositionCompositeEx on NodePosition {

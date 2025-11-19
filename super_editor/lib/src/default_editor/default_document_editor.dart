@@ -169,16 +169,16 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       : null,
   (editor, request) => request is InsertNodeAtIndexRequest
       ? InsertNodeAtIndexCommand(
-          parentPath: request.parentPath,
+          parentNodeId: request.parentNodeId,
           nodeIndex: request.nodeIndex,
           newNode: request.newNode,
         )
       : null,
   (editor, request) => request is InsertNodeBeforeNodeRequest
-      ? InsertNodeBeforeNodeCommand(existingNodePath: request.existingNodePath, newNode: request.newNode)
+      ? InsertNodeBeforeNodeCommand(existingNodeId: request.existingNodeId, newNode: request.newNode)
       : null,
   (editor, request) => request is InsertNodeAfterNodeRequest
-      ? InsertNodeAfterNodeCommand(existingNodePath: request.existingNodePath, newNode: request.newNode)
+      ? InsertNodeAfterNodeCommand(existingNodeId: request.existingNodeId, newNode: request.newNode)
       : null,
   (editor, request) => request is InsertNodeAtCaretRequest //
       ? InsertNodeAtCaretCommand(newNode: request.node)
@@ -187,13 +187,13 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       ? MoveNodeCommand(nodeId: request.nodeId, newIndex: request.newIndex)
       : null,
   (editor, request) => request is CombineParagraphsRequest
-      ? CombineParagraphsCommand(firstNodePath: request.firstNodePath, secondNodePath: request.secondNodePath)
+      ? CombineParagraphsCommand(firstNodeId: request.firstNodeId, secondNodeId: request.secondNodeId)
       : null,
   (editor, request) => request is ReplaceNodeRequest
       ? ReplaceNodeCommand(existingNodeId: request.existingNodeId, newNode: request.newNode)
       : null,
   (editor, request) => request is ReplaceNodeWithEmptyParagraphWithCaretRequest
-      ? ReplaceNodeWithEmptyParagraphWithCaretCommand(nodePath: request.nodePath)
+      ? ReplaceNodeWithEmptyParagraphWithCaretCommand(nodeId: request.nodeId)
       : null,
   (editor, request) => request is DeleteContentRequest //
       ? DeleteContentCommand(documentRange: request.documentRange)
@@ -211,7 +211,7 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       ? DeleteUpstreamAtBeginningOfBlockNodeCommand(request.node)
       : null,
   (editor, request) => request is DeleteNodeRequest //
-      ? DeleteNodeCommand(nodePath: request.nodePath)
+      ? DeleteNodeCommand(nodeId: request.nodeId)
       : null,
   (editor, request) => request is ClearDocumentRequest //
       ? ClearDocumentCommand()
@@ -272,7 +272,7 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
       : null,
   (editor, request) => request is SplitParagraphRequest
       ? SplitParagraphCommand(
-          nodePath: request.nodePath,
+          nodeId: request.nodeId,
           splitPosition: request.splitPosition,
           newNodeId: request.newNodeId,
           replicateExistingMetadata: request.replicateExistingMetadata,
