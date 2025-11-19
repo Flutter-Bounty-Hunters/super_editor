@@ -23,6 +23,10 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 /// The layers are built after [content] is laid out, so that the layers can inspect the
 /// [content] layout during the layers' build phase. This makes it easy, for example, to
 /// position a caret on top of a document, using only the widget tree.
+///
+/// Some of the implementation details differ between `RenderBox` and `RenderSliver` use-cases,
+/// therefore this class is abstract. Use either the box or sliver version of this widget
+/// depending on your use-case.
 abstract class ContentLayers extends RenderObjectWidget {
   const ContentLayers({
     super.key,
@@ -461,6 +465,11 @@ class ContentLayersElement extends RenderObjectElement {
 }
 
 abstract class RenderContentLayers implements RenderObject {
+  /// Whether this render object's layout information or its content
+  /// layout information is dirty.
+  ///
+  /// This is set to `true` when `markNeedsLayout` is called and it's
+  /// set to `false` after laying out the content.
   bool get contentNeedsLayout;
 
   void insertChild(covariant RenderObject child, Object slot);

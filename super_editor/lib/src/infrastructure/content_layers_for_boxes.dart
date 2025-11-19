@@ -3,24 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
 
-/// Widget that displays [content] above a number of [underlays], and beneath a number of
-/// [overlays].
-///
-/// This widget is similar in behavior to a `Stack`, except this widget alters the build
-/// and layout order to support use-cases where various layers depend upon the layout of
-/// a single [content] layer.
-///
-/// This widget is useful for use-cases where decorations need to be positioned relative
-/// to content within the [content] widget. For example, this [ContentLayers] might be
-/// used to display a document as [content] and then display text selection as an
-/// underlay, the caret as an overlay, and user comments as another overlay.
-///
-/// The layers are sized to be exactly the same as the [content], and the layers are
-/// positioned at the same (x,y) as [content].
-///
-/// The layers are built after [content] is laid out, so that the layers can inspect the
-/// [content] layout during the layers' build phase. This makes it easy, for example, to
-/// position a caret on top of a document, using only the widget tree.
+/// A [ContentLayers] widget that's implemented to work with Render Boxes.
 class BoxContentLayers extends ContentLayers {
   const BoxContentLayers({
     super.key,
@@ -35,9 +18,9 @@ class BoxContentLayers extends ContentLayers {
   }
 }
 
-/// `RenderObject` for a [ContentLayers] widget.
+/// `RenderObject` for a [BoxContentLayers] widget.
 ///
-/// Must be associated with an `Element` of type [BoxContentLayersElement].
+/// Must be given an `Element` of type [ContentLayersElement].
 class RenderBoxContentLayers extends RenderBox implements RenderContentLayers {
   RenderBoxContentLayers(this._element);
 
@@ -53,16 +36,11 @@ class RenderBoxContentLayers extends RenderBox implements RenderContentLayers {
   RenderBox? _content;
   final _overlays = <RenderBox>[];
 
-  /// Whether this render object's layout information or its content
-  /// layout information is dirty.
-  ///
-  /// This is set to `true` when `markNeedsLayout` is called and it's
-  /// set to `false` after laying out the content.
   @override
   bool get contentNeedsLayout => _contentNeedsLayout;
   bool _contentNeedsLayout = true;
 
-  /// Whether we are at the middle of a [performLayout] call.
+  /// Whether we are in the middle of a [performLayout] call.
   bool _runningLayout = false;
 
   @override
@@ -94,8 +72,10 @@ class RenderBoxContentLayers extends RenderBox implements RenderContentLayers {
 
     if (_runningLayout) {
       // We are already in a layout phase.
+      //
       // When we call ContentLayerElement.buildLayers, markNeedsLayout is called again.
-      // We don't to mark the content as dirty, because otherwise the layers will never build.
+      // We don't want to mark the content as dirty, because otherwise the layers will
+      // never build.
       return;
     }
     _contentNeedsLayout = true;
@@ -201,7 +181,7 @@ class RenderBoxContentLayers extends RenderBox implements RenderContentLayers {
 
   @override
   void performLayout() {
-    contentLayersLog.info("Laying out ContentLayers");
+    contentLayersLog.info("Laying out BoxContentLayers");
     if (_content == null) {
       size = Size.zero;
       _contentNeedsLayout = false;

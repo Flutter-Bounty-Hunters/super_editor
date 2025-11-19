@@ -4,24 +4,7 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 
-/// Widget that displays [content] above a number of [underlays], and beneath a number of
-/// [overlays].
-///
-/// This widget is similar in behavior to a `Stack`, except this widget alters the build
-/// and layout order to support use-cases where various layers depend upon the layout of
-/// a single [content] layer.
-///
-/// This widget is useful for use-cases where decorations need to be positioned relative
-/// to content within the [content] widget. For example, this [SliverContentLayers] might be
-/// used to display a document as [content] and then display text selection as an
-/// underlay, the caret as an overlay, and user comments as another overlay.
-///
-/// The layers are sized to be exactly the same as the [content], and the layers are
-/// positioned at the same (x,y) as [content].
-///
-/// The layers are built after [content] is laid out, so that the layers can inspect the
-/// [content] layout during the layers' build phase. This makes it easy, for example, to
-/// position a caret on top of a document, using only the widget tree.
+/// A [ContentLayers] widget that's implemented to work with Slivers.
 class SliverContentLayers extends ContentLayers {
   const SliverContentLayers({
     super.key,
@@ -38,7 +21,7 @@ class SliverContentLayers extends ContentLayers {
 
 /// `RenderObject` for a [SliverContentLayers] widget.
 ///
-/// Must be associated with an `Element` of type [ContentLayersElement].
+/// Must be given an `Element` of type [ContentLayersElement].
 class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers implements RenderContentLayers {
   RenderSliverContentLayers(this._element);
 
@@ -54,11 +37,6 @@ class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers im
   RenderSliver? _content;
   final _overlays = <RenderBox>[];
 
-  /// Whether this render object's layout information or its content
-  /// layout information is dirty.
-  ///
-  /// This is set to `true` when `markNeedsLayout` is called and it's
-  /// set to `false` after laying out the content.
   @override
   bool get contentNeedsLayout => _contentNeedsLayout;
   bool _contentNeedsLayout = true;
@@ -68,7 +46,7 @@ class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers im
 
   @override
   void attach(PipelineOwner owner) {
-    contentLayersLog.info("Attaching RenderContentLayers to owner: $owner");
+    contentLayersLog.info("Attaching RenderSliverContentLayers to owner: $owner");
     super.attach(owner);
 
     visitChildren((child) {
@@ -78,7 +56,7 @@ class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers im
 
   @override
   void detach() {
-    contentLayersLog.info("detach()'ing RenderContentLayers from pipeline");
+    contentLayersLog.info("detach()'ing RenderSliverContentLayers from pipeline");
     // IMPORTANT: we must detach ourselves before detaching our children.
     // This is a Flutter framework requirement.
     super.detach();
@@ -95,8 +73,10 @@ class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers im
 
     if (_runningLayout) {
       // We are already in a layout phase.
+      //
       // When we call ContentLayerElement.buildLayers, markNeedsLayout is called again.
-      // We don't to mark the content as dirty, because otherwise the layers will never build.
+      // We don't to mark the content as dirty, because otherwise the layers will
+      // never build.
       return;
     }
     _contentNeedsLayout = true;
@@ -187,7 +167,7 @@ class RenderSliverContentLayers extends RenderSliver with RenderSliverHelpers im
 
   @override
   void performLayout() {
-    contentLayersLog.info("Laying out ContentLayers");
+    contentLayersLog.info("Laying out SliverContentLayers");
     if (_content == null) {
       geometry = SliverGeometry.zero;
       _contentNeedsLayout = false;
