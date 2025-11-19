@@ -2465,19 +2465,22 @@ class PasteEditorCommand extends EditCommand {
 
     final textNode = document.getNode(_pastePosition) as TextNode;
     final pasteTextOffset = (_pastePosition.nodePosition as TextPosition).offset;
+    String? newNodeId;
+    bool doInsertInsideParagraph = pasteTextOffset < textNode.endPosition.offset;
 
-    if (parsedContent.length > 1 && pasteTextOffset < textNode.endPosition.offset) {
-      // There is more than 1 node of content being pasted. Therefore,
-      // new nodes will need to be added, which means that the currently
-      // selected text node will be split at the current text offset.
-      // Configure a new node to be added at the end of the pasted content
-      // which contains the trailing text from the currently selected
-      // node.
+    if (parsedContent.length > 1 && doInsertInsideParagraph) {
+      // There is more than 1 node of content being pasted, and inside a
+      // paragraph, not at the end. Therefore, new nodes will need to be 
+      // added, which means that the currently selected text node will be 
+      // split at the current text offset and a new node has to be added 
+      // at the end of the pasted content which contains the trailing text 
+      // from the currently selected text node.
+      newNodeId = Editor.createNodeId();
       executor.executeCommand(
         SplitParagraphCommand(
           nodeId: currentNodeWithSelection.id,
           splitPosition: TextPosition(offset: pasteTextOffset),
-          newNodeId: Editor.createNodeId(),
+          newNodeId: newNodeId,
           replicateExistingMetadata: true,
         ),
       );
@@ -2494,10 +2497,37 @@ class PasteEditorCommand extends EditCommand {
     }
 
     // The first line of pasted text was added to the selected paragraph.
-    // Now, add all remaining pasted nodes to the document..
+    // Now, add all remaining pasted nodes to the document.
     DocumentNode previousNode = document.getNodeById(_pastePosition.nodeId)!;
     // ^ re-query the node where the first paragraph was pasted because nodes are immutable.
     for (final pastedNode in parsedContent.sublist(1)) {
+      if (pastedNode == parsedContent.last && pastedNode is TextNode) {
+        // This is the last node being pasted, and it's a TextNode.
+        // If we had to split the existing node to insert several nodes,
+        // we need to merge this last pasted node with the new node that
+        // resulted from splitting the text node:
+        if (doInsertInsideParagraph) {
+          // this is guaranteed to be a TextNode because it was created from SplitParagraphCommand.
+          executor.executeCommand(
+            InsertAttributedTextCommand(
+              documentPosition: DocumentPosition(
+                  nodeId: newNodeId ?? previousNode.id, nodePosition: const TextNodePosition(offset: 0)),
+              textToInsert: (parsedContent.last as TextNode).text,
+            ),
+          );
+
+          executor.logChanges([
+            DocumentEdit(
+              NodeChangeEvent(newNodeId ?? previousNode.id),
+            )
+          ]);
+        previousNode = pastedNode;
+          break;
+        }
+      }
+      // This is either not the last node, or it's not a TextNode, or it's the 
+      // last node but we didn't split the node that we pasted in; in all cases,
+      // just insert it as a new node.
       document.insertNodeAfter(
         existingNodeId: previousNode.id,
         newNode: pastedNode,
@@ -2511,31 +2541,32 @@ class PasteEditorCommand extends EditCommand {
       ]);
     }
 
-    late DocumentPosition documentPositionAfterPaste;
-    if (parsedContent.length > 1) {
-      // Place the caret at the end of the pasted content.
-      final pastedNode = document.getNodeById(previousNode.id)!;
-      // ^ re-query the node where we pasted content because nodes are immutable.
-      documentPositionAfterPaste = DocumentPosition(
-        nodeId: pastedNode.id,
-        nodePosition: pastedNode.endPosition,
+    late DocumentPosition selectionAfterPaste;
+    if (doInsertInsideParagraph && parsedContent.last is TextNode) {
+      // Content was pasted in the middle of a text node, and it ends in text, so
+      // the caret is placed accordingly at the end of the pasted content at
+      // the split position.
+      selectionAfterPaste = DocumentPosition(
+        nodeId: newNodeId ?? previousNode.id,
+        nodePosition: TextNodePosition(
+          offset: (newNodeId == null ? pasteTextOffset : 0) + (_parsedContent!.last as TextNode).text.length,
+        ),
       );
     } else {
-      // The user only pasted content without any newlines in it. Place the
-      // caret in the existing node at the end of the pasted text. This is
-      // guaranteed to be a TextNode.
-      documentPositionAfterPaste = DocumentPosition(
-        nodeId: _pastePosition.nodeId,
-        nodePosition: TextNodePosition(
-          offset:
-              pasteTextOffset + (_parsedContent!.first as TextNode).text.length,
-        ),
+      // Either insertion took place at the end of a paragraph, or the last node is
+      // non-text and therefore is inserted as a node of its own. In both cases,
+      // place the caret at the end of the pasted content.
+      final pastedNode = document.getNodeById(previousNode.id)!;
+      // ^ re-query the node where we pasted content because nodes are immutable.
+      selectionAfterPaste = DocumentPosition(
+        nodeId: pastedNode.id,
+        nodePosition: pastedNode.endPosition,
       );
     }
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: documentPositionAfterPaste,
+          position: selectionAfterPaste,
         ),
         SelectionChangeType.insertContent,
         SelectionReason.userInteraction,
