@@ -56,9 +56,14 @@ abstract class Document implements Iterable<DocumentNode> {
   /// has the given [nodeId], or `-1` if the node does not exist.
   int getNodeIndexById(String nodeId);
 
+  /// Returns full path to the node by id. Path is a list of parent nodeId, starting from root node
+  NodePath? getNodePathById(String nodeId);
+
   /// Returns the index of the `DocumentNode` in parent node. If this
   /// is a root node, then returns the index in this `Document`.
   int getNodeIndexInParent(NodePath path);
+
+  TextAffinity getAffinityBetweenPaths(NodePath basePath, NodePath extentPath);
 
   /// Returns the [DocumentNode] that appears immediately before the
   /// given [node] in this [Document], or null if the given [node]
@@ -68,10 +73,10 @@ abstract class Document implements Iterable<DocumentNode> {
   DocumentNode? getNodeBefore(DocumentNode node);
 
   /// Returns the [DocumentNode] that appears immediately before the
-  /// node with the given [nodeId] in this [Document], or `null` if
-  /// the matching node is the first node in the document, or no such
+  /// node with the given [nodeId] in this [Document], based on specified [mode],
+  /// or `null` if the matching node is the first node, or no such
   /// node exists.
-  DocumentNode? getNodeBeforeById(String nodeId);
+  DocumentNode? getNodeBeforeById(String nodeId, {NodeTraverseMode mode = NodeTraverseMode.allLeafs});
 
   /// Returns the [DocumentNode] that appears immediately after the
   /// given [node] in this [Document], or null if the given [node]
@@ -81,10 +86,9 @@ abstract class Document implements Iterable<DocumentNode> {
   DocumentNode? getNodeAfter(DocumentNode node);
 
   /// Returns the [DocumentNode] that appears immediately after the
-  /// node with the given [nodeId] in this [Document], or `null` if
-  /// the matching node is the last node in the document, or no such
-  /// node exists.
-  DocumentNode? getNodeAfterById(String nodeId);
+  /// node with the given [nodeId], based on specified [mode], or `null` if
+  /// the matching node is the last node, or no such node exists.
+  DocumentNode? getNodeAfterById(String nodeId, {NodeTraverseMode mode = NodeTraverseMode.allLeafs});
 
   /// Returns the [DocumentNode] at the given [position], or [null] if
   /// no such node exists in this [Document].
@@ -93,9 +97,6 @@ abstract class Document implements Iterable<DocumentNode> {
   /// Returns the [DocumentNode] at the give [path] or [null] if
   /// no such node exists
   DocumentNode? getNodeAtPath(NodePath path);
-
-  /// Returns full path to the node by id. Path is a list of parent nodeId, starting from root node
-  NodePath? getNodePathById(String nodeId);
 
   /// Iterates all leaf nodes of the document.
   Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since});
@@ -117,6 +118,14 @@ abstract class Document implements Iterable<DocumentNode> {
 
   /// Returns [true] if document can delete specified leaf node (based on [isDeletable] and [canDeleteChild] methods).
   bool canDeleteNode(NodePath path);
+}
+
+enum NodeTraverseMode {
+  /// Traverse all leaf nodes in depth-first manner
+  allLeafs,
+
+  /// Traverse nodes within same parent, without going inside deeper, or up outside of current parent
+  sameParent,
 }
 
 /// A path of node ids that can identify a specific node in a document

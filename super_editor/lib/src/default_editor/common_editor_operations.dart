@@ -12,6 +12,7 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
@@ -343,7 +344,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     if (expand) {
       // Push the extent of an expanded selection.
@@ -468,7 +469,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     if (expand) {
       // Push the extent of an expanded selection downstream.
@@ -571,7 +572,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     _updateSelectionExtent(position: newExtent, expandSelection: expand);
 
@@ -642,7 +643,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     _updateSelectionExtent(position: newExtent, expandSelection: expand);
 

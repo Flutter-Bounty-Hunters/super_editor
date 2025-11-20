@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:attributed_text/attributed_text.dart';
 import 'package:clock/clock.dart';
@@ -1169,7 +1170,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  @Deprecated("Use getNodeIndexById() instead")
+  @Deprecated("Use getNodeIndexInParent() instead")
   int getNodeIndex(DocumentNode node) {
     if (getNodeById(node.id) != node) {
       // We found a node by id, but it wasn't the node we expected. Therefore, we couldn't find the requested node.
@@ -1190,9 +1191,22 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  DocumentNode? getNodeBeforeById(String nodeId) {
-    final nodeIndex = getNodeIndexById(nodeId);
-    return nodeIndex > 0 ? getNodeAt(nodeIndex - 1) : null;
+  DocumentNode? getNodeBeforeById(String nodeId, {NodeTraverseMode mode = NodeTraverseMode.allLeafs}) {
+    final path = _getNodePathByIdOrThrow(nodeId);
+    switch (mode) {
+      case NodeTraverseMode.allLeafs:
+        return getLeafNodes(since: path, reversed: true).firstOrNull?.$2;
+      case NodeTraverseMode.sameParent:
+        final nodeIndex = getNodeIndexInParent(path);
+        Iterable<DocumentNode> parentNodes;
+        if (path.isRoot) {
+          parentNodes = _nodes;
+        } else {
+          final parent = getNodeAtPath(path.parent!) as CompositeNode;
+          parentNodes = parent.children;
+        }
+        return nodeIndex > 0 ? parentNodes.elementAt(nodeIndex - 1) : null;
+    }
   }
 
   @override
@@ -1201,9 +1215,22 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  DocumentNode? getNodeAfterById(String nodeId) {
-    final nodeIndex = getNodeIndexById(nodeId);
-    return nodeIndex >= 0 && nodeIndex < _nodes.length - 1 ? getNodeAt(nodeIndex + 1) : null;
+  DocumentNode? getNodeAfterById(String nodeId, {NodeTraverseMode mode = NodeTraverseMode.allLeafs}) {
+    final path = _getNodePathByIdOrThrow(nodeId);
+    switch (mode) {
+      case NodeTraverseMode.allLeafs:
+        return getLeafNodes(since: path).firstOrNull?.$2;
+      case NodeTraverseMode.sameParent:
+        final nodeIndex = getNodeIndexInParent(path);
+        Iterable<DocumentNode> parentNodes;
+        if (path.isRoot) {
+          parentNodes = _nodes;
+        } else {
+          final parent = getNodeAtPath(path.parent!) as CompositeNode;
+          parentNodes = parent.children;
+        }
+        return nodeIndex >= 0 && nodeIndex < parentNodes.length - 1 ? parentNodes.elementAt(nodeIndex + 1) : null;
+    }
   }
 
   @override
@@ -1211,6 +1238,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   DocumentNode? getNodeAtPath(NodePath path) {
+    // TODO: We should probably cache node per path mapping
     var node = _nodesById[path.rootNodeId];
     for (final childId in path.skip(1)) {
       if (node == null) {
@@ -1241,6 +1269,26 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
+  TextAffinity getAffinityBetweenPaths(NodePath basePath, NodePath extentPath) {
+    // Getting paths for the children of last common parents
+    // for example if paths are: 'a.b.c.e' and 'a.b.d'
+    // it should resolve to 'a.b.c' and 'a.b.d' paths to check affinity
+    var basePathCommon = NodePath.withNodeId(basePath.rootNodeId);
+    var extentPathCommon = NodePath.withNodeId(extentPath.rootNodeId);
+    for (var i = 1; i < min(basePath.length, extentPath.length); i += 1) {
+      basePathCommon = basePathCommon.child(basePath[i]);
+      extentPathCommon = extentPathCommon.child(extentPath[i]);
+      if (basePath[i] != extentPath[i]) {
+        break;
+      }
+    }
+
+    return getNodeIndexInParent(basePathCommon) < getNodeIndexInParent(extentPathCommon)
+        ? TextAffinity.downstream
+        : TextAffinity.upstream;
+  }
+
+  @override
   Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since}) sync* {
     final iterator = _LeafNodeIterator(this, sincePath: since, reversed: reversed);
     while (iterator.moveNext()) {
@@ -1248,89 +1296,40 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
-  List<(NodePath, DocumentNode)> getLeafNodesInside(DocumentPosition position1, DocumentPosition position2) {
-    final result = <(NodePath, DocumentNode)>[];
-    final startPath = position1.nodePath;
-    final endPath = position2.nodePath;
-    var success = false;
-
-    final node1 = getNodeAtPath(startPath);
-    if (node1 == null) {
-      throw Exception('No such position in document: $position1');
-    }
-    result.add((startPath, node1));
-    if (startPath == endPath) {
-      return result;
-    }
-
-    for (final node in getLeafNodes(since: startPath)) {
-      result.add(node);
-      if (node.$1 == endPath) {
-        success = true;
-        break;
-      }
-    }
-    if (!success) {
-      throw Exception('Unable to find $endPath below $startPath. Make sure positions are normalized and nodes exists');
-    }
-    return result;
-  }
-
-  List<(NodePath, DocumentNode)> getLeafNodesPath(NodePath startPath, NodePath endPath) {
-    final result = <(NodePath, DocumentNode)>[];
-    // final startPath = position1.nodePath;
-    // final endPath = position2.nodePath;
-    var success = false;
-
-    final node1 = getNodeAtPath(startPath);
-    if (node1 == null) {
-      throw Exception('No such position in document: $startPath');
-    }
-    result.add((startPath, node1));
-    if (startPath == endPath) {
-      return result;
-    }
-
-    for (final node in getLeafNodes(since: startPath)) {
-      result.add(node);
-      if (node.$1 == endPath) {
-        success = true;
-        break;
-      }
-    }
-    if (!success) {
-      throw Exception('Unable to find $endPath below $startPath. Make sure positions are normalized and nodes exists');
-    }
-    return result;
-  }
-
   @override
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2) {
-    final startPath = _nodePathById[position1.nodeId]!;
-    final endPath = _nodePathById[position2.nodeId]!;
-    final result = getLeafNodesPath(startPath, endPath).map((item) => item.$2).toList();
-    // print('Nodes between ${position1} and ${position2}');
-    // for (final node in result) {
-    //   print('node ${node.id}, ${node}');
-    // }
-    return result;
+    final path1 = _nodePathById[position1.nodeId]!;
+    final path2 = _nodePathById[position2.nodeId]!;
 
-    final node1 = getNode(position1);
+    final affinity = getAffinityBetweenPaths(path1, path2);
+    final abovePath = affinity == TextAffinity.downstream ? path1 : path2;
+    final belowPath = affinity == TextAffinity.downstream ? path2 : path1;
+
+    final result = <DocumentNode>[];
+
+    var success = false;
+
+    final node1 = getNodeAtPath(abovePath);
     if (node1 == null) {
-      throw Exception('No such position in document: $position1');
+      throw Exception('No such position in document: $abovePath');
     }
-    final index1 = getNodeIndexById(node1.id);
-
-    final node2 = getNode(position2);
-    if (node2 == null) {
-      throw Exception('No such position in document: $position2');
+    result.add(node1);
+    if (abovePath == belowPath) {
+      return result;
     }
-    final index2 = getNodeIndexById(node2.id);
 
-    final from = min(index1, index2);
-    final to = max(index1, index2);
-
-    return _nodes.sublist(from, to + 1);
+    for (final node in getLeafNodes(since: abovePath)) {
+      result.add(node.$2);
+      if (node.$1 == belowPath) {
+        success = true;
+        break;
+      }
+    }
+    if (!success) {
+      throw Exception(
+          'Unable to find $belowPath below $abovePath. Make sure positions are normalized and nodes exists');
+    }
+    return result;
   }
 
   /// Inserts the given [node] into the [Document] at the given [index].
@@ -1345,10 +1344,11 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         newChildren.insert(index, node);
         return newChildren;
       });
-    }
-    if (index <= _nodes.length) {
-      _nodes.insert(index, node);
-      _refreshNodeIdCaches();
+    } else {
+      if (index <= _nodes.length) {
+        _nodes.insert(index, node);
+        _refreshNodeIdCaches();
+      }
     }
   }
 
@@ -1357,8 +1357,18 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     required String existingNodeId,
     required DocumentNode newNode,
   }) {
-    final nodeIndex = getNodeIndexById(existingNodeId);
-    _nodes.insert(nodeIndex, newNode);
+    final existingNodePath = _getNodePathByIdOrThrow(existingNodeId);
+    final nodeIndex = getNodeIndexInParent(existingNodePath);
+    if (existingNodePath.isRoot) {
+      _nodes.insert(nodeIndex, newNode);
+      _refreshNodeIdCaches();
+    } else {
+      _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
+        final newChildren = List.of(children);
+        newChildren.insert(nodeIndex, newNode);
+        return newChildren;
+      });
+    }
     _refreshNodeIdCaches();
   }
 
@@ -1368,15 +1378,18 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     required DocumentNode newNode,
   }) {
     final existingNodePath = _getNodePathByIdOrThrow(existingNodeId);
+    final nodeIndex = getNodeIndexInParent(existingNodePath);
     if (existingNodePath.isRoot) {
-      final nodeIndex = getNodeIndexById(existingNodeId);
       if (nodeIndex >= 0 && nodeIndex < _nodes.length) {
         _nodes.insert(nodeIndex + 1, newNode);
         _refreshNodeIdCaches();
       }
     } else {
       _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
-        final insertIndex = parent.getChildIndexByNodeId(existingNodePath.nodeId) + 1;
+        final insertIndex = nodeIndex + 1;
+        if (insertIndex > children.length) {
+          return children;
+        }
         final newChildren = List.of(children);
         newChildren.insert(insertIndex, newNode);
         return newChildren;
@@ -1415,14 +1428,21 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   /// Deletes node at [nodePath] and returns path and node that was actually deleted
   /// (sometimes deleting a node leads parent deletion, in that case parent node would be returned)
-  (NodePath, DocumentNode)? deleteNodeAtPath(NodePath nodePath) {
+  (NodePath, DocumentNode)? _deleteNodeAtPath(NodePath nodePath) {
     if (nodePath.isRoot) {
       final nodeToDelete = getNodeAtPath(nodePath);
       if (nodeToDelete == null) {
         throw Exception('Unable to delete node. No node at path $nodePath');
       }
-      final deleted = deleteNode(nodePath.rootNodeId);
-      return deleted ? (nodePath, nodeToDelete) : null;
+      final index = getNodeIndexById(nodePath.rootNodeId);
+      if (index < 0) {
+        return null;
+      }
+
+      _nodes.removeAt(index);
+      _refreshNodeIdCaches();
+
+      return (nodePath, nodeToDelete);
     } else {
       final parent = getNodeAtPath(nodePath.parent!) as CompositeNode;
       final nodeToDelete = parent.getChildByNodeId(nodePath.nodeId);
@@ -1434,26 +1454,25 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         // We are about to remove last children of CompositeNode.
         // this is not supported now. CompositeNode must have at least one child
         // Trying to remove parent instead.
-        return deleteNodeAtPath(nodePath.parent!);
+        return _deleteNodeAtPath(nodePath.parent!);
       }
       _replaceChildrenAtPath(nodePath.parent!, (parent, children) {
         return children.where((c) => c.id != nodePath.nodeId).toList();
       });
+      _refreshNodeIdCaches();
       return (nodePath, nodeToDelete);
     }
   }
 
   /// Deletes the given [node] from the [Document].
   bool deleteNode(String nodeId) {
-    final index = getNodeIndexById(nodeId);
-    if (index < 0) {
-      return false;
+    print('Delete node $nodeId');
+    final path = getNodePathById(nodeId);
+    if (path != null) {
+      final deleted = _deleteNodeAtPath(path);
+      return deleted != null;
     }
-
-    _nodes.removeAt(index);
-    _refreshNodeIdCaches();
-
-    return true;
+    return false;
   }
 
   /// Deletes all nodes from the [Document].
@@ -1516,8 +1535,8 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         },
       );
     }
-    // print('ReplaceNode called: ${nodeId}, ${newNode}');
-    final index = getNodeIndexById(path.rootNodeId);
+
+    final index = getNodeIndexInParent(NodePath.withNodeId(path.rootNodeId));
 
     if (index >= 0) {
       _nodes.removeAt(index);
@@ -1528,6 +1547,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
+  // TODO: Delete
   void replaceNodeByPath(NodePath path, DocumentNode newNode) {
     var replacement = newNode;
     if (!path.isRoot) {
@@ -1543,13 +1563,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     return replaceNodeById(path.rootNodeId, replacement);
   }
 
-  /// Replaces leaf node based on [position]. All CompositeNodes are copied and
-  /// given newNode is replaced by its id
-  @Deprecated('Use replaceNodeByPath instead')
-  void replaceLeafNodeByPosition(DocumentPosition position, DocumentNode newNode) {
-    return replaceNodeByPath(NodePath.withDocumentPosition(position), newNode);
-  }
-
+  // TODO: Delete
   /// Inserts [newNode] immediately at given index.
   void insertNodeAtPath({NodePath? parent, required DocumentNode newNode, required int index}) {
     if (parent == null) {
@@ -1566,6 +1580,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
+  // TODO: Delete
   /// Inserts [newNode] immediately after the given [existingNode].
   void insertNodeAfterPath({
     required NodePath existingNodePath,
@@ -1586,6 +1601,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
+  // TODO: Delete
   /// Inserts [newNode] immediately after the given [existingNode].
   void insertNodeBeforePath({
     required NodePath existingNodePath,

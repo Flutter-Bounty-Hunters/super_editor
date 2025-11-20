@@ -161,7 +161,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       // Return the position at the start of the first node.
       final firstPosition = _findFirstPosition();
       if (firstPosition != null) {
-        return firstPosition;
+        return firstPosition.toLeafPosition();
       }
     }
 
@@ -170,7 +170,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       // Return the position at the end of the last node.
       final lastPosition = _findLastPosition();
       if (lastPosition != null) {
-        return lastPosition;
+        return lastPosition.toLeafPosition();
       }
     }
 
@@ -196,7 +196,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final selectionAtOffset = DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: componentPosition,
-    );
+    ).toLeafPosition();
     editorLayoutLog.info(' - selection at offset: $selectionAtOffset');
     return selectionAtOffset;
   }
@@ -356,16 +356,26 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   List<String> _getNodeIdsBetween(String baseNodeId, String extentNodeId) {
-    final baseComponentKey = _nodeIdsToComponentKeys[baseNodeId]!;
-    final baseComponentIndex = _topToBottomComponentKeys.indexOf(baseComponentKey);
-    final extentComponentKey = _nodeIdsToComponentKeys[extentNodeId]!;
-    final extentComponentIndex = _topToBottomComponentKeys.indexOf(extentComponentKey);
+    final doc = widget.presenter.document;
 
-    final topNodeIndex = baseComponentIndex <= extentComponentIndex ? baseComponentIndex : extentComponentIndex;
-    final bottomNodeIndex = topNodeIndex == baseComponentIndex ? extentComponentIndex : baseComponentIndex;
-    final componentsInside = _topToBottomComponentKeys.sublist(topNodeIndex, bottomNodeIndex + 1);
+    final baseNode = doc.getNodeById(baseNodeId)!;
+    final extentNode = doc.getNodeById(extentNodeId)!;
+    final affinity = doc.getAffinityBetweenNodes(baseNode, extentNode);
 
-    return componentsInside.map((componentKey) => _componentKeysToNodeIds[componentKey]!).toList();
+    final pathAbove = doc.getNodePathById(affinity == TextAffinity.downstream ? baseNodeId : extentNodeId);
+    final pathBelow = doc.getNodePathById(affinity == TextAffinity.downstream ? extentNodeId : baseNodeId);
+    final result = <String>[];
+    result.add(pathAbove!.nodeId);
+    if (pathAbove == pathBelow) {
+      return result;
+    }
+    for (final (path, _) in doc.getLeafNodes(since: pathAbove)) {
+      result.add(path.nodeId);
+      if (path == pathBelow) {
+        return result;
+      }
+    }
+    throw Exception('Unable to find nodes between $baseNodeId and $extentNodeId');
   }
 
   @override
@@ -463,7 +473,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
           nodeId: bottomNodeId,
           nodePosition: topNodeExtentPosition,
         ),
-      );
+      ).toLeafSelection();
     } else {
       // Region covers multiple components.
       editorLayoutLog.fine(' - the selection spans nodes: $topNodeId -> $bottomNodeId');
@@ -481,7 +491,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
           nodeId: isDraggingDown ? bottomNodeId : topNodeId,
           nodePosition: isDraggingDown ? bottomNodeExtentPosition : topNodeExtentPosition,
         ),
-      );
+      ).toLeafSelection();
     }
   }
 
@@ -589,7 +599,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: component.getBeginningPosition(),
-    );
+    ).toLeafPosition();
   }
 
   /// Returns the [DocumentPosition] at the end of the last node or `null` if the document is empty.
@@ -604,7 +614,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: component.getEndPosition(),
-    );
+    ).toLeafPosition();
   }
 
   bool _isOffsetInComponent(RenderBox componentBox, Offset documentOffset) {
@@ -732,7 +742,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: nodeId!,
       nodePosition: nodePosition,
-    );
+    ).toLeafPosition();
   }
 
   @override

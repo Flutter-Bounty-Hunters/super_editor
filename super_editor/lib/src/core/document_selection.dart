@@ -325,22 +325,23 @@ extension InspectDocumentAffinity on Document {
     required DocumentPosition base,
     required DocumentPosition extent,
   }) {
-    final baseNode = getNode(base);
-    if (baseNode == null) {
-      throw Exception('No such position in document: $base');
-    }
-
-    final extentNode = getNode(extent);
-    if (extentNode == null) {
-      throw Exception('No such position in document: $extent');
-    }
-
     late TextAffinity affinity;
     if (base.nodeId != extent.nodeId) {
-      affinity = getNodeIndexById(base.nodeId) < getNodeIndexById(extent.nodeId)
-          ? TextAffinity.downstream
-          : TextAffinity.upstream;
+      final basePath = getNodePathById(base.nodeId);
+      if (basePath == null) {
+        throw Exception('No such position in document: $base');
+      }
+      final extentPath = getNodePathById(extent.nodeId);
+      if (extentPath == null) {
+        throw Exception('No such position in document: $extent');
+      }
+
+      return getAffinityBetweenPaths(basePath, extentPath);
     } else {
+      final extentNode = getNode(extent);
+      if (extentNode == null) {
+        throw Exception('No such position in document: $extent');
+      }
       // The selection is within the same node. Ask the node which position
       // comes first.
       affinity = extentNode.getAffinityBetween(base: base.nodePosition, extent: extent.nodePosition);

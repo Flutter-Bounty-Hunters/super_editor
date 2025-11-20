@@ -194,7 +194,7 @@ class BlockSelector {
 
   /// Returns `true` if this selector matches the block for the given [node], or
   /// `false`, otherwise.
-  bool matches(Document document, NodePath path, DocumentNode node) {
+  bool matches(Document document, DocumentNode node) {
     if (_blockType != null &&
         (node.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _blockType) {
       return false;
@@ -205,46 +205,31 @@ class BlockSelector {
     }
 
     if (_parentBlockType != null) {
-      if (_blockTypeForNodeAtPath(document, path.parent) != _parentBlockType) {
+      final parentPath = document.getNodePathById(node.id)?.parent;
+      final parent = parentPath != null ? document.getNodeAtPath(parentPath) : null;
+      if (parent == null ||
+          (parent.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _parentBlockType) {
         return false;
       }
     }
 
     if (_precedingBlockType != null) {
-      final previousNodePath = _nodePathForNextNode(document, path, backward: true);
-      if (_blockTypeForNodeAtPath(document, previousNodePath) != _precedingBlockType) {
+      final nodeBefore = document.getNodeBeforeById(node.id, mode: NodeTraverseMode.sameParent);
+      if (nodeBefore == null ||
+          (nodeBefore.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _precedingBlockType) {
         return false;
       }
     }
 
     if (_followingBlockType != null) {
-      final nextNodePath = _nodePathForNextNode(document, path);
-      if (_blockTypeForNodeAtPath(document, nextNodePath) != _followingBlockType) {
+      final nodeAfter = document.getNodeAfterById(node.id, mode: NodeTraverseMode.sameParent);
+      if (nodeAfter == null ||
+          (nodeAfter.getMetadataValue(NodeMetadata.blockType) as NamedAttribution?)?.name != _followingBlockType) {
         return false;
       }
     }
 
     return true;
-  }
-
-  String? _blockTypeForNodeAtPath(Document document, NodePath? path) {
-    if (path == null) {
-      return null;
-    }
-    final node = document.getNodeAtPath(path);
-    final blockType = node?.getMetadataValue(NodeMetadata.blockType);
-    if (blockType is NamedAttribution) {
-      return blockType.name;
-    }
-    return null;
-  }
-
-  NodePath? _nodePathForNextNode(Document doc, NodePath path, {bool backward = false}) {
-    final previous = doc.getLeafNodes(reversed: backward, since: path).firstOrNull;
-    if (previous != null && previous.$1.parent == path.parent) {
-      return previous.$1;
-    }
-    return null;
   }
 
   @override

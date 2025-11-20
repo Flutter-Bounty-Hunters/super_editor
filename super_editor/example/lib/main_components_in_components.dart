@@ -108,6 +108,11 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
 
   @override
   Widget build(BuildContext context) {
+    // print('Leaf nodes:');
+    // for (final (path, node) in _editor.document.getLeafNodes()) {
+    //   print('- ${path}: ${node.runtimeType}');
+    // }
+
     return Scaffold(
       body: SuperEditor(
         editor: _editor,
@@ -180,7 +185,6 @@ class _BannerComponentBuilder implements ComponentBuilder {
 
     return _BannerNodeViewModel(
       nodeId: node.id,
-      parent: node,
       children: node.children.map((childNode) => presenterContext.createViewModel(childNode)!).toList(),
     );
   }
@@ -214,7 +218,6 @@ class _BannerNodeViewModel extends CompositeNodeViewModel {
 
   _BannerNodeViewModel({
     required super.nodeId,
-    required super.parent,
     required super.children,
   });
 
@@ -223,8 +226,7 @@ class _BannerNodeViewModel extends CompositeNodeViewModel {
     return internalCopy(
       _BannerNodeViewModel(
         nodeId: nodeId,
-        parent: parent,
-        children: List.from(children),
+        children: children,
       ),
     );
   }

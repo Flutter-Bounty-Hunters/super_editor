@@ -39,7 +39,6 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
         for (final componentViewModel in viewModel.componentViewModels)
           _styleComponent(
             document,
-            NodePath.withNodeId(componentViewModel.nodeId),
             document.getNodeById(componentViewModel.nodeId)!,
             componentViewModel.copy(),
           ),
@@ -49,7 +48,6 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
 
   SingleColumnLayoutComponentViewModel _styleComponent(
     Document document,
-    NodePath path,
     DocumentNode node,
     SingleColumnLayoutComponentViewModel viewModel,
   ) {
@@ -60,7 +58,7 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
       Styles.inlineWidgetBuilders: _stylesheet.inlineWidgetBuilders,
     };
     for (final rule in _stylesheet.rules) {
-      if (rule.selector.matches(document, path, node)) {
+      if (rule.selector.matches(document, node)) {
         _mergeStyles(
           existingStyles: aggregateStyles,
           newStyles: rule.styler(document, node),
@@ -74,7 +72,7 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     if (node is CompositeNode && viewModel is CompositeNodeViewModel) {
       for (int i = 0; i < node.children.length; i += 1) {
         final child = node.getChildAt(i);
-        _styleComponent(document, path.child(child.id), child, viewModel.children[i]);
+        _styleComponent(document, child, viewModel.children[i]);
       }
     }
 

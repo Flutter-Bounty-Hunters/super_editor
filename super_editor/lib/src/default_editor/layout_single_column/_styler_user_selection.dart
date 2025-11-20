@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/styles.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -162,6 +163,12 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
       viewModel
         ..selection = nodeSelection
         ..selectionColor = _selectionStyles.selectionColor;
+    }
+    // Apply selection to all children nodes recursively
+    if (viewModel is CompositeNodeViewModel) {
+      for (final child in viewModel.children) {
+        _applySelection(child);
+      }
     }
 
     return viewModel;
