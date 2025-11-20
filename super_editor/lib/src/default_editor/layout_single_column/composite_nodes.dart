@@ -94,7 +94,9 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
   CompositeNode({
     required this.id,
     super.metadata,
-  });
+  }) {
+    validateChildrenNodeIds();
+  }
 
   @override
   final String id;
@@ -376,16 +378,6 @@ class CompositeNodePosition implements NodePosition {
 }
 
 extension DocumentSelectionCompositeEx on DocumentSelection {
-  DocumentSelection moveWithinLeafNode(DocumentSelection leafSelection) {
-    if (leafSelection.base.nodeId != base.leafNodeId || leafSelection.extent.nodeId != extent.leafNodeId) {
-      throw Exception('Tried to move selection within leaf node, but new selection relates to different leaf node');
-    }
-    return DocumentSelection(
-      base: base.copyWithLeafPosition(leafSelection.base.nodePosition),
-      extent: extent.copyWithLeafPosition(leafSelection.extent.nodePosition),
-    );
-  }
-
   /// Unwrap selection within CompositeNode into leaf node selection
   DocumentSelection toLeafSelection() {
     return DocumentSelection(
@@ -396,42 +388,22 @@ extension DocumentSelectionCompositeEx on DocumentSelection {
 }
 
 extension DocumentPositionCompositeEx on DocumentPosition {
-  NodePosition get leafNodePosition => nodePosition.leafPosition;
-
-  DocumentPosition copyWithLeafPosition(NodePosition nodePosition) {
+  DocumentPosition toLeafPosition() {
+    final (nodeId, position) = _resolveLeaf();
     return DocumentPosition(
       nodeId: nodeId,
-      nodePosition: this.nodePosition.positionWithNewLeaf(nodePosition),
+      nodePosition: position,
     );
   }
 
-  NodePath get nodePath => NodePath.withDocumentPosition(this);
-
-  String get leafNodeId => nodePath.nodeId;
-
-  DocumentPosition toLeafPosition() {
-    return DocumentPosition(
-      nodeId: leafNodeId,
-      nodePosition: leafNodePosition,
-    );
-  }
-}
-
-extension NodePositionCompositeEx on NodePosition {
-  NodePosition get leafPosition {
-    if (this is CompositeNodePosition) {
-      return (this as CompositeNodePosition).childNodePosition.leafPosition;
+  (String, NodePosition) _resolveLeaf() {
+    var id = nodeId;
+    var currentNodePosition = nodePosition;
+    while (currentNodePosition is CompositeNodePosition) {
+      id = currentNodePosition.childNodeId;
+      currentNodePosition = currentNodePosition.childNodePosition;
     }
-    return this;
-  }
-
-  NodePosition positionWithNewLeaf(NodePosition newLeafPosition) {
-    final current = this;
-    if (current is CompositeNodePosition) {
-      return current.moveWithinChild(current.childNodePosition.positionWithNewLeaf(newLeafPosition));
-    } else {
-      return newLeafPosition;
-    }
+    return (id, currentNodePosition);
   }
 }
 

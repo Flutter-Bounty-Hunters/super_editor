@@ -99,7 +99,11 @@ abstract class Document implements Iterable<DocumentNode> {
   DocumentNode? getNodeAtPath(NodePath path);
 
   /// Iterates all leaf nodes of the document.
-  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since});
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({
+    bool? reversed,
+    NodePath? since,
+    bool? treatEmptyCompositeNodesAsLeaf,
+  });
 
   /// Returns all [DocumentNode]s from [position1] to [position2], including
   /// the nodes at [position1] and [position2].
@@ -130,6 +134,7 @@ enum NodeTraverseMode {
 
 /// A path of node ids that can identify a specific node in a document
 /// An alternative to `nodeId` for hierarchy structure
+@immutable
 class NodePath with IterableMixin<String> {
   /// List of nodeIds
   final List<String> _segments;
@@ -140,22 +145,6 @@ class NodePath with IterableMixin<String> {
 
   factory NodePath.withNodeId(String nodeId) {
     return NodePath([nodeId]);
-  }
-
-  /// Creates NodePath from root-level DocumentPosition
-  factory NodePath.withDocumentPosition(DocumentPosition position) {
-    return NodePath.withNodePosition(position.nodeId, position.nodePosition);
-  }
-
-  /// Creates NodePath from root-level [nodeId] and [nodePosition]
-  factory NodePath.withNodePosition(String nodeId, NodePosition nodePosition) {
-    final ids = [nodeId];
-    var currentNodePosition = nodePosition;
-    while (currentNodePosition is CompositeNodePosition) {
-      ids.add(currentNodePosition.childNodeId);
-      currentNodePosition = currentNodePosition.childNodePosition;
-    }
-    return NodePath(ids);
   }
 
   @override
@@ -195,14 +184,6 @@ class NodePath with IterableMixin<String> {
 
   NodePath child(String childId) {
     return NodePath([..._segments, childId]);
-  }
-
-  NodePath replaceLeaf(String newNodeId) {
-    if (isRoot) {
-      return NodePath([newNodeId]);
-    } else {
-      return NodePath([...parent!, newNodeId]);
-    }
   }
 
   @override

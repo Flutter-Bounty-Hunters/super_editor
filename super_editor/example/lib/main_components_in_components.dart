@@ -53,17 +53,17 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
               id: "main-banner-description",
               text: AttributedText("This is a banner, which can contain any other blocks you want"),
             ),
-            _BannerNode(id: "inner-banner", children: [
+            _BannerNode(id: "inner-banner-info", children: [
               ParagraphNode(
-                id: "inner-banner-header",
+                id: "inner-banner-info-header",
                 text: AttributedText("Info!"),
                 metadata: {
                   NodeMetadata.blockType: header3Attribution,
                 },
               ),
-              HorizontalRuleNode(id: "inner-banner-hr"),
+              HorizontalRuleNode(id: "inner-banner-info-hr"),
               ParagraphNode(
-                id: "inner-banner-description",
+                id: "inner-banner-info-description",
                 text: AttributedText("This is an internal banner, which can be used to test multiple banners"),
               ),
             ]),
@@ -71,17 +71,17 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
               id: "between-internal-banners",
               text: AttributedText("The text between internal banners"),
             ),
-            _BannerNode(id: "inner-banner-2", children: [
+            _BannerNode(id: "inner-banner-warning", children: [
               ParagraphNode(
-                id: "inner-banner-2-header",
+                id: "inner-banner-warning-header",
                 text: AttributedText("Warning!"),
                 metadata: {
                   NodeMetadata.blockType: header3Attribution,
                 },
               ),
-              HorizontalRuleNode(id: "inner-banner-2-hr"),
+              HorizontalRuleNode(id: "inner-banner-warning-hr"),
               ParagraphNode(
-                id: "inner-banner-2-description",
+                id: "inner-banner-warning-description",
                 text: AttributedText("This is another internal banner"),
               ),
             ]),
@@ -292,9 +292,7 @@ class _BannerNode extends CompositeNode {
               ...metadata,
             NodeMetadata.blockType: bannerBlockType,
           },
-        ) {
-    validateChildrenNodeIds();
-  }
+        );
 
   final List<DocumentNode> children;
 

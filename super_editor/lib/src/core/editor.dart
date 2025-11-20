@@ -1289,8 +1289,17 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  Iterable<(NodePath, DocumentNode)> getLeafNodes({bool? reversed, NodePath? since}) sync* {
-    final iterator = _LeafNodeIterator(this, sincePath: since, reversed: reversed);
+  Iterable<(NodePath, DocumentNode)> getLeafNodes({
+    bool? reversed,
+    NodePath? since,
+    bool? treatEmptyCompositeNodesAsLeaf,
+  }) sync* {
+    final iterator = _LeafNodeIterator(
+      this,
+      sincePath: since,
+      reversed: reversed,
+      treatEmptyCompositeAsLeaf: treatEmptyCompositeNodesAsLeaf,
+    );
     while (iterator.moveNext()) {
       yield iterator.current;
     }
@@ -1333,6 +1342,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   /// Inserts the given [node] into the [Document] at the given [index].
+  /// if optional [parentNodeId] provided, the node would be inserted into CompositeNode
   void insertNodeAt(int index, DocumentNode node, {String? parentNodeId}) {
     if (parentNodeId != null) {
       final parentPath = getNodePathById(parentNodeId);
@@ -1426,9 +1436,10 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     return parent?.canDeleteChild(node.id) ?? node.isDeletable;
   }
 
-  /// Deletes node at [nodePath] and returns path and node that was actually deleted
-  /// (sometimes deleting a node leads parent deletion, in that case parent node would be returned)
-  (NodePath, DocumentNode)? _deleteNodeAtPath(NodePath nodePath) {
+  /// Deletes node at [nodePath] and returns list of deleted nodes that were actually deleted
+  /// If deleteEmptyCompositeNode is true, the parent [CompositeNode] containing the node with [nodePath]
+  //  will also be deleted if it becomes empty after removing the child.
+  List<DocumentNode> deleteNodeAtPath(NodePath nodePath, {bool deleteEmptyCompositeNode = false}) {
     if (nodePath.isRoot) {
       final nodeToDelete = getNodeAtPath(nodePath);
       if (nodeToDelete == null) {
@@ -1436,41 +1447,48 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       }
       final index = getNodeIndexById(nodePath.rootNodeId);
       if (index < 0) {
-        return null;
+        return [];
       }
 
       _nodes.removeAt(index);
       _refreshNodeIdCaches();
 
-      return (nodePath, nodeToDelete);
+      return [nodeToDelete];
     } else {
       final parent = getNodeAtPath(nodePath.parent!) as CompositeNode;
       final nodeToDelete = parent.getChildByNodeId(nodePath.nodeId);
       if (nodeToDelete == null) {
         // children does not exists at given path
-        return null;
+        return [];
       }
-      if (parent.children.length == 1) {
-        // We are about to remove last children of CompositeNode.
-        // this is not supported now. CompositeNode must have at least one child
-        // Trying to remove parent instead.
-        return _deleteNodeAtPath(nodePath.parent!);
+
+      if (parent.children.length == 1 && deleteEmptyCompositeNode) {
+        // We are about to remove last child of CompositeNode.
+        // and deleteEmptyCompositeNode set to true -> delete empty parents recursively
+        return [
+          nodeToDelete,
+          ...deleteNodeAtPath(
+            nodePath.parent!,
+            deleteEmptyCompositeNode: deleteEmptyCompositeNode,
+          )
+        ];
       }
       _replaceChildrenAtPath(nodePath.parent!, (parent, children) {
-        return children.where((c) => c.id != nodePath.nodeId).toList();
+        return children.where((c) => c.id != nodeToDelete.id).toList();
       });
       _refreshNodeIdCaches();
-      return (nodePath, nodeToDelete);
+      return [nodeToDelete];
     }
   }
 
   /// Deletes the given [node] from the [Document].
-  bool deleteNode(String nodeId) {
-    print('Delete node $nodeId');
+  /// If deleteEmptyCompositeNodes is set, prefer to use deleteNodeAtPath to create
+  /// Events for each deleted node
+  bool deleteNode(String nodeId, {bool deleteEmptyCompositeNodes = true}) {
     final path = getNodePathById(nodeId);
     if (path != null) {
-      final deleted = _deleteNodeAtPath(path);
-      return deleted != null;
+      final deleted = deleteNodeAtPath(path, deleteEmptyCompositeNode: deleteEmptyCompositeNodes);
+      return deleted.isNotEmpty;
     }
     return false;
   }
@@ -1770,6 +1788,8 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
 
   final int _increment;
 
+  final bool _treatEmptyCompositeAsLeaf;
+
   NodePath? _currentPath;
   DocumentNode? _currentNode;
 
@@ -1780,7 +1800,11 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
 
     /// Specifies iteration direction
     bool? reversed,
-  }) : _increment = reversed == true ? -1 : 1 {
+
+    /// when set to true, it would return empty CompositeNode as leaf
+    bool? treatEmptyCompositeAsLeaf,
+  })  : _increment = reversed == true ? -1 : 1,
+        _treatEmptyCompositeAsLeaf = treatEmptyCompositeAsLeaf ?? false {
     if (sincePath != null) {
       var node = _document.getNodeById(sincePath.rootNodeId);
       _indices.add(_document.getNodeIndexById(sincePath.rootNodeId));
@@ -1835,7 +1859,7 @@ class _LeafNodeIterator implements Iterator<(NodePath, DocumentNode)> {
     var index = _indices.last;
     final node = _currentChildren.elementAt(index);
 
-    if (node is CompositeNode) {
+    if (node is CompositeNode && (!_treatEmptyCompositeAsLeaf || node.children.isNotEmpty)) {
       // current node is a CompositeNode, go deeper
       _parents.add(node);
       _addStartIndexForCurrentParent();

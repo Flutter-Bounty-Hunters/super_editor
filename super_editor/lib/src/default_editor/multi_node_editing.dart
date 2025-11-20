@@ -417,6 +417,7 @@ class InsertNodeAtCaretCommand extends EditCommand {
     if (selectedNode is! ParagraphNode) {
       return;
     }
+    final selectedNodePath = document.getNodePathById(selectedNodeId)!;
 
     final paragraphPosition = composer.selection!.extent.nodePosition as TextNodePosition;
     final beginningOfParagraph = selectedNode.beginningPosition;
@@ -440,7 +441,11 @@ class InsertNodeAtCaretCommand extends EditCommand {
       );
     } else if (paragraphPosition.offset == beginningOfParagraph.offset) {
       // Insert block item after the paragraph.
-      document.insertNodeAt(document.getNodeIndexById(selectedNode.id), newNode);
+      document.insertNodeAt(
+        document.getNodeIndexInParent(selectedNodePath),
+        newNode,
+        parentNodeId: selectedNodePath.parent?.nodeId,
+      );
       executor.logChanges([
         DocumentEdit(
           NodeInsertedEvent(newNode.id, document.getNodeIndexById(newNode.id)),
@@ -753,16 +758,20 @@ class DeleteContentCommand extends EditCommand {
     if (startNode == null) {
       throw Exception('Could not locate start node for DeleteSelectionCommand: ${normalizedRange.start}');
     }
-    final startNodeIndex = document.getNodeIndexById(startNode.id);
+    final startNodePath = document.getNodePathById(startNode.id)!;
+    final startNodeIndex = document.getNodeIndexInParent(startNodePath);
+    final aboveStartNodePath = document.getLeafNodes(since: startNodePath, reversed: true).firstOrNull?.$1;
 
     final endNode = document.getNode(normalizedRange.end);
     if (endNode == null) {
       throw Exception('Could not locate end node for DeleteSelectionCommand: ${normalizedRange.end}');
     }
+    final endNodePath = document.getNodePathById(endNode.id)!;
+    final belowEndNodePath = document.getLeafNodes(since: endNodePath).firstOrNull?.$1;
 
     // We expect that this command will only be called when the delete range
     // contains at least one deletable node.
-    final firstDeletableNodeId = nodes.firstWhere((node) => node.isDeletable).id;
+    final firstDeletableNodePath = document.getNodePathById(nodes.firstWhere((node) => node.isDeletable).id)!;
 
     executor.logChanges(
       _deleteNodesBetweenFirstAndLast(
@@ -816,22 +825,30 @@ class DeleteContentCommand extends EditCommand {
       // new empty paragraph. Otherwise, use the ID of the first deletable node in the range.
       // We expect that this method is never called when there are no deletable nodes
       // in the range.
-      final emptyParagraphId = startNode.isDeletable
-          ? startNode.id
+      final emptyParagraphPath = startNode.isDeletable
+          ? startNodePath
           : endNode.isDeletable
-              ? endNode.id
-              : firstDeletableNodeId;
+              ? endNodePath
+              : firstDeletableNodePath;
 
       document.insertNodeAt(
         insertIndex,
-        ParagraphNode(id: emptyParagraphId, text: AttributedText()),
+        ParagraphNode(id: emptyParagraphPath.nodeId, text: AttributedText()),
+        parentNodeId: emptyParagraphPath.parent?.nodeId,
       );
       executor.logChanges([
         DocumentEdit(
-          NodeChangeEvent(emptyParagraphId),
+          NodeChangeEvent(emptyParagraphPath.nodeId),
         )
       ]);
     }
+
+    /// Deleting empty nodes, that are still empty even after we inserted emptyParagraph at caret position
+    executor.logChanges(_deleteEmptyCompositeNodes(
+      document: document,
+      startPath: aboveStartNodePath,
+      endPath: belowEndNodePath,
+    ));
 
     // The start/end nodes may have been deleted due to empty content.
     // Refresh our references so that we can decide if we need to merge
@@ -968,13 +985,37 @@ class DeleteContentCommand extends EditCommand {
         changes.add(DocumentEdit(
           NodeRemovedEvent(nodeToDelete.id, nodeToDelete),
         ));
-        document.deleteNode(nodeToDelete.id);
+        document.deleteNode(nodeToDelete.id, deleteEmptyCompositeNodes: false);
       }
 
       // Move to the next node.
       nodeToDelete = nextNode;
     }
     return changes;
+  }
+
+  List<EditEvent> _deleteEmptyCompositeNodes({
+    required MutableDocument document,
+    required NodePath? startPath,
+    required NodePath? endPath,
+  }) {
+    final deletedNodeEvents = <EditEvent>[];
+    for (final (path, node) in document.getLeafNodes(
+      since: startPath,
+      treatEmptyCompositeNodesAsLeaf: true,
+    )) {
+      if (path == endPath) {
+        break;
+      }
+      if (node is CompositeNode && node.children.isEmpty) {
+        for (final deletedNode in document.deleteNodeAtPath(path, deleteEmptyCompositeNode: true)) {
+          deletedNodeEvents.add(DocumentEdit(
+            NodeRemovedEvent(deletedNode.id, deletedNode),
+          ));
+        }
+      }
+    }
+    return deletedNodeEvents;
   }
 
   List<EditEvent> _deleteRangeWithinNodeFromPositionToEnd({
@@ -999,7 +1040,7 @@ class DeleteContentCommand extends EditCommand {
     } else if (nodePosition is TextPosition && node is TextNode) {
       if (nodePosition == node.beginningPosition) {
         // All text is selected. Delete the node.
-        document.deleteNode(node.id);
+        document.deleteNode(node.id, deleteEmptyCompositeNodes: false);
 
         return [
           DocumentEdit(
@@ -1058,7 +1099,7 @@ class DeleteContentCommand extends EditCommand {
     } else if (nodePosition is TextPosition && node is TextNode) {
       if (nodePosition == node.endPosition) {
         // All text is selected. Delete the node.
-        document.deleteNode(node.id);
+        document.deleteNode(node.id, deleteEmptyCompositeNodes: false);
 
         return [
           DocumentEdit(
