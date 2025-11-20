@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
+import 'package:super_keyboard/super_keyboard.dart';
 
 /// A scaffold for a chat experience in which a conversation thread is
 /// displayed, with a message editor mounted to the bottom of the chat area.
@@ -720,9 +721,25 @@ class RenderMessagePageScaffold extends RenderBox {
   void _onDragStart() {
     _velocityTracker = VelocityTracker.withKind(PointerDeviceKind.touch);
     _velocityStopwatch = Stopwatch()..start();
+    _waitingToAnimateAfterDrag = false;
   }
 
   void _onDragEnd() {
+    final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
+    if (keyboardState == KeyboardState.closing) {
+      // Wait for keyboard to close.
+      print("DRAG END BUT KEYBOARD CLOSING. NOT ANIMATING.");
+      _waitingToAnimateAfterDrag = true;
+
+      _velocityStopwatch.stop();
+
+      _isExpandingOrCollapsing = false;
+      _desiredDragHeight = null;
+      _controller.desiredSheetMode = MessagePageSheetMode.collapsed;
+      _controller.collapsedMode = MessagePageSheetCollapsedMode.preview;
+      return;
+    }
+
     _velocityStopwatch.stop();
 
     final velocity = _velocityTracker.getVelocityEstimate()?.pixelsPerSecond.dy ?? 0;
@@ -730,8 +747,29 @@ class RenderMessagePageScaffold extends RenderBox {
     _startBottomSheetHeightSimulation(velocity: velocity);
   }
 
+  bool _waitingToAnimateAfterDrag = false;
+  KeyboardState? _previousKeyboardState;
+  void _onKeyboardStateChange() {
+    final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
+    if (keyboardState == KeyboardState.closed &&
+        keyboardState != _previousKeyboardState &&
+        _waitingToAnimateAfterDrag) {
+      print("KEYBOARD HAS CLOSED - STARTING BOTTOM SHEET ANIMATION");
+      _waitingToAnimateAfterDrag = false;
+
+      // _velocityStopwatch.stop();
+      //
+      // final velocity = _velocityTracker.getVelocityEstimate()?.pixelsPerSecond.dy ?? 0;
+      //
+      // _startBottomSheetHeightSimulation(velocity: velocity, desiredSheetMode: MessagePageSheetMode.collapsed,);
+    }
+
+    _previousKeyboardState = keyboardState;
+  }
+
   void _startBottomSheetHeightSimulation({
     required double velocity,
+    MessagePageSheetMode? desiredSheetMode,
   }) {
     _ticker.stop();
 
@@ -740,14 +778,16 @@ class RenderMessagePageScaffold extends RenderBox {
       MessagePageSheetCollapsedMode.intrinsic => min(_intrinsicHeight, _bottomSheetCollapsedMaximumHeight),
     };
 
-    _controller.desiredSheetMode = velocity.abs() > 500 //
-        ? velocity < 0
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed
-        : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed;
+    _controller.desiredSheetMode = desiredSheetMode ??
+        (velocity.abs() > 500 //
+            ? velocity < 0
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed
+            : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed);
 
+    print("_startBottomSheetHeightSimulation()");
     _updateBottomSheetHeightSimulation(velocity: velocity);
   }
 
@@ -802,6 +842,12 @@ class RenderMessagePageScaffold extends RenderBox {
     );
     messagePageLayoutLog.info(' - Final height: $_simulationGoalHeight');
     messagePageLayoutLog.info(' - Initial velocity: $velocity');
+    print(
+        "Starting a NEW simulation - goal height: $_simulationGoalHeight, start height: $startHeight, start velocity: $velocity");
+    print(
+        " - keyboard state: ${SuperKeyboard.instance.mobileGeometry.value.keyboardState}, keyboard height: ${SuperKeyboard.instance.mobileGeometry.value.keyboardHeight}");
+    print(
+        " - MediaQuery view insets: ${MediaQuery.viewInsetsOf(_element!).bottom}, view padding: ${MediaQuery.viewPaddingOf(_element!).bottom}, padding: ${MediaQuery.paddingOf(_element!).bottom}");
     _simulation = SpringSimulation(
       const SpringDescription(
         mass: 1,
@@ -907,15 +953,19 @@ class RenderMessagePageScaffold extends RenderBox {
 
     _ticker = Ticker(_onExpandCollapseTick);
 
+    SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardStateChange);
+
     visitChildren((child) {
       child.attach(owner);
     });
   }
 
   void _onExpandCollapseTick(Duration elapsedTime) {
+    print("_onExpandCollapseTick - elapsed time: ${elapsedTime.inMilliseconds}ms");
     final seconds = elapsedTime.inMilliseconds / 1000;
     _animatedHeight = _simulation!.x(seconds).clamp(_bottomSheetMinimumHeight, _bottomSheetMaximumHeight);
     _animatedVelocity = _simulation!.dx(seconds);
+    print(" - animated height: $_animatedHeight, animated velocity: $_animatedVelocity");
 
     if (_simulation!.isDone(seconds)) {
       _ticker.stop();
@@ -940,6 +990,8 @@ class RenderMessagePageScaffold extends RenderBox {
     // IMPORTANT: we must detach ourselves before detaching our children.
     // This is a Flutter framework requirement.
     super.detach();
+
+    SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardStateChange);
 
     _ticker.dispose();
 
@@ -1019,6 +1071,9 @@ class RenderMessagePageScaffold extends RenderBox {
 
   @override
   void performLayout() {
+    print("performLayout()");
+    print(
+        " - MediaQuery view insets: ${MediaQuery.viewInsetsOf(_element!).bottom}, view padding: ${MediaQuery.viewPaddingOf(_element!).bottom}, padding: ${MediaQuery.paddingOf(_element!).bottom}");
     messagePageLayoutLog.info('---------- LAYOUT -------------');
     messagePageLayoutLog.info('Laying out RenderChatScaffold');
     messagePageLayoutLog
@@ -1066,13 +1121,17 @@ class RenderMessagePageScaffold extends RenderBox {
       MessagePageSheetCollapsedMode.intrinsic => _intrinsicHeight,
     };
 
+    print(
+        "Doing layout. Is expanding/collapsing? $_isExpandingOrCollapsing,  Is dragging? $isDragging, collapsed mode: ${_controller.collapsedMode}");
+
     // Max height depends on whether we're collapsed or expanded.
     final bottomSheetConstraints = constraints.copyWith(
       minHeight: minimizedHeight,
       maxHeight: _bottomSheetMaximumHeight,
     );
 
-    if (_isExpandingOrCollapsing) {
+    if (_isExpandingOrCollapsing && !_waitingToAnimateAfterDrag) {
+      print(" - Sizing bottom sheet for expansion/collapse");
       messagePageLayoutLog.info('>>>>>>>> Expanding or collapsing animation');
       // We may have started animating with the keyboard up and since then it
       // has closed, or vis-a-versa. Check for any changes in our destination
@@ -1089,6 +1148,7 @@ class RenderMessagePageScaffold extends RenderBox {
         // A simulation is running. It's destination height no longer matches
         // the destination height that we want. Update the simulation with newly
         // computed metrics.
+        print("Updating height simulation from performLayout() - animated velocity: $_animatedVelocity");
         _updateBottomSheetHeightSimulation(velocity: _animatedVelocity);
       }
 
@@ -1105,7 +1165,8 @@ class RenderMessagePageScaffold extends RenderBox {
         ),
         parentUsesSize: true,
       );
-    } else if (isDragging) {
+    } else if (isDragging && !_waitingToAnimateAfterDrag) {
+      print(" - Sizing bottom sheet for user dragging");
       messagePageLayoutLog.info('>>>>>>>> User dragging');
       messagePageLayoutLog.info(
         ' - drag height: $_desiredDragHeight, minimized height: $minimizedHeight',
@@ -1125,6 +1186,7 @@ class RenderMessagePageScaffold extends RenderBox {
         parentUsesSize: true,
       );
     } else if (_controller.desiredSheetMode == MessagePageSheetMode.expanded) {
+      print(" - Sizing as stationary expanded");
       messagePageLayoutLog.info('>>>>>>>> Stationary expanded');
       messagePageLayoutLog.info(
         'Running layout and forcing editor height to the max: $_expandedHeight',
@@ -1139,6 +1201,7 @@ class RenderMessagePageScaffold extends RenderBox {
         parentUsesSize: true,
       );
     } else {
+      print(" - Sizing as minimized");
       messagePageLayoutLog.info('>>>>>>>> Minimized');
       messagePageLayoutLog.info('Running standard editor layout with constraints: $bottomSheetConstraints');
       _bottomSheet!.layout(
@@ -1153,6 +1216,7 @@ class RenderMessagePageScaffold extends RenderBox {
     (_bottomSheet!.parentData! as BoxParentData).offset = Offset(0, size.height - _bottomSheet!.size.height);
     _bottomSheetNeedsLayout = false;
     messagePageLayoutLog.info('Bottom sheet height: ${_bottomSheet!.size.height}');
+    print(' - Bottom sheet height: ${_bottomSheet!.size.height}');
 
     // Now that we know the size of the message editor, build the content based
     // on the bottom spacing needed to push above the editor.
