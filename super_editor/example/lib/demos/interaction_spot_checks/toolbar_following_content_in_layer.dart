@@ -46,7 +46,7 @@ class _ToolbarFollowingContentInLayerState extends State<ToolbarFollowingContent
           child: CustomScrollView(
             shrinkWrap: true,
             slivers: [
-              ContentLayers(
+              SliverContentLayers(
                 overlays: [
                   (_) => LeaderLayoutLayer(
                         leaderLink: _leaderLink,

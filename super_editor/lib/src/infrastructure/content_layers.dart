@@ -1,11 +1,9 @@
 import 'dart:collection';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/widgets.dart';
-import 'package:logging/logging.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
-import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 
 /// Widget that displays [content] above a number of [underlays], and beneath a number of
 /// [overlays].
@@ -25,7 +23,11 @@ import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 /// The layers are built after [content] is laid out, so that the layers can inspect the
 /// [content] layout during the layers' build phase. This makes it easy, for example, to
 /// position a caret on top of a document, using only the widget tree.
-class ContentLayers extends RenderObjectWidget {
+///
+/// Some of the implementation details differ between `RenderBox` and `RenderSliver` use-cases,
+/// therefore this class is abstract. Use either the box or sliver version of this widget
+/// depending on your use-case.
+abstract class ContentLayers extends RenderObjectWidget {
   const ContentLayers({
     super.key,
     this.underlays = const [],
@@ -65,9 +67,7 @@ class ContentLayers extends RenderObjectWidget {
   }
 
   @override
-  RenderContentLayers createRenderObject(BuildContext context) {
-    return RenderContentLayers(context as ContentLayersElement);
-  }
+  RenderObject createRenderObject(BuildContext context);
 }
 
 /// `Element` for a [ContentLayers] widget.
@@ -112,8 +112,8 @@ class ContentLayersElement extends RenderObjectElement {
   List<Element> _overlays = <Element>[];
 
   // We need to track the children for which framework has called `forgetChild`,
-  // these need to be excluded from the visitChildren method until next update().
-  // ForgetChild is called for elements that will be reparented to avoid unmounting
+  // these need to be excluded from the `visitChildren` method until next `update()`.
+  // `forgetChild` is called for elements that will be re-parented to avoid unmounting
   // and remounting them.
   final Set<Element> _forgottenChildren = HashSet<Element>();
 
@@ -136,7 +136,7 @@ class ContentLayersElement extends RenderObjectElement {
       _onBuildListeners.add(_onBuildScheduled);
     }
 
-    _content = inflateWidget(widget.content(_onContentBuildScheduled), _contentSlot);
+    _content = inflateWidget(widget.content(_onContentBuildScheduled), contentSlot);
   }
 
   @override
@@ -278,9 +278,9 @@ class ContentLayersElement extends RenderObjectElement {
     for (int i = 0; i < underlays.length; i += 1) {
       late final Element child;
       if (i > _underlays.length - 1) {
-        child = inflateWidget(widget.underlays[i](this), _UnderlaySlot(i));
+        child = inflateWidget(widget.underlays[i](this), UnderlaySlot(i));
       } else {
-        child = super.updateChild(_underlays[i], widget.underlays[i](this), _UnderlaySlot(i))!;
+        child = super.updateChild(_underlays[i], widget.underlays[i](this), UnderlaySlot(i))!;
       }
       underlays[i] = child;
     }
@@ -290,9 +290,9 @@ class ContentLayersElement extends RenderObjectElement {
     for (int i = 0; i < overlays.length; i += 1) {
       late final Element child;
       if (i > _overlays.length - 1) {
-        child = inflateWidget(widget.overlays[i](this), _OverlaySlot(i));
+        child = inflateWidget(widget.overlays[i](this), OverlaySlot(i));
       } else {
-        child = super.updateChild(_overlays[i], widget.overlays[i](this), _OverlaySlot(i))!;
+        child = super.updateChild(_overlays[i], widget.overlays[i](this), OverlaySlot(i))!;
       }
       overlays[i] = child;
     }
@@ -342,7 +342,7 @@ class ContentLayersElement extends RenderObjectElement {
     assert(widget == newWidget);
     assert(!debugChildrenHaveDuplicateKeys(widget, [newContent]));
 
-    _content = updateChild(_content, newContent, _contentSlot);
+    _content = updateChild(_content, newContent, contentSlot);
 
     if (!renderObject.contentNeedsLayout) {
       // Layout has already run. No layout bounds changed. There might be a
@@ -362,7 +362,7 @@ class ContentLayersElement extends RenderObjectElement {
 
   @override
   Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
-    if (newSlot != _contentSlot) {
+    if (newSlot != contentSlot) {
       // Never update underlays or overlays because they MUST only build during
       // layout.
       return null;
@@ -374,7 +374,7 @@ class ContentLayersElement extends RenderObjectElement {
   @override
   void insertRenderObjectChild(RenderObject child, Object? slot) {
     assert(slot != null);
-    assert(_isContentLayersSlot(slot!), "Invalid ContentLayers slot: $slot");
+    assert(isContentLayersSlot(slot!), "Invalid ContentLayers slot: $slot");
 
     renderObject.insertChild(child, slot!);
   }
@@ -384,11 +384,11 @@ class ContentLayersElement extends RenderObjectElement {
     assert(child.parent == renderObject);
     assert(oldSlot != null);
     assert(newSlot != null);
-    assert(_isContentLayersSlot(oldSlot!), "Invalid ContentLayers slot: $oldSlot");
-    assert(_isContentLayersSlot(newSlot!), "Invalid ContentLayers slot: $newSlot");
+    assert(isContentLayersSlot(oldSlot!), "Invalid ContentLayers slot: $oldSlot");
+    assert(isContentLayersSlot(newSlot!), "Invalid ContentLayers slot: $newSlot");
 
     // Can't move renderBox children to and from content slot (which is a sliver)
-    if (oldSlot == _contentSlot || newSlot == _contentSlot) {
+    if (oldSlot == contentSlot || newSlot == contentSlot) {
       assert(false);
     } else {
       renderObject.moveChildLayer(child as RenderBox, oldSlot!, newSlot!);
@@ -399,7 +399,7 @@ class ContentLayersElement extends RenderObjectElement {
   void removeRenderObjectChild(RenderObject child, Object? slot) {
     assert(child.parent == renderObject);
     assert(slot != null);
-    assert(_isContentLayersSlot(slot!), "Invalid ContentLayers slot: $slot");
+    assert(isContentLayersSlot(slot!), "Invalid ContentLayers slot: $slot");
 
     renderObject.removeChild(child, slot!);
   }
@@ -464,333 +464,37 @@ class ContentLayersElement extends RenderObjectElement {
   }
 }
 
-/// `RenderObject` for a [ContentLayers] widget.
-///
-/// Must be associated with an `Element` of type [ContentLayersElement].
-class RenderContentLayers extends RenderSliver with RenderSliverHelpers {
-  RenderContentLayers(this._element);
-
-  @override
-  void dispose() {
-    _element = null;
-    super.dispose();
-  }
-
-  ContentLayersElement? _element;
-
-  final _underlays = <RenderBox>[];
-  RenderSliver? _content;
-  final _overlays = <RenderBox>[];
-
+abstract class RenderContentLayers implements RenderObject {
   /// Whether this render object's layout information or its content
   /// layout information is dirty.
   ///
   /// This is set to `true` when `markNeedsLayout` is called and it's
   /// set to `false` after laying out the content.
-  bool get contentNeedsLayout => _contentNeedsLayout;
-  bool _contentNeedsLayout = true;
+  bool get contentNeedsLayout;
 
-  /// Whether we are at the middle of a [performLayout] call.
-  bool _runningLayout = false;
+  void insertChild(covariant RenderObject child, Object slot);
 
-  @override
-  void attach(PipelineOwner owner) {
-    contentLayersLog.info("Attaching RenderContentLayers to owner: $owner");
-    super.attach(owner);
+  void moveChildLayer(covariant RenderObject child, Object oldSlot, Object newSlot);
 
-    visitChildren((child) {
-      child.attach(owner);
-    });
-  }
-
-  @override
-  void detach() {
-    contentLayersLog.info("detach()'ing RenderContentLayers from pipeline");
-    // IMPORTANT: we must detach ourselves before detaching our children.
-    // This is a Flutter framework requirement.
-    super.detach();
-
-    // Detach our children.
-    visitChildren((child) {
-      child.detach();
-    });
-  }
-
-  @override
-  void markNeedsLayout() {
-    super.markNeedsLayout();
-
-    if (_runningLayout) {
-      // We are already in a layout phase.
-      // When we call ContentLayerElement.buildLayers, markNeedsLayout is called again.
-      // We don't to mark the content as dirty, because otherwise the layers will never build.
-      return;
-    }
-    _contentNeedsLayout = true;
-  }
-
-  @override
-  List<DiagnosticsNode> debugDescribeChildren() {
-    final childDiagnostics = <DiagnosticsNode>[];
-
-    if (_content != null) {
-      childDiagnostics.add(_content!.toDiagnosticsNode(name: "content"));
-    }
-
-    for (int i = 0; i < _underlays.length; i += 1) {
-      childDiagnostics.add(_underlays[i].toDiagnosticsNode(name: "underlay-$i"));
-    }
-    for (int i = 0; i < _overlays.length; i += 1) {
-      childDiagnostics.add(_overlays[i].toDiagnosticsNode(name: "overlay-#$i"));
-    }
-
-    return childDiagnostics;
-  }
-
-  void insertChild(RenderObject child, Object slot) {
-    assert(_isContentLayersSlot(slot));
-
-    if (slot == _contentSlot) {
-      _content = child as RenderSliver;
-    } else if (slot is _UnderlaySlot) {
-      _underlays.insert(slot.index, child as RenderBox);
-    } else if (slot is _OverlaySlot) {
-      _overlays.insert(slot.index, child as RenderBox);
-    }
-
-    adoptChild(child);
-  }
-
-  void moveChildLayer(RenderBox child, Object oldSlot, Object newSlot) {
-    assert(oldSlot is _UnderlaySlot || oldSlot is _OverlaySlot);
-    assert(newSlot is _UnderlaySlot || newSlot is _OverlaySlot);
-
-    if (oldSlot is _UnderlaySlot) {
-      assert(_underlays.contains(child));
-      _underlays.remove(child);
-    } else if (oldSlot is _OverlaySlot) {
-      assert(_overlays.contains(child));
-      _overlays.remove(child);
-    }
-
-    if (newSlot is _UnderlaySlot) {
-      _underlays.insert(newSlot.index, child);
-    } else if (newSlot is _OverlaySlot) {
-      _overlays.insert(newSlot.index, child);
-    }
-  }
-
-  void removeChild(RenderObject child, Object slot) {
-    assert(_isContentLayersSlot(slot));
-
-    if (slot == _contentSlot) {
-      _content = null;
-    } else if (slot is _UnderlaySlot) {
-      _underlays.remove(child);
-    } else if (slot is _OverlaySlot) {
-      _overlays.remove(child);
-    }
-
-    dropChild(child);
-  }
-
-  @override
-  void visitChildren(RenderObjectVisitor visitor) {
-    if (_content != null) {
-      visitor(_content!);
-    }
-
-    for (final RenderBox child in _underlays) {
-      visitor(child);
-    }
-
-    for (final RenderBox child in _overlays) {
-      visitor(child);
-    }
-  }
-
-  @override
-  void performLayout() {
-    contentLayersLog.info("Laying out ContentLayers");
-    if (_content == null) {
-      geometry = SliverGeometry.zero;
-      _contentNeedsLayout = false;
-      return;
-    }
-
-    _runningLayout = true;
-
-    // Always layout the content first, so that layers can inspect the content layout.
-    contentLayersLog.fine("Laying out content - $_content");
-    (_content!.parentData! as SliverLogicalParentData).layoutOffset = 0.0;
-    _content!.layout(constraints, parentUsesSize: true);
-    contentLayersLog.fine("Content after layout: $_content");
-
-    // The size of the layers, and the our size, is exactly the same as the content.
-    final SliverGeometry sliverLayoutGeometry = _content!.geometry!;
-    if (sliverLayoutGeometry.scrollOffsetCorrection != null) {
-      geometry = SliverGeometry(
-        scrollOffsetCorrection: sliverLayoutGeometry.scrollOffsetCorrection,
-      );
-      return;
-    }
-    geometry = SliverGeometry(
-      scrollExtent: sliverLayoutGeometry.scrollExtent,
-      paintExtent: sliverLayoutGeometry.paintExtent,
-      maxPaintExtent: sliverLayoutGeometry.maxPaintExtent,
-      maxScrollObstructionExtent: sliverLayoutGeometry.maxScrollObstructionExtent,
-      cacheExtent: sliverLayoutGeometry.cacheExtent,
-      hasVisualOverflow: sliverLayoutGeometry.hasVisualOverflow,
-    );
-
-    _contentNeedsLayout = false;
-
-    // Build the underlay and overlays during the layout phase so that they can inspect an
-    // up-to-date content layout.
-    //
-    // This behavior is what allows us to avoid layers that are always one frame behind the
-    // content changes.
-    contentLayersLog.fine("Building layers");
-    invokeLayoutCallback((constraints) {
-      // Usually, widgets are built during the build phase, but we're building the layers
-      // during layout phase, so we need to explicitly tell Flutter to build all elements.
-      _element!.owner!.buildScope(_element!, () {
-        _element!.buildLayers();
-      });
-    });
-    contentLayersLog.finer("Done building layers");
-
-    contentLayersLog.fine("Laying out layers (${_underlays.length} underlays, ${_overlays.length} overlays)");
-    // Layout the layers below and above the content.
-    final layerConstraints = ScrollingBoxConstraints(
-      minWidth: constraints.crossAxisExtent,
-      maxWidth: constraints.crossAxisExtent,
-      minHeight: sliverLayoutGeometry.scrollExtent,
-      maxHeight: sliverLayoutGeometry.scrollExtent,
-      scrollOffset: constraints.scrollOffset,
-    );
-
-    for (final underlay in _underlays) {
-      final childParentData = underlay.parentData! as SliverLogicalParentData;
-      childParentData.layoutOffset = -constraints.scrollOffset;
-      contentLayersLog.fine("Laying out underlay: $underlay");
-      underlay.layout(layerConstraints);
-    }
-    for (final overlay in _overlays) {
-      final childParentData = overlay.parentData! as SliverLogicalParentData;
-      childParentData.layoutOffset = -constraints.scrollOffset;
-      contentLayersLog.fine("Laying out overlay: $overlay");
-      overlay.layout(layerConstraints);
-    }
-
-    _runningLayout = false;
-    contentLayersLog.finer("Done laying out layers");
-  }
-
-  @override
-  bool hitTestChildren(
-    SliverHitTestResult result, {
-    required double mainAxisPosition,
-    required double crossAxisPosition,
-  }) {
-    if (_content == null) {
-      return false;
-    }
-
-    // Run hit tests in reverse-paint order.
-    bool didHit = false;
-
-    final boxResult = BoxHitTestResult.wrap(result);
-
-    // First, hit-test overlays.
-    for (final overlay in _overlays) {
-      didHit =
-          hitTestBoxChild(boxResult, overlay, mainAxisPosition: mainAxisPosition, crossAxisPosition: crossAxisPosition);
-      if (didHit) {
-        return true;
-      }
-    }
-
-    // Second, hit-test the content.
-    didHit = _content!.hitTest(result, mainAxisPosition: mainAxisPosition, crossAxisPosition: crossAxisPosition);
-    if (didHit) {
-      return true;
-    }
-
-    // Third, hit-test the underlays.
-    for (final underlay in _underlays) {
-      didHit = hitTestBoxChild(boxResult, underlay,
-          mainAxisPosition: mainAxisPosition, crossAxisPosition: crossAxisPosition);
-      if (didHit) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    if (_content == null) {
-      return;
-    }
-
-    void paintChild(RenderObject child) {
-      final childParentData = child.parentData! as SliverLogicalParentData;
-      context.paintChild(
-        child,
-        offset + Offset(0, childParentData.layoutOffset!),
-      );
-    }
-
-    // First, paint the underlays.
-    for (final underlay in _underlays) {
-      paintChild(underlay);
-    }
-
-    // Second, paint the content.
-    paintChild(_content!);
-
-    // Third, paint the overlays.
-    for (final overlay in _overlays) {
-      paintChild(overlay);
-    }
-  }
-
-  @override
-  void applyPaintTransform(covariant RenderObject child, Matrix4 transform) {
-    final childParentData = child.parentData! as SliverLogicalParentData;
-    transform.translate(0.0, childParentData.layoutOffset!);
-  }
-
-  @override
-  double childMainAxisPosition(covariant RenderObject child) {
-    final childParentData = child.parentData! as SliverLogicalParentData;
-    return childParentData.layoutOffset!;
-  }
-
-  @override
-  void setupParentData(covariant RenderObject child) {
-    child.parentData = _ChildParentData();
-  }
+  void removeChild(covariant RenderObject child, Object slot);
 }
 
-bool _isContentLayersSlot(Object slot) => slot == _contentSlot || slot is _UnderlaySlot || slot is _OverlaySlot;
+bool isContentLayersSlot(Object slot) => slot == contentSlot || slot is UnderlaySlot || slot is OverlaySlot;
 
-const _contentSlot = "content";
+const contentSlot = "content";
 
-class _UnderlaySlot extends _IndexedSlot {
-  const _UnderlaySlot(int index) : super(index);
+class UnderlaySlot extends _IndexedSlot {
+  const UnderlaySlot(int index) : super(index);
 
   @override
-  String toString() => "[$_UnderlaySlot] - underlay index: $index";
+  String toString() => "[$UnderlaySlot] - underlay index: $index";
 }
 
-class _OverlaySlot extends _IndexedSlot {
-  const _OverlaySlot(int index) : super(index);
+class OverlaySlot extends _IndexedSlot {
+  const OverlaySlot(int index) : super(index);
 
   @override
-  String toString() => "[$_OverlaySlot] - overlay index: $index";
+  String toString() => "[$OverlaySlot] - overlay index: $index";
 }
 
 class _IndexedSlot {
@@ -1023,5 +727,3 @@ abstract class ContentLayerState<WidgetType extends ContentLayerStatefulWidget, 
   @protected
   Widget doBuild(BuildContext context, LayoutDataType? layoutData);
 }
-
-class _ChildParentData extends SliverLogicalParentData with ContainerParentDataMixin<RenderObject> {}

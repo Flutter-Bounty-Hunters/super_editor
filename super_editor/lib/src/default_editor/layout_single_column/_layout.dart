@@ -30,6 +30,7 @@ class SingleColumnDocumentLayout extends StatefulWidget {
     required this.presenter,
     required this.componentBuilders,
     this.onBuildScheduled,
+    this.wrapWithSliverAdapter = true,
     this.showDebugPaint = false,
   }) : super(key: key);
 
@@ -54,6 +55,10 @@ class SingleColumnDocumentLayout extends StatefulWidget {
   /// TODO: Get rid of this as soon as Flutter makes it possible to monitor
   ///       dirty subtrees.
   final VoidCallback? onBuildScheduled;
+
+  /// Whether to wrap this layout with a [SliverToBoxAdapter] so that this layout
+  /// can be displayed within a `Sliver`.
+  final bool wrapWithSliverAdapter;
 
   /// Adds a debugging UI to the document layout, when true.
   final bool showDebugPaint;
@@ -710,17 +715,21 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   @override
   Widget build(BuildContext context) {
     editorLayoutLog.fine("Building document layout");
-    final result = SliverToBoxAdapter(
-      child: Padding(
-        key: _boxKey,
-        padding: widget.presenter.viewModel.padding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: _buildDocComponents(),
-        ),
+    Widget result = Padding(
+      key: _boxKey,
+      padding: widget.presenter.viewModel.padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: _buildDocComponents(),
       ),
     );
+
+    if (widget.wrapWithSliverAdapter) {
+      result = SliverToBoxAdapter(
+        child: result,
+      );
+    }
 
     editorLayoutLog.fine("Done building document");
     return result;
