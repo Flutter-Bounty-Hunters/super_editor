@@ -406,7 +406,3 @@ extension DocumentPositionCompositeEx on DocumentPosition {
     return (id, currentNodePosition);
   }
 }
-
-abstract class CompositeComponent {
-  DocumentComponent? getChildComponentById(String childId);
-}

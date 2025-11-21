@@ -43,6 +43,7 @@ export 'src/default_editor/horizontal_rule.dart';
 export 'src/default_editor/image.dart';
 export 'src/default_editor/layout_single_column/column_component.dart';
 export 'src/default_editor/layout_single_column/composite_nodes.dart';
+export 'src/default_editor/layout_single_column/composite_component.dart';
 export 'src/default_editor/layout_single_column/layout_single_column.dart';
 export 'src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
 export 'src/default_editor/layout_single_column/super_editor_dry_layout.dart';

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_component.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
@@ -418,15 +419,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       if (componentOverlap != null) {
         editorLayoutLog.fine(' - drag intersects: $componentKey}');
         editorLayoutLog.fine(' - intersection: $componentOverlap');
-        final componentBaseOffset = _componentOffset(
-          componentKey.currentContext!.findRenderObject() as RenderBox,
-          baseOffset,
-        );
+        final componentRenderBox = componentKey.currentContext!.findRenderObject() as RenderBox;
+        final componentSize = componentRenderBox.size;
+        final componentBaseOffset = _componentOffset(componentRenderBox, baseOffset);
         editorLayoutLog.fine(' - base component offset: $componentBaseOffset');
-        final componentExtentOffset = _componentOffset(
-          componentKey.currentContext!.findRenderObject() as RenderBox,
-          extentOffset,
-        );
+        final componentExtentOffset = _componentOffset(componentRenderBox, extentOffset);
         editorLayoutLog.fine(' - extent component offset: $componentExtentOffset');
 
         if (topNodeId == null) {
@@ -434,16 +431,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
           // first intersecting component that we find must be the top node of
           // the selected area.
           topNodeId = _componentKeysToNodeIds[componentKey];
-          topNodeBasePosition = _getNodePositionForComponentOffset(component, componentBaseOffset);
-          topNodeExtentPosition = _getNodePositionForComponentOffset(component, componentExtentOffset);
+          topNodeBasePosition = _getNodePositionForComponentOffset(component, componentSize, componentBaseOffset);
+          topNodeExtentPosition = _getNodePositionForComponentOffset(component, componentSize, componentExtentOffset);
         }
         // We continuously update the bottom node with every additional
         // intersection that we find. This way, when the iteration ends,
         // the last bottom node that we assigned must be the actual bottom
         // node within the selected area.
         bottomNodeId = _componentKeysToNodeIds[componentKey];
-        bottomNodeBasePosition = _getNodePositionForComponentOffset(component, componentBaseOffset);
-        bottomNodeExtentPosition = _getNodePositionForComponentOffset(component, componentExtentOffset);
+        bottomNodeBasePosition = _getNodePositionForComponentOffset(component, componentSize, componentBaseOffset);
+        bottomNodeExtentPosition = _getNodePositionForComponentOffset(component, componentSize, componentExtentOffset);
       } else if (topNodeId != null) {
         // We already found an overlapping component and the current component doesn't
         // overlap with the region.
@@ -518,11 +515,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   /// If the [componentOffset] is above the component, then the component's
   /// "beginning" position is returned. If the [componentOffset] is below
   /// the component, then the component's "end" position is returned.
-  NodePosition? _getNodePositionForComponentOffset(DocumentComponent component, Offset componentOffset) {
+  NodePosition? _getNodePositionForComponentOffset(
+      DocumentComponent component, Size componentSize, Offset componentOffset) {
     if (componentOffset.dy < 0) {
       return component.getBeginningPosition();
     }
-    if (componentOffset.dy > component.getRectForPosition(component.getEndPosition()).bottom) {
+
+    // In CompositeComponent we can't be sure that all content placed vertically one by one
+    // so let's leave to DocumentComponent implementation the layout-based decision
+    // on getEndPosition call within component bounds
+    if (componentOffset.dy > componentSize.height) {
       return component.getEndPosition();
     }
 
@@ -671,7 +673,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         editorLayoutLog.info('WARNING: found component but it\'s not a CompositeComponent: $childId, state: $state');
         return null;
       }
-      state = (state as CompositeComponent).getChildComponentById(childId);
+      state = state.getChildComponentById(childId);
     }
     if (state is! DocumentComponent) {
       editorLayoutLog

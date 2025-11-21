@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_component.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 
 import 'document.dart';
@@ -323,7 +324,7 @@ mixin DocumentComponent<T extends StatefulWidget> on State<T> {
 /// to the component that's being wrapped. The only thing that the implementer needs
 /// to provide is [childDocumentComponentKey], which is a `GlobalKey` that provides
 /// access to the child [DocumentComponent].
-mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T>, CompositeComponent {
+mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T>, CompositeComponent<T> {
   @protected
   GlobalKey get childDocumentComponentKey;
 
@@ -458,12 +459,77 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
   }
 
   @override
-  DocumentComponent? getChildComponentById(String childId) {
+  CompositeComponentChild? getChildByNodeId(String childId) {
     if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getChildComponentById(childId);
+      return (_childDocumentComponent as CompositeComponent).getChildByNodeId(childId);
     }
     throw Exception(
-      'Unable to find child component of ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+      'Invalid getChildByNodeId call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  DocumentComponent<StatefulWidget>? getChildComponentById(String childId) {
+    return getChildByNodeId(childId)?.component;
+  }
+
+  @override
+  List<CompositeComponentChild> getChildren() {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildren();
+    }
+    throw Exception(
+      'Invalid getChildren call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild? getChildAboveChild(String nodeId) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildAboveChild(nodeId);
+    }
+    throw Exception(
+      'Invalid getChildAboveChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild? getChildBelowChild(String nodeId) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildByNodeId(nodeId);
+    }
+    throw Exception(
+      'Invalid getChildBelowChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild? getChildLeftToChild(String nodeId) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildLeftToChild(nodeId);
+    }
+    throw Exception(
+      'Invalid getChildLeftToChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild? getChildRightToChild(String nodeId) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildRightToChild(nodeId);
+    }
+    throw Exception(
+      'Invalid getChildRightToChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild getChildForOffset(Offset componentOffset) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildForOffset(componentOffset);
+    }
+    throw Exception(
+      'Invalid getChildForOffset call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
     );
   }
 }
