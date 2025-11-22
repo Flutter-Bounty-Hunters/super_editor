@@ -433,7 +433,10 @@ class _ChatEditorState extends State<_ChatEditor> {
               shrinkWrap: false,
               stylesheet: _chatStylesheet,
               componentBuilders: [
-                const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+                HintComponentBuilder.basic(
+                  "Send a message...",
+                  hintStyleBuilder: _hintTextStyleBuilder,
+                ),
                 ...defaultComponentBuilders,
               ],
             ),
@@ -529,7 +532,7 @@ final _chatStylesheet = Stylesheet(
   inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
 );
 
-TextStyle _hintTextStyleBuilder(context) => TextStyle(
+TextStyle _hintTextStyleBuilder(BuildContext context, Set<Attribution> attributions) => TextStyle(
       color: Colors.grey,
     );
 
