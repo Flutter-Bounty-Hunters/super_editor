@@ -166,8 +166,10 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
     }
     // Apply selection to all children nodes recursively
     if (viewModel is CompositeNodeViewModel) {
-      for (final child in viewModel.children) {
-        _applySelection(child);
+      if (viewModel.shouldApplySelectionToChildren()) {
+        for (final child in viewModel.children) {
+          _applySelection(child);
+        }
       }
     }
 
@@ -183,6 +185,14 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
   }) {
     if (documentSelection == null) {
       return null;
+    }
+
+    if (node is CompositeNode) {
+      return _computeCompositeNodeSelection(
+        documentSelection: documentSelection,
+        selectedNodes: selectedNodes,
+        node: node,
+      );
     }
 
     editorStyleLog.finer('_computeNodeSelection(): ${node.id}');
@@ -281,6 +291,91 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
         );
       }
     }
+  }
+
+  DocumentNodeSelection? _computeCompositeNodeSelection({
+    required DocumentSelection documentSelection,
+    required List<DocumentNode> selectedNodes,
+    required CompositeNode node,
+  }) {
+    final basePath = _document.getNodePathById(documentSelection.base.nodeId)!;
+    final extentPath = _document.getNodePathById(documentSelection.extent.nodeId)!;
+    if (basePath.contains(node.id) && extentPath.contains(node.id)) {
+      // If the selection is fully within this CompositeNode
+      final compositeBasePosition = _makeCompositeNodeChildPosition(
+        node.id,
+        basePath,
+        documentSelection.base.nodePosition,
+      );
+      final compositeExtentPosition = _makeCompositeNodeChildPosition(
+        node.id,
+        extentPath,
+        documentSelection.extent.nodePosition,
+      );
+      final nodeSelection = node.computeSelection(base: compositeBasePosition, extent: compositeExtentPosition);
+
+      return DocumentNodeSelection(
+        nodeId: node.id,
+        nodeSelection: nodeSelection,
+        isBase: true,
+        isExtent: true,
+      );
+    } else {
+      final selectedNodePaths = selectedNodes.map((node) => _document.getNodePathById(node.id)!).toList();
+      if (selectedNodePaths.every((path) => !path.contains(node.id))) {
+        // No leaf of this CompositeNode is selected
+        return null;
+      }
+      bool isBase = false, isExtent = false;
+      NodePosition basePosition;
+      NodePosition extentPosition;
+
+      final affinity = _document.getAffinityBetweenPaths(basePath, extentPath);
+      final isDownstream = affinity == TextAffinity.downstream;
+
+      if (basePath.contains(node.id)) {
+        // Selection starts inside CompositeNode, but ends outside
+        basePosition = _makeCompositeNodeChildPosition(
+          node.id,
+          basePath,
+          documentSelection.base.nodePosition,
+        );
+        extentPosition = isDownstream ? node.endPosition : node.beginningPosition;
+        isBase = true;
+      } else if (extentPath.contains(node.id)) {
+        // Selection starts outside CompositeNode, but ends inside
+        basePosition = isDownstream ? node.beginningPosition : node.endPosition;
+        extentPosition = _makeCompositeNodeChildPosition(
+          node.id,
+          extentPath,
+          documentSelection.extent.nodePosition,
+        );
+        isExtent = true;
+      } else {
+        // Whole CompositeNode is inside selection
+        basePosition = isDownstream ? node.beginningPosition : node.endPosition;
+        extentPosition = isDownstream ? node.endPosition : node.beginningPosition;
+      }
+
+      final nodeSelection = node.computeSelection(base: basePosition, extent: extentPosition);
+      return DocumentNodeSelection(
+        nodeId: node.id,
+        nodeSelection: nodeSelection,
+        isBase: isBase,
+        isExtent: isExtent,
+      );
+    }
+  }
+
+  CompositeNodePosition _makeCompositeNodeChildPosition(String parentId, NodePath path, NodePosition position) {
+    assert(path.nodeId != parentId, 'Path should be to child node, not parent');
+    var result = position;
+    final indexInBasePath = path.indexOfNodeId(parentId);
+    for (var i = path.length - 1; i > indexInBasePath; i -= 1) {
+      result = CompositeNodePosition(path[i], result);
+    }
+    // Due to validation, it had to run at least one iteration above
+    return result as CompositeNodePosition;
   }
 }
 

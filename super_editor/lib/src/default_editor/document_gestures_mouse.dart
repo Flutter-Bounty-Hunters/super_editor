@@ -660,6 +660,16 @@ Updating drag selection:
       return;
     }
 
+    final selectionToAdjust = DocumentSelection(base: basePosition, extent: extentPosition);
+    final adjusted = widget.document.adjustSelectionByCompositeNodes(selectionToAdjust);
+    if (adjusted != selectionToAdjust) {
+      basePosition = adjusted.base;
+      extentPosition = adjusted.extent;
+      // If selection was adjusted by CompositeNodes, means we are selecting by whole nodes (not text within it)
+      // so let's disable selection by words/paragraph
+      selectionType = SelectionType.position;
+    }
+
     if (selectionType == SelectionType.paragraph) {
       final baseParagraphSelection = getParagraphSelection(
         docPosition: basePosition,

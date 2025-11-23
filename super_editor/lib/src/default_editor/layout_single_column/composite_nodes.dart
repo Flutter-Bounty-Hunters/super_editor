@@ -78,6 +78,10 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel {
   bool hasSameChildren(CompositeNodeViewModel other) {
     return listEquals(children, other.children);
   }
+
+  bool shouldApplySelectionToChildren() {
+    return true;
+  }
 }
 
 /// A [DocumentNode] that contains other [DocumentNode]s.
@@ -330,6 +334,24 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     }
     return true;
   }
+
+  List<String>? getSelectedChildrenBetween(String upstreamChildId, String downstreamChildId) {
+    return null;
+  }
+
+  CompositeNodePosition? adjustUpstreamPosition({
+    required CompositeNodePosition upstreamPosition,
+    CompositeNodePosition? downstreamPosition,
+  }) {
+    return null;
+  }
+
+  CompositeNodePosition? adjustDownstreamPosition({
+    required CompositeNodePosition downstreamPosition,
+    CompositeNodePosition? upstreamPosition,
+  }) {
+    return null;
+  }
 }
 
 class CompositeNodeSelection implements NodeSelection {
@@ -375,16 +397,6 @@ class CompositeNodePosition implements NodePosition {
 
   @override
   int get hashCode => childNodeId.hashCode ^ childNodePosition.hashCode;
-}
-
-extension DocumentSelectionCompositeEx on DocumentSelection {
-  /// Unwrap selection within CompositeNode into leaf node selection
-  DocumentSelection toLeafSelection() {
-    return DocumentSelection(
-      base: base.toLeafPosition(),
-      extent: extent.toLeafPosition(),
-    );
-  }
 }
 
 extension DocumentPositionCompositeEx on DocumentPosition {

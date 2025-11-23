@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:attributed_text/attributed_text.dart';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
@@ -1307,36 +1308,91 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   @override
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2) {
-    final path1 = _nodePathById[position1.nodeId]!;
-    final path2 = _nodePathById[position2.nodeId]!;
+    return getNodesInsideById(position1.nodeId, position2.nodeId);
+  }
+
+  @override
+  List<DocumentNode> getNodesInsideById(String nodeId1, String nodeId2) {
+    final path1 = _nodePathById[nodeId1]!;
+    final path2 = _nodePathById[nodeId2]!;
 
     final affinity = getAffinityBetweenPaths(path1, path2);
-    final abovePath = affinity == TextAffinity.downstream ? path1 : path2;
-    final belowPath = affinity == TextAffinity.downstream ? path2 : path1;
+    var upstreamPath = affinity == TextAffinity.downstream ? path1 : path2;
+    var downstreamPath = affinity == TextAffinity.downstream ? path2 : path1;
+
+    final selectionPerNodeId = <String, List<String>>{};
+
+    // TODO: Implement this even when nodeId1 and nodeId2 does not have same parent,
+    // but are inside CompositeNode
+
+    // If nodes have common parent - check selection within parents to identify
+    // which nodes we should iterate through
+    for (var i = 1; i < min(upstreamPath.length, downstreamPath.length); i += 1) {
+      final abovePathParent = getNodeById(upstreamPath[i - 1]) as CompositeNode;
+      final belowPathParent = getNodeById(downstreamPath[i - 1]) as CompositeNode;
+      if (abovePathParent.id == belowPathParent.id) {
+        final selection = abovePathParent.getSelectedChildrenBetween(upstreamPath[i], downstreamPath[i]);
+        if (selection != null) {
+          if (selection.first != upstreamPath[i]) {
+            throw Exception(
+              'Invalid getSelectedChildrenBetween implementation in ${abovePathParent.runtimeType}. First child must be "${upstreamPath[i]}" but ${selection.first} returned',
+            );
+          }
+          if (selection.last != downstreamPath[i]) {
+            throw Exception(
+              'Invalid getSelectedChildrenBetween implementation in ${abovePathParent.runtimeType}. Last child must be "${downstreamPath[i]}" but ${selection.last} returned',
+            );
+          }
+          selectionPerNodeId[abovePathParent.id] = selection;
+        }
+      }
+    }
+
+    // Extend selection to include all children of parents with custom selection
+    final sincePath = upstreamPath; //_pathMyMovingInParent(upstreamPath, selectionPerNodeId.keys, moveBackward: true);
+    final untilPath = downstreamPath; //_pathMyMovingInParent(downstreamPath, selectionPerNodeId.keys);
 
     final result = <DocumentNode>[];
 
     var success = false;
 
-    final node1 = getNodeAtPath(abovePath);
+    final node1 = getNodeAtPath(upstreamPath);
     if (node1 == null) {
-      throw Exception('No such position in document: $abovePath');
+      throw Exception('No such position in document: $upstreamPath');
     }
     result.add(node1);
-    if (abovePath == belowPath) {
+    if (upstreamPath == downstreamPath) {
       return result;
     }
 
-    for (final node in getLeafNodes(since: abovePath)) {
-      result.add(node.$2);
-      if (node.$1 == belowPath) {
+    print('----');
+    print('Custom selection nodes: $selectionPerNodeId');
+
+    for (final (path, node) in getLeafNodes(since: sincePath)) {
+      var shouldSkip = false;
+      for (var i = 1; i < path.length; i += 1) {
+        final selection = selectionPerNodeId[path[i - 1]];
+        if (selection != null && !selection.contains(path[i])) {
+          shouldSkip = true;
+          break;
+        }
+      }
+      if (!shouldSkip) {
+        result.add(node);
+      }
+
+      if (path == untilPath) {
+        // result.add(lastNode!);
+        // print('Add ${path}');
         success = true;
         break;
       }
     }
+
+    // print('Result: ${result.map((n) => n.id)}');
     if (!success) {
       throw Exception(
-          'Unable to find $belowPath below $abovePath. Make sure positions are normalized and nodes exists');
+          'Unable to find $untilPath below $sincePath. Make sure positions are normalized and nodes exists');
     }
     return result;
   }
@@ -1460,6 +1516,12 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       if (nodeToDelete == null) {
         // children does not exists at given path
         return [];
+      }
+      if (parent.children.length == 1) {
+        // Quick hack to replace with empty paragraph instead of deletion
+        // TODO: Make it based on Node and return events
+        replaceNodeById(nodeToDelete.id, ParagraphNode(id: nodeToDelete.id, text: AttributedText()));
+        return [nodeToDelete];
       }
 
       if (parent.children.length == 1 && deleteEmptyCompositeNode) {
@@ -1751,6 +1813,30 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       throw Exception('Unable to find node by id "$nodeId"');
     }
     return path;
+  }
+
+  /// Looking for first nodeId in [parentsToMove], then move to first or last child recursively
+  NodePath _pathMyMovingInParent(NodePath path, Iterable<String> parentsToMove, {bool moveBackward = false}) {
+    if (parentsToMove.isEmpty) {
+      return path;
+    }
+    final newIds = <String>[];
+    for (final nodeId in path) {
+      if (parentsToMove.contains(nodeId)) {
+        newIds.add(nodeId);
+        var parent = getNodeById(nodeId);
+        while (parent is CompositeNode) {
+          final position = moveBackward ? parent.beginningPosition : parent.endPosition;
+          final childNodeId = (position as CompositeNodePosition).childNodeId;
+          newIds.add(childNodeId);
+          parent = getNodeById(childNodeId);
+        }
+        break;
+      } else {
+        newIds.add(nodeId);
+      }
+    }
+    return NodePath(newIds);
   }
 
   /// Updates all the maps which use the node id as the key.

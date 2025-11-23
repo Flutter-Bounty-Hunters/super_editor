@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:super_editor/super_editor.dart';
@@ -131,11 +133,6 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
 
   @override
   Widget build(BuildContext context) {
-    // print('Leaf nodes:');
-    // for (final (path, node) in _editor.document.getLeafNodes()) {
-    //   print('- ${path}: ${node.runtimeType}');
-    // }
-
     return Scaffold(
       body: SuperEditor(
         editor: _editor,
@@ -178,7 +175,6 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
 }
 
 const demoTableBlockType = NamedAttribution("demoTable");
-const demoTableRowBlockType = NamedAttribution("demoTableRow");
 const demoTableCellBlockType = NamedAttribution("demoTableCell");
 
 class _DemoTableComponentBuilder implements ComponentBuilder {
@@ -213,6 +209,8 @@ class _DemoTableComponentBuilder implements ComponentBuilder {
         key: componentContext.componentKey,
         backgroundColor: componentViewModel.backgroundColor,
         columnsCount: componentViewModel.columnsCount,
+        selection: componentViewModel.selection?.nodeSelection as _MultipleCellsSelection?,
+        selectionColor: componentViewModel.selectionColor,
         children: componentViewModel.children.map((childViewModel) {
           final (componentKey, component) = componentContext.buildChildComponent(childViewModel);
           return CompositeComponentChild(
@@ -240,8 +238,11 @@ class _DemoTableComponentBuilder implements ComponentBuilder {
   }
 }
 
-class _DemoTableViewModel extends CompositeNodeViewModel {
+class _DemoTableViewModel extends CompositeNodeViewModel with SelectionAwareViewModelMixin {
   Color? backgroundColor;
+
+  DocumentNodeSelection? selection;
+  Color selectionColor;
 
   int columnsCount;
 
@@ -249,6 +250,7 @@ class _DemoTableViewModel extends CompositeNodeViewModel {
     required super.nodeId,
     required super.children,
     required this.columnsCount,
+    this.selectionColor = Colors.transparent,
   });
 
   @override
@@ -266,6 +268,7 @@ class _DemoTableViewModel extends CompositeNodeViewModel {
   CompositeNodeViewModel internalCopy(_DemoTableViewModel viewModel) {
     final copy = super.internalCopy(viewModel) as _DemoTableViewModel;
     copy.backgroundColor = backgroundColor;
+    copy.selection = selection;
     return copy;
   }
 
@@ -274,6 +277,36 @@ class _DemoTableViewModel extends CompositeNodeViewModel {
     backgroundColor = styles[Styles.backgroundColor];
     super.applyStyles(styles);
   }
+
+  bool shouldApplySelectionToChildren() {
+    final nodeSelection = selection?.nodeSelection;
+    if (nodeSelection is _MultipleCellsSelection) {
+      return true; //!nodeSelection.filled;
+    }
+    return true;
+  }
+}
+
+class _MultipleCellsSelection extends CompositeNodeSelection {
+  final bool filled;
+  final List<String> selectedCells;
+  _MultipleCellsSelection({
+    required super.base,
+    required super.extent,
+    required this.selectedCells,
+    required this.filled,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _MultipleCellsSelection &&
+          runtimeType == other.runtimeType &&
+          filled == other.filled &&
+          selectedCells == other.selectedCells;
+
+  @override
+  int get hashCode => Object.hash(filled, selectedCells);
 }
 
 class _DemoTableNode extends CompositeNode {
@@ -304,6 +337,78 @@ class _DemoTableNode extends CompositeNode {
   final List<DocumentNode> children;
 
   final int columnCount;
+
+  @override
+  NodeSelection computeSelection({required NodePosition base, required NodePosition extent}) {
+    assert(base is CompositeNodePosition);
+    assert(extent is CompositeNodePosition);
+
+    return _MultipleCellsSelection(
+      base: base as CompositeNodePosition,
+      extent: extent as CompositeNodePosition,
+      selectedCells: _childrenForSquareSelection(
+        base.childNodeId,
+        extent.childNodeId,
+      ),
+      filled: base.childNodeId != extent.childNodeId,
+    );
+  }
+
+  List<String> getSelectedChildrenBetween(String upstreamChildId, String downstreamChildId) {
+    final selectedChildren = _childrenForSquareSelection(upstreamChildId, downstreamChildId);
+
+    // Making sure that upstreamChildId goes first
+    selectedChildren.remove(upstreamChildId);
+    selectedChildren.insert(0, upstreamChildId);
+
+    // Making sure that downstreamChildId goes last
+    selectedChildren.remove(downstreamChildId);
+    selectedChildren.add(downstreamChildId);
+
+    return selectedChildren;
+  }
+
+  CompositeNodePosition? adjustUpstreamPosition({
+    required CompositeNodePosition upstreamPosition,
+    CompositeNodePosition? downstreamPosition,
+  }) {
+    // When both positions within the table, but different cells
+    if (downstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
+      final selection = _childrenForSquareSelection(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
+      final firstChild = getChildByNodeId(selection.first)!;
+      return CompositeNodePosition(firstChild.id, firstChild.beginningPosition);
+    }
+
+    if (downstreamPosition == null) {
+      // When selection starts in the table, but goes outside - start it with beginning of the row
+      final tableIndex = getChildTableIndex(upstreamPosition.childNodeId);
+      final child = getChildAtIndex(_DemoTableIndex(0, tableIndex.y));
+
+      return CompositeNodePosition(child.id, child.beginningPosition);
+    }
+
+    return null;
+  }
+
+  CompositeNodePosition? adjustDownstreamPosition({
+    required CompositeNodePosition downstreamPosition,
+    CompositeNodePosition? upstreamPosition,
+  }) {
+    if (upstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
+      final selection = _childrenForSquareSelection(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
+      final firstChild = getChildByNodeId(selection.last)!;
+      return CompositeNodePosition(firstChild.id, firstChild.endPosition);
+    }
+
+    if (upstreamPosition == null) {
+      // When selection starts outside table, but ends in the table - round to last node of the row
+      final tableIndex = getChildTableIndex(downstreamPosition.childNodeId);
+      final child = getChildAtIndex(_DemoTableIndex(columnCount - 1, tableIndex.y));
+      return CompositeNodePosition(child.id, child.endPosition);
+    }
+
+    return null;
+  }
 
   @override
   DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
@@ -343,6 +448,56 @@ class _DemoTableNode extends CompositeNode {
       children: newChildren,
       columnCount: columnCount,
     );
+  }
+
+  _DemoTableIndex getChildTableIndex(String childId) {
+    final index = children.indexWhere((c) => c.id == childId);
+    if (index == -1) {
+      throw Exception('Unable to find child by id ${childId}');
+    }
+    return _DemoTableIndex.fromListIndex(index, columnCount);
+  }
+
+  DocumentNode getChildAtIndex(_DemoTableIndex index) {
+    final listIndex = index.y * columnCount + index.x;
+    if (listIndex < 0 || listIndex >= children.length) {
+      throw Exception('Unable to find child for cell at index [${index.x}, ${index.y}]');
+    }
+    return children[listIndex];
+  }
+
+  /// Returns children that appears should be in selection defined by [baseChildId] and [extentChildId]
+  /// first children is top-left corner, and last children is bottom-right
+  List<String> _childrenForSquareSelection(String baseChildId, String extentChildId) {
+    final baseIndex = getChildTableIndex(baseChildId);
+    final extentIndex = getChildTableIndex(extentChildId);
+
+    final minX = min(baseIndex.x, extentIndex.x);
+    final maxX = max(baseIndex.x, extentIndex.x);
+    final minY = min(baseIndex.y, extentIndex.y);
+    final maxY = max(baseIndex.y, extentIndex.y);
+
+    final result = <String>[];
+
+    for (var y = minY; y <= maxY; y += 1) {
+      for (var x = minX; x <= maxX; x += 1) {
+        result.add(getChildAtIndex(_DemoTableIndex(x, y)).id);
+      }
+    }
+
+    return result;
+  }
+}
+
+class _DemoTableIndex {
+  final int x;
+  final int y;
+  _DemoTableIndex(this.x, this.y);
+
+  factory _DemoTableIndex.fromListIndex(int index, int columnCount) {
+    final y = (index / columnCount).floor();
+    final x = index % columnCount;
+    return _DemoTableIndex(x, y);
   }
 }
 
@@ -404,10 +559,14 @@ class _DemoTableCellViewModel extends CompositeNodeViewModel {
 //////////////// COMPONENTS //////////////
 
 class _DemoTableComponent extends StatefulWidget {
+  final _MultipleCellsSelection? selection;
+  final Color selectionColor;
   final Color? backgroundColor;
   const _DemoTableComponent({
     super.key,
     this.backgroundColor,
+    this.selection,
+    required this.selectionColor,
     required this.children,
     required this.columnsCount,
   });
@@ -420,16 +579,76 @@ class _DemoTableComponent extends StatefulWidget {
 }
 
 class _DemoTableComponentState extends State<_DemoTableComponent> with CompositeComponent<_DemoTableComponent> {
-  final tableKey = GlobalKey();
+  final _tableKey = GlobalKey();
+
+  Rect? _selectionRect;
+  BoxConstraints? _previousConstraints;
+
+  @override
+  void initState() {
+    super.initState();
+    updateSelectionRectAfterLayout();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DemoTableComponent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    updateSelectionRectAfterLayout();
+  }
+
+  void updateSelectionRectAfterLayout() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final newSelectionRect = _calcSelectionRect();
+      if (_selectionRect != newSelectionRect) {
+        setState(() {
+          _selectionRect = newSelectionRect;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    const selectionBorderWidth = 4.0;
+    final selectionRect = this._selectionRect;
     return IgnorePointer(
-      child: Table(
-        key: tableKey,
-        border: TableBorder.all(),
-        children: _buildRows(),
-      ),
+      child: LayoutBuilder(builder: (context, constraints) {
+        if (_previousConstraints != constraints) {
+          _previousConstraints = constraints;
+          updateSelectionRectAfterLayout();
+        }
+        return Stack(
+          children: [
+            if (selectionRect != null && widget.selection?.filled == true)
+              Positioned.fromRect(
+                rect: selectionRect.inflate(selectionBorderWidth / 2.0),
+                child: ColoredBox(
+                  color: widget.selectionColor.withAlpha(80),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(selectionBorderWidth / 2.0),
+              child: Table(
+                key: _tableKey,
+                border: TableBorder.all(),
+                children: _buildRows(),
+              ),
+            ),
+            if (selectionRect != null)
+              Positioned.fromRect(
+                rect: selectionRect.inflate(selectionBorderWidth / 2.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(Radius.circular(selectionBorderWidth)),
+                    border: BoxBorder.fromBorderSide(
+                      BorderSide(color: widget.selectionColor, width: selectionBorderWidth),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      }),
     );
   }
 
@@ -440,10 +659,44 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
     while (hasNext) {
       final rowWidgets = <Widget>[];
       for (var col = 0; col < widget.columnsCount; col += 1) {
-        rowWidgets.add(Container(color: Colors.blueGrey.withAlpha(40), child: childIterator.current.widget));
+        rowWidgets.add(
+          TableCell(
+            verticalAlignment: TableCellVerticalAlignment.top,
+            child: childIterator.current.widget,
+          ),
+        );
         hasNext = childIterator.moveNext();
       }
       result.add(TableRow(children: rowWidgets));
+    }
+    return result;
+  }
+
+  Rect? _calcSelectionRect() {
+    if (widget.selection == null) {
+      return null;
+    }
+    final renderTable = _tableKey.currentContext?.findRenderObject() as RenderTable?;
+    if (renderTable == null || renderTable.hasSize != true) {
+      return null;
+    }
+    final rect = context.findRenderObject() as RenderBox;
+
+    Rect? result;
+    for (final nodeId in widget.selection!.selectedCells) {
+      final index = widget.children.indexWhere((c) => c.nodeId == nodeId);
+      final cellIndex = _DemoTableIndex.fromListIndex(index, widget.columnsCount);
+      final cell = renderTable.row(cellIndex.y).elementAt(cellIndex.x);
+      final rowHeight = renderTable.getRowBox(cellIndex.y).height;
+
+      final origin = cell.localToGlobal(Offset.zero, ancestor: rect);
+      final cellRect = Rect.fromLTWH(origin.dx, origin.dy, cell.size.width, rowHeight);
+
+      if (result == null) {
+        result = cellRect;
+      } else {
+        result = result.expandToInclude(cellRect);
+      }
     }
     return result;
   }
@@ -460,14 +713,15 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
 
   @override
   CompositeComponentChild getChildForOffset(Offset componentOffset) {
-    final renderObject = tableKey.currentContext!.findRenderObject() as RenderTable;
+    final renderObject = _tableKey.currentContext!.findRenderObject() as RenderTable;
     final rect = context.findRenderObject() as RenderBox;
 
     int rowIndex = 1;
     for (; rowIndex < renderObject.rows; rowIndex += 1) {
+      final rowHeight = renderObject.getRowBox(rowIndex).height;
       final row = renderObject.row(rowIndex).first;
       final rowOffset = row.localToGlobal(Offset.zero, ancestor: rect);
-      if (rowOffset.dy >= componentOffset.dy && componentOffset.dy < rowOffset.dy + row.size.height) {
+      if (rowOffset.dy >= componentOffset.dy && componentOffset.dy < rowOffset.dy + rowHeight) {
         break;
       }
     }

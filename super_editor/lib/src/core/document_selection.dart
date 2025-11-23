@@ -1,6 +1,8 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:super_editor/src/default_editor/text.dart';
+import 'package:super_editor/super_editor.dart';
 
 import 'document.dart';
 
@@ -419,5 +421,101 @@ extension InspectDocumentSelection on Document {
     // the selection end.
     return getAffinityBetween(base: upstreamPosition, extent: position) == TextAffinity.downstream &&
         getAffinityBetween(base: position, extent: downstreamPosition) == TextAffinity.downstream;
+  }
+}
+
+extension ExpandDocumentSelection on Document {
+  /// Let CompositeNodes whose leafs are in base or extent position of selection
+  DocumentSelection adjustSelectionByCompositeNodes(DocumentSelection selection) {
+    var base = selection.base;
+    var extent = selection.extent;
+
+    if (base.nodePosition is CompositeNodePosition || extent.nodePosition is CompositeNodePosition) {
+      throw Exception('Both base and extent positions must be leaf positions before they can be adjusted');
+    }
+
+    final basePath = getNodePathById(base.nodeId)!;
+    final extentPath = getNodePathById(extent.nodeId)!;
+
+    if (basePath.isRoot &&
+        extentPath.isRoot &&
+        base.nodePosition is! CompositeNodePosition &&
+        extent.nodePosition is! CompositeNodePosition) {
+      // as both paths are for root nodes, no CompositeNode is involved
+      return selection;
+    }
+
+    final isDownstream = getAffinityBetweenPaths(basePath, extentPath) == TextAffinity.downstream;
+
+    final upstreamPath = isDownstream ? basePath : extentPath;
+    final downstreamPath = isDownstream ? extentPath : basePath;
+
+    var upstreamPosition = isDownstream ? base.nodePosition : extent.nodePosition;
+    var downstreamPosition = isDownstream ? extent.nodePosition : base.nodePosition;
+
+    var adjusted = false;
+
+    // Go bottom-up by both paths, and preprocess selection by each CompositeNode
+    for (var i = max(upstreamPath.length, downstreamPath.length) - 1; i > 0; i -= 1) {
+      final upstreamParentId = upstreamPath.length > i ? upstreamPath[i - 1] : null;
+      final downstreamParentId = downstreamPath.length > i ? downstreamPath[i - 1] : null;
+
+      if (upstreamParentId != null) {
+        upstreamPosition = CompositeNodePosition(upstreamPath[i], upstreamPosition);
+      }
+      if (downstreamParentId != null) {
+        downstreamPosition = CompositeNodePosition(downstreamPath[i], downstreamPosition);
+      }
+      CompositeNodePosition? adjustedUpstreamPosition;
+      CompositeNodePosition? adjustedDownstreamPosition;
+
+      if (upstreamParentId != null) {
+        final upstreamParent = getNodeById(upstreamParentId);
+        if (upstreamParent is! CompositeNode) {
+          throw Exception(
+              'Unexpected node ${upstreamParent.runtimeType} for $upstreamParentId. CompositeNode expected');
+        }
+        adjustedUpstreamPosition = upstreamParent.adjustUpstreamPosition(
+          upstreamPosition: upstreamPosition as CompositeNodePosition,
+          downstreamPosition:
+              upstreamParentId == downstreamParentId ? downstreamPosition as CompositeNodePosition : null,
+        );
+      }
+
+      if (downstreamParentId != null) {
+        final downstreamParent = getNodeById(downstreamParentId);
+        if (downstreamParent is! CompositeNode) {
+          throw Exception(
+              'Unexpected node ${downstreamParent.runtimeType} for $downstreamParentId. CompositeNode expected');
+        }
+        adjustedDownstreamPosition = downstreamParent.adjustDownstreamPosition(
+          downstreamPosition: downstreamPosition as CompositeNodePosition,
+          upstreamPosition: upstreamParentId == downstreamParentId ? upstreamPosition as CompositeNodePosition : null,
+        );
+      }
+      if (adjustedUpstreamPosition != null) {
+        upstreamPosition = adjustedUpstreamPosition;
+        adjusted = true;
+      }
+      if (adjustedDownstreamPosition != null) {
+        downstreamPosition = adjustedDownstreamPosition;
+        adjusted = true;
+      }
+    }
+
+    if (adjusted) {
+      return DocumentSelection(
+        base: DocumentPosition(
+          nodeId: isDownstream ? upstreamPath.rootNodeId : downstreamPath.rootNodeId,
+          nodePosition: isDownstream ? upstreamPosition : downstreamPosition,
+        ).toLeafPosition(),
+        extent: DocumentPosition(
+          nodeId: isDownstream ? downstreamPath.rootNodeId : upstreamPath.rootNodeId,
+          nodePosition: isDownstream ? downstreamPosition : upstreamPosition,
+        ).toLeafPosition(),
+      );
+    } else {
+      return selection;
+    }
   }
 }

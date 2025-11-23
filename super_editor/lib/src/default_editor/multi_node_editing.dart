@@ -843,7 +843,7 @@ class DeleteContentCommand extends EditCommand {
       ]);
     }
 
-    /// Deleting empty nodes, that are still empty even after we inserted emptyParagraph at caret position
+    /// Deleting empty composite nodes, that are still empty even after we inserted emptyParagraph at caret position
     executor.logChanges(_deleteEmptyCompositeNodes(
       document: document,
       startPath: aboveStartNodePath,
@@ -973,6 +973,7 @@ class DeleteContentCommand extends EditCommand {
     _log.log('_deleteNodesBetweenFirstAndLast', ' - end node: ${endNode.id}');
     _log.log('_deleteNodesBetweenFirstAndLast', ' - initially ${document.nodeCount} nodes');
 
+    // TODO: Rewrite using 'getNodesInside', so to uses correct selection within CompositeNode
     // Remove nodes from last to first so that indices don't get
     // screwed up during removal.
     final changes = <EditEvent>[];

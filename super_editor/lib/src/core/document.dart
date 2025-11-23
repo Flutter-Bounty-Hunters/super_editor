@@ -109,6 +109,8 @@ abstract class Document implements Iterable<DocumentNode> {
   /// the nodes at [position1] and [position2].
   List<DocumentNode> getNodesInside(DocumentPosition position1, DocumentPosition position2);
 
+  List<DocumentNode> getNodesInsideById(String nodeId1, String nodeId2);
+
   /// Returns [true] if the content in the [other] document is equivalent to
   /// the content in this document, ignoring any details that are unrelated
   /// to content, such as individual node IDs.
@@ -184,6 +186,10 @@ class NodePath with IterableMixin<String> {
 
   NodePath child(String childId) {
     return NodePath([..._segments, childId]);
+  }
+
+  int indexOfNodeId(String nodeId) {
+    return _segments.indexOf(nodeId);
   }
 
   @override

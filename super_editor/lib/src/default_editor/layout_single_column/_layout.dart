@@ -365,18 +365,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
     final pathAbove = doc.getNodePathById(affinity == TextAffinity.downstream ? baseNodeId : extentNodeId);
     final pathBelow = doc.getNodePathById(affinity == TextAffinity.downstream ? extentNodeId : baseNodeId);
-    final result = <String>[];
-    result.add(pathAbove!.nodeId);
-    if (pathAbove == pathBelow) {
-      return result;
-    }
-    for (final (path, _) in doc.getLeafNodes(since: pathAbove)) {
-      result.add(path.nodeId);
-      if (path == pathBelow) {
-        return result;
-      }
-    }
-    throw Exception('Unable to find nodes between $baseNodeId and $extentNodeId');
+
+    return doc.getNodesInsideById(pathAbove!.nodeId, pathBelow!.nodeId).map((node) => node.id).toList();
   }
 
   @override
@@ -465,12 +455,12 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         base: DocumentPosition(
           nodeId: topNodeId,
           nodePosition: topNodeBasePosition,
-        ),
+        ).toLeafPosition(),
         extent: DocumentPosition(
           nodeId: bottomNodeId,
           nodePosition: topNodeExtentPosition,
-        ),
-      ).toLeafSelection();
+        ).toLeafPosition(),
+      );
     } else {
       // Region covers multiple components.
       editorLayoutLog.fine(' - the selection spans nodes: $topNodeId -> $bottomNodeId');
@@ -483,12 +473,12 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         base: DocumentPosition(
           nodeId: isDraggingDown ? topNodeId : bottomNodeId,
           nodePosition: isDraggingDown ? topNodeBasePosition : bottomNodeBasePosition,
-        ),
+        ).toLeafPosition(),
         extent: DocumentPosition(
           nodeId: isDraggingDown ? bottomNodeId : topNodeId,
           nodePosition: isDraggingDown ? bottomNodeExtentPosition : topNodeExtentPosition,
-        ),
-      ).toLeafSelection();
+        ).toLeafPosition(),
+      );
     }
   }
 

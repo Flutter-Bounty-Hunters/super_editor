@@ -743,6 +743,15 @@ void selectRegion({
     return;
   }
 
+  final selectionToAdjust = DocumentSelection(base: basePosition, extent: extentPosition);
+  final adjusted = editor.document.adjustSelectionByCompositeNodes(selectionToAdjust);
+  if (adjusted != selectionToAdjust) {
+    basePosition = adjusted.base;
+    extentPosition = adjusted.extent;
+    // If selection was adjusted by CompositeNode - that means we are selecting by Nodes, not text
+    selectionType = SelectionType.position;
+  }
+
   if (selectionType == SelectionType.paragraph) {
     final baseParagraphSelection = getParagraphSelection(
       docPosition: basePosition,
