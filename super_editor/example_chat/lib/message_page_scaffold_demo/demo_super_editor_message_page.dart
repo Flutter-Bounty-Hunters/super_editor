@@ -409,20 +409,23 @@ class _ChatEditorState extends State<_ChatEditor> {
   }
 
   void _onKeyboardChange() {
-    // On Android, we've found that when swiping to go back, the keyboard often
-    // closes without Flutter reporting the closure of the IME connection.
-    // Therefore, the keyboard closes, but editors and text fields retain focus,
-    // selection, and a supposedly open IME connection.
-    //
-    // Flutter issue: https://github.com/flutter/flutter/issues/165734
-    //
-    // To hack around this bug in Flutter, when super_keyboard reports keyboard
-    // closure, and this controller thinks the keyboard is open, we give up
-    // focus so that our app state synchronizes with the closed IME connection.
-    final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
-    if (_isImeConnected.value && (keyboardState == KeyboardState.closing || keyboardState == KeyboardState.closed)) {
-      // _editorFocusNode.unfocus();
-    }
+    // FIXME: I had to comment this out so that panels can open. Otherwise, if we leave
+    //        this behavior in, and we try to open a panel, this check triggers and closes
+    //        the IME (and therefore the panel) when the panel tries to open.
+    // // On Android, we've found that when swiping to go back, the keyboard often
+    // // closes without Flutter reporting the closure of the IME connection.
+    // // Therefore, the keyboard closes, but editors and text fields retain focus,
+    // // selection, and a supposedly open IME connection.
+    // //
+    // // Flutter issue: https://github.com/flutter/flutter/issues/165734
+    // //
+    // // To hack around this bug in Flutter, when super_keyboard reports keyboard
+    // // closure, and this controller thinks the keyboard is open, we give up
+    // // focus so that our app state synchronizes with the closed IME connection.
+    // final keyboardState = SuperKeyboard.instance.mobileGeometry.value.keyboardState;
+    // if (_isImeConnected.value && (keyboardState == KeyboardState.closing || keyboardState == KeyboardState.closed)) {
+    //   _editorFocusNode.unfocus();
+    // }
   }
 
   void _onImeConnectionChange() {
