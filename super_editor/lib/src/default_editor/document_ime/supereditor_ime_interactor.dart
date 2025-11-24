@@ -347,8 +347,11 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       _focusNode.dispose();
     }
 
-    // TODO: Only clear the client if we're still the owner.
-    widget.imeOverrides?.client = null;
+    if (true == widget.imeOverrides?.isCurrentClient(_documentImeClient)) {
+      // We're still the owner/client of the IME overrides. Null it out to
+      // remove the reference to us.
+      widget.imeOverrides?.client = null;
+    }
     _imeClient.client = null;
     _documentImeClient.dispose();
 
@@ -391,8 +394,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   void _onSharedImeChange() {
-    // TODO: If we're no longer the owner, do we need to close the IME connection, or did that
-    // already happen?
     if (!SuperIme.instance.isOwner(_myImeId)) {
       // We don't own the IME. Update our accounting.
       _ownedImeConnection.value = null;
