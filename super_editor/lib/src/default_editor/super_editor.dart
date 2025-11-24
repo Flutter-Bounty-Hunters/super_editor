@@ -17,6 +17,7 @@ import 'package:super_editor/src/default_editor/common_editor_operations.dart';
 import 'package:super_editor/src/default_editor/debug_visualization.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_ios.dart';
+import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
 import 'package:super_editor/src/default_editor/document_scrollable.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_composing_region.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
@@ -121,6 +122,7 @@ class SuperEditor extends StatefulWidget {
     this.selectionPolicies = const SuperEditorSelectionPolicies(),
     this.inputSource,
     this.softwareKeyboardController,
+    this.inputRole,
     this.imePolicies = const SuperEditorImePolicies(),
     this.imeConfiguration,
     this.imeOverrides,
@@ -247,6 +249,21 @@ class SuperEditor extends StatefulWidget {
   /// [SuperEditorImePolicies.clearSelectionWhenEditorLosesFocus] are `false`. Otherwise,
   /// the automatic behavior might conflict with commands to this controller.
   final SoftwareKeyboardController? softwareKeyboardController;
+
+  /// A name/ID that differentiates this [SuperEditor]'s purpose from any other [SuperEditor]
+  /// that might be on screen.
+  ///
+  /// The [inputRole] is used to control access to the operating system's IME. Imagine that you have
+  /// Editor1 and Editor2 on screen. You want Editor1 to be able to hold onto the IME connection
+  /// across widget tree rebuilds, which requires a global connection, but you don't want Editor2 to
+  /// accidentally take over that global IME connection. The solution is to pass a different [inputRole]
+  /// for Editor1 and Editor2.
+  ///
+  /// If you're sure that you'll only have one editor on screen, you don't need to provide an [inputRole].
+  ///
+  /// The value for [inputRole] is arbitrary. It can be any name you choose, so long as other editors
+  /// use different names.
+  final String? inputRole;
 
   /// Policies that dictate when and how [SuperEditor] should interact with the
   /// platform IME, such as automatically opening the software keyboard when
@@ -808,6 +825,7 @@ class SuperEditorState extends State<SuperEditor> {
           focusNode: _focusNode,
           autofocus: widget.autofocus,
           editContext: editContext,
+          inputRole: widget.inputRole,
           clearSelectionWhenEditorLosesFocus: widget.selectionPolicies.clearSelectionWhenEditorLosesFocus,
           clearSelectionWhenImeConnectionCloses: widget.selectionPolicies.clearSelectionWhenImeConnectionCloses,
           softwareKeyboardController: _softwareKeyboardController,
