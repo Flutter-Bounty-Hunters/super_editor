@@ -549,7 +549,7 @@ void main() {
         final contentHeightWithNoKeyboard = tester.getSize(find.byKey(_chatPageKey)).height;
 
         // Show the keyboard.
-        keyboardPanelController.showSoftwareKeyboard();
+        await tester.placeCaretInParagraph("1", 0);
         await tester.pumpAndSettle();
 
         // Record the height of the content now that the keyboard is open.
@@ -640,7 +640,7 @@ void main() {
 
         // Show the keyboard. Don't show the toolbar because it's irrelevant for this test.
         controller.toolbarVisibility = KeyboardToolbarVisibility.hidden;
-        controller.showSoftwareKeyboard();
+        await tester.placeCaretInParagraph("1", 0);
         await tester.pumpAndSettle();
 
         // Record the height of the content now that the keyboard is open.

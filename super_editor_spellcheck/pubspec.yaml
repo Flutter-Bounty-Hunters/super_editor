@@ -29,7 +29,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  pigeon: ^21.1.0
+  pigeon: ^26.1.2
   flutter_test_goldens:
     git:
       url: https://github.com/flutter-bounty-hunters/flutter_test_goldens

@@ -97,6 +97,7 @@ export 'src/infrastructure/platforms/mac/mac_ime.dart';
 export 'src/infrastructure/platforms/mobile_documents.dart';
 export 'src/infrastructure/scrolling_diagnostics/scrolling_diagnostics.dart';
 export 'src/infrastructure/signal_notifier.dart';
+export 'src/infrastructure/sliver_hybrid_stack.dart';
 export 'src/infrastructure/strings.dart';
 export 'src/super_textfield/super_textfield.dart';
 export 'src/infrastructure/touch_controls.dart';

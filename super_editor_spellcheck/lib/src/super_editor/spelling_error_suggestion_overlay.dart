@@ -212,6 +212,10 @@ class _SpellingErrorSuggestionOverlayState
   }
 
   void _onSelectionChange() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       // Re-compute layout data. The layout needs to be re-computed regardless
       // of any conditions that follow this comment.
@@ -255,12 +259,20 @@ class _SpellingErrorSuggestionOverlayState
   }
 
   void _onDocumentChange(DocumentChangeLog changeLog) {
+    if (!mounted) {
+      return;
+    }
+
     // After the document changes, the currently visible suggestions
     // might not be valid anymore. Hide the popover.
     hideSuggestionsPopover();
   }
 
   void _onSpellingSuggestionsChange() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       // Re-compute layout data.
     });
