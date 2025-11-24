@@ -105,18 +105,9 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   }
 
   void _onFocusChange() {
-    print("IME interaction policies - _onFocusChange()");
-    print(" - has focus? ${_focusNode.hasFocus}");
-    print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
     if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
       // We have focus but we don't own the IME. Take it over.
-      print("Taking ownership of ime on focus: ${widget.inputId}");
       SuperIme.instance.takeOwnership(widget.inputId);
-      print("Now that we have ownership, here's the current state of things:");
-      print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
-      print(" - open on primary gain? ${widget.openImeOnPrimaryFocusGain}");
-      print(" - open on non-primary gain? ${widget.openImeOnNonPrimaryFocusGain}");
-      print(" - are we already attached? ${SuperIme.instance.isInputAttachedToOS(widget.inputId)}");
     }
 
     bool shouldOpenIme = false;
@@ -136,7 +127,6 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     if (shouldOpenIme) {
-      print("Opening the IME now or on next frame, due to focus change");
       WidgetsBinding.instance.runAsSoonAsPossible(() {
         if (!mounted) {
           return;
@@ -165,7 +155,6 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
     }
 
     if (shouldCloseIme) {
-      print("Closing IME due to no focus");
       SuperIme.instance
         ..clearConnection(widget.inputId)
         ..releaseOwnership(widget.inputId);
@@ -290,7 +279,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
     widget.focusNode.addListener(_onFocusChange);
 
-    print("IME Interaction Policies - initState(): Has selection? ${widget.selection.value != null}");
     widget.selection.addListener(_onSelectionChange);
     if (widget.selection.value != null) {
       _onSelectionChange();
@@ -337,7 +325,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   }
 
   void _onFocusChange() {
-    print("DocumentSelectionOpenAndCloseImePolicy: onFocusChange() - has focus? ${widget.focusNode.hasFocus}");
     if (!widget.isEnabled) {
       return;
     }
@@ -357,8 +344,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
   }
 
   void _onSelectionChange() {
-    print("DocumentSelectionOpenAndCloseImePolicy: _onSelectionChange() - has selection? ${widget.selection.value}");
-    print(" - is this widget enabled? ${widget.isEnabled}");
     if (!widget.isEnabled) {
       return;
     }
@@ -366,15 +351,11 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
     if (widget.selection.value != null && widget.focusNode.hasPrimaryFocus && widget.openKeyboardOnSelectionChange) {
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
-      print("DocumentSelectionOpenAndCloseImePolicy: Opening keyboard because we have a selection");
-
       if (!SuperIme.instance.isOwner(widget.inputId)) {
-        print("DocumentSelectionOpenAndCloseImePolicy: Taking ownership of IME because we weren't the owner.");
         SuperIme.instance.takeOwnership(widget.inputId);
       }
 
       if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
-        print("DocumentSelectionOpenAndCloseImePolicy: IME isn't attached OS. Will open connection at end of frame.");
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
             return;
@@ -399,7 +380,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
           );
         }, debugLabel: 'Open IME Connection on Selection Change');
       } else {
-        print("DocumentSelectionOpenAndCloseImePolicy: Already have ownership - telling IME to show keyboard");
         SuperIme.instance.getImeConnectionForOwner(widget.inputId)!.show();
       }
     } else if (SuperIme.instance.isInputAttachedToOS(widget.inputId) &&
@@ -409,10 +389,7 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       // closed whenever the editor loses its selection. Close the keyboard.
       editorPoliciesLog
           .info("[${widget.runtimeType}] - closing the IME keyboard because the document selection was cleared");
-      print("document_ime_interaction_policies: Clearing IME connection");
       SuperIme.instance.clearConnection(widget.inputId);
-    } else {
-      print("DocumentSelectionOpenAndCloseImePolicy: No policies were activated.");
     }
   }
 

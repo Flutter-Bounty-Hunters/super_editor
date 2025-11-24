@@ -640,7 +640,6 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
       _controlsController!.toggleToolbar();
 
       if (widget.openKeyboardWhenTappingExistingSelection) {
-        print("iOS gestures: Opening keyboard when tapping existing expanded selection");
         widget.openSoftwareKeyboard();
       }
 
@@ -683,7 +682,6 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           //
           // If the user didn't tap on an existing selection, the software keyboard will
           // already be visible.
-          print("iOS gestures: Opening keyboard when tapping existing collapsed selection");
           widget.openSoftwareKeyboard();
         }
       } else {
@@ -707,7 +705,6 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
 
           // Ensure the keyboard is visible.
           if (widget.openKeyboardOnSelectionChange) {
-            print("iOS gestures: Opening keyboard when tapping to place new caret selection");
             widget.openSoftwareKeyboard();
           }
         }

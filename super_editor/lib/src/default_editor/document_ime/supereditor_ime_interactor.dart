@@ -170,7 +170,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     if (!kDebugMode) {
       return;
     }
-    print("Register input: ${inputId.role}");
 
     _registeredInputsThisFrame.add((inputId, StackTrace.current));
 
@@ -181,7 +180,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   static void _unregisterInput(SuperImeInputId inputId) {
-    print("Unregister input: $inputId");
     final startLength = _registeredInputsThisFrame.length;
     _registeredInputsThisFrame.removeWhere((entry) => entry.$1.instance == inputId.instance);
 
@@ -195,7 +193,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   static void _verifyUniqueInputs(Duration _) {
-    print("Running unique input verification");
     // Clear flag so the next time the "ensure" method is called, we''
     // register another post frame callback.
     _willCheckUniqueInputsNextFrame = false;
@@ -260,7 +257,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     _focusNode = (widget.focusNode ?? FocusNode());
 
     _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
-    print("IME interactor: initState() - registering IME ID: $_myImeId");
     _registerInput(_myImeId);
     SuperIme.instance.addListener(_onSharedImeChange);
     _setupDocumentImeInputClient();
@@ -307,13 +303,10 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       // Create a new IME input ID with the new role.
       _unregisterInput(_myImeId);
       _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
-      print("IME interactor: didUpdateWidget() - taking ownership of IME ($_myImeId)");
       _registerInput(_myImeId);
 
       if (didOwnIme) {
         // Re-take IME ownership.
-        print(
-            "IME Interactor: Transitioning ownership from previous role (${oldWidget.inputRole}) to new role (${widget.inputRole})");
         SuperIme.instance.takeOwnership(_myImeId);
       }
     }
@@ -398,12 +391,10 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   void _onSharedImeChange() {
-    print("IME Interactor: _onSharedImeChange()");
     // TODO: If we're no longer the owner, do we need to close the IME connection, or did that
     // already happen?
     if (!SuperIme.instance.isOwner(_myImeId)) {
       // We don't own the IME. Update our accounting.
-      print("IME Interactor: we don't own the IME");
       _ownedImeConnection.value = null;
 
       _documentImeConnection.value = null;
@@ -414,14 +405,12 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     if (!SuperIme.instance.isInputAttachedToOS(_myImeId)) {
       // We own the IME, but our connection to the OS was closed.
-      print("IME Interactor: we own the IME but we're not connected to the OS");
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
       widget.isImeConnected?.value = false;
       return;
     }
 
-    print("IME Interactor: we own the IME and we're connected. Updating isImeConnected");
     _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;
