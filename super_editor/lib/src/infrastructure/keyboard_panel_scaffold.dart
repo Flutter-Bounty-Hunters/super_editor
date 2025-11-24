@@ -461,7 +461,6 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
       _panelHeightController.reverse();
 
       // Open the keyboard.
-      print("keyboard_panel_scaffold.dart: Opening keyboard after closing panel");
       _softwareKeyboardController!.open(viewId: View.of(context).viewId);
 
       // Notify delegate listeners.
@@ -800,7 +799,6 @@ class KeyboardPanelController<PanelType> {
 
   /// Shows the software keyboard, if it's hidden.
   void showSoftwareKeyboard() {
-    print("keyboard_panel_scaffold.dart: showSoftwareKeyboard()");
     _delegate?.showSoftwareKeyboard();
   }
 

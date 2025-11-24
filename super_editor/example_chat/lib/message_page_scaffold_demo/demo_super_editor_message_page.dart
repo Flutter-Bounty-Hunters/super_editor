@@ -187,22 +187,22 @@ class _EditorBottomSheetState extends State<_EditorBottomSheet> {
             id: Editor.createNodeId(),
             text: AttributedText("message"),
           ),
-          // ParagraphNode(
-          //   id: Editor.createNodeId(),
-          //   text: AttributedText("It's tall for quick"),
-          // ),
-          // ParagraphNode(
-          //   id: Editor.createNodeId(),
-          //   text: AttributedText("testing of"),
-          // ),
-          // ParagraphNode(
-          //   id: Editor.createNodeId(),
-          //   text: AttributedText("intrinsic height that"),
-          // ),
-          // ParagraphNode(
-          //   id: Editor.createNodeId(),
-          //   text: AttributedText("exceeds available space"),
-          // ),
+          ParagraphNode(
+            id: Editor.createNodeId(),
+            text: AttributedText("It's tall for quick"),
+          ),
+          ParagraphNode(
+            id: Editor.createNodeId(),
+            text: AttributedText("testing of"),
+          ),
+          ParagraphNode(
+            id: Editor.createNodeId(),
+            text: AttributedText("intrinsic height that"),
+          ),
+          ParagraphNode(
+            id: Editor.createNodeId(),
+            text: AttributedText("exceeds available space"),
+          ),
         ],
       ),
       composer: MutableDocumentComposer(),

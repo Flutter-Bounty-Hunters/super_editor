@@ -538,7 +538,6 @@ void main() {
         final keyboardPanelController = KeyboardPanelController(softwareKeyboardController);
         final imeConnectionNotifier = ValueNotifier<bool>(false);
 
-        print("PUMPING UI");
         await _pumpTestAppWithSingleSafeAreaScope(
           tester,
           softwareKeyboardController: softwareKeyboardController,
