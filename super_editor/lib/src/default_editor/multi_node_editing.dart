@@ -973,14 +973,14 @@ class DeleteContentCommand extends EditCommand {
     _log.log('_deleteNodesBetweenFirstAndLast', ' - end node: ${endNode.id}');
     _log.log('_deleteNodesBetweenFirstAndLast', ' - initially ${document.nodeCount} nodes');
 
-    // TODO: Rewrite using 'getNodesInside', so to uses correct selection within CompositeNode
     // Remove nodes from last to first so that indices don't get
     // screwed up during removal.
     final changes = <EditEvent>[];
-    var nodeToDelete = document.getNodeAfter(startNode);
-    while (nodeToDelete != null && nodeToDelete != endNode) {
-      _log.log('_deleteNodesBetweenFirstAndLast', ' - deleting node: ${nodeToDelete.id}');
-      final nextNode = document.getNodeAfter(nodeToDelete);
+    for (final nodeToDelete in document.getNodesInsideById(startNode.id, endNode.id).reversed) {
+      if (nodeToDelete.id == startNode.id || nodeToDelete.id == endNode.id) {
+        // Exclude startNode and endNode as they are handled outside
+        continue;
+      }
       if (nodeToDelete.isDeletable) {
         // This node is deletable, so delete it.
         changes.add(DocumentEdit(
@@ -988,9 +988,6 @@ class DeleteContentCommand extends EditCommand {
         ));
         document.deleteNode(nodeToDelete.id, deleteEmptyCompositeNodes: false);
       }
-
-      // Move to the next node.
-      nodeToDelete = nextNode;
     }
     return changes;
   }
@@ -1009,11 +1006,13 @@ class DeleteContentCommand extends EditCommand {
         break;
       }
       if (node is CompositeNode && node.children.isEmpty) {
-        for (final deletedNode in document.deleteNodeAtPath(path, deleteEmptyCompositeNode: true)) {
-          deletedNodeEvents.add(DocumentEdit(
-            NodeRemovedEvent(deletedNode.id, deletedNode),
-          ));
-        }
+        final emptyParagraph = ParagraphNode(id: Editor.createNodeId(), text: AttributedText());
+        document.insertNodeAt(0, emptyParagraph, parentNodeId: node.id);
+        deletedNodeEvents.add(
+          DocumentEdit(
+            NodeInsertedEvent(emptyParagraph.id, 0, parentNodeId: node.id),
+          ),
+        );
       }
     }
     return deletedNodeEvents;

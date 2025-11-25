@@ -299,13 +299,15 @@ abstract class NodeDocumentChange extends DocumentChange {
 
 /// A new [DocumentNode] was inserted in the [Document].
 class NodeInsertedEvent extends NodeDocumentChange {
-  const NodeInsertedEvent(this.nodeId, this.insertionIndex);
+  const NodeInsertedEvent(this.nodeId, this.insertionIndex, {this.parentNodeId});
 
   @override
   final String nodeId;
 
   /// The index inside node parent
   final int insertionIndex;
+
+  final String? parentNodeId;
 
   @override
   String describe() => "Inserted node: $nodeId";

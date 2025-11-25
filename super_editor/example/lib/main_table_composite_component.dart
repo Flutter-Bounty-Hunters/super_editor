@@ -697,7 +697,10 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
   }
 
   bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
-    return false;
+    if (widget.selection?.filled == true) {
+      return false;
+    }
+    return true;
   }
 
   @override

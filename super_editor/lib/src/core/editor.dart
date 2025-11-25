@@ -1548,12 +1548,6 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
         // children does not exists at given path
         return [];
       }
-      if (parent.children.length == 1) {
-        // Quick hack to replace with empty paragraph instead of deletion
-        // TODO: Make it based on Node and return events
-        replaceNodeById(nodeToDelete.id, ParagraphNode(id: nodeToDelete.id, text: AttributedText()));
-        return [nodeToDelete];
-      }
 
       if (parent.children.length == 1 && deleteEmptyCompositeNode) {
         // We are about to remove last child of CompositeNode.
