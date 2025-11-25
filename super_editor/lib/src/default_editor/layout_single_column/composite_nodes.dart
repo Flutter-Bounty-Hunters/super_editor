@@ -379,6 +379,34 @@ class CompositeNodePosition implements NodePosition {
     return CompositeNodePosition(childNodeId, newPosition);
   }
 
+  /// Projects a leaf [NodePosition] up into the [CompositeNodePosition] of the ancestor
+  /// [CompositeNode] identified by [parentId]
+  static CompositeNodePosition projectPositionIntoParent(
+    String parentId,
+    NodePath leafPath,
+    NodePosition leafPosition,
+  ) {
+    assert(leafPath.nodeId != parentId, 'Path should be to child node, not parent');
+    final indexInBasePath = leafPath.indexOfNodeId(parentId);
+    if (indexInBasePath == -1) {
+      throw Exception(
+        'Cannot project position: parentId "$parentId" is not an ancestor of the leaf '
+        'at path $leafPath',
+      );
+    }
+    if (indexInBasePath == leafPath.length - 1) {
+      throw Exception(
+        'Cannot project position to itself: parentId "$parentId" is the leaf node. '
+        'Use the leafPosition directly.',
+      );
+    }
+    var result = leafPosition;
+    for (var i = leafPath.length - 1; i > indexInBasePath; i -= 1) {
+      result = CompositeNodePosition(leafPath[i], result);
+    }
+    return result as CompositeNodePosition;
+  }
+
   @override
   bool isEquivalentTo(NodePosition other) {
     return this == other;

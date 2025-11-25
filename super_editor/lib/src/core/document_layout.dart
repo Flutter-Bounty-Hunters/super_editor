@@ -113,6 +113,8 @@ abstract class DocumentLayout {
 
   /// Returns the [DocumentPosition] at the end of the last selectable component.
   DocumentPosition? findLastSelectablePosition();
+
+  bool displayCaretForExpandedSelectionWithExtent(DocumentPosition position);
 }
 
 /// Contract for all widgets that operate as document components
@@ -530,6 +532,16 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
     }
     throw Exception(
       'Invalid getChildForOffset call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).displayCaretWithExpandedSelection(position);
+    }
+    throw Exception(
+      'Invalid displayCaretWithExpandedSelection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
     );
   }
 }

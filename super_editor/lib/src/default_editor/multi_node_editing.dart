@@ -442,7 +442,7 @@ class InsertNodeAtCaretCommand extends EditCommand {
     } else if (paragraphPosition.offset == beginningOfParagraph.offset) {
       // Insert block item after the paragraph.
       document.insertNodeAt(
-        document.getNodeIndexInParent(selectedNodePath),
+        document.getNodeIndexInParentByPath(selectedNodePath),
         newNode,
         parentNodeId: selectedNodePath.parent?.nodeId,
       );
@@ -759,7 +759,7 @@ class DeleteContentCommand extends EditCommand {
       throw Exception('Could not locate start node for DeleteSelectionCommand: ${normalizedRange.start}');
     }
     final startNodePath = document.getNodePathById(startNode.id)!;
-    final startNodeIndex = document.getNodeIndexInParent(startNodePath);
+    final startNodeIndex = document.getNodeIndexInParentByPath(startNodePath);
     final aboveStartNodePath = document.getLeafNodes(since: startNodePath, reversed: true).firstOrNull?.$1;
 
     final endNode = document.getNode(normalizedRange.end);

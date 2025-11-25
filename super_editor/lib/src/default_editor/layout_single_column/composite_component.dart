@@ -71,6 +71,10 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
     return getChildRightToChild(nodeId);
   }
 
+  bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
+    return true;
+  }
+
   DocumentComponent? getChildComponentById(String childId) {
     return getChildByNodeId(childId)!.component;
   }
@@ -377,6 +381,11 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
     }
 
     return CompositeNodePosition(nextChild.nodeId, nextChild.component.getBeginningPosition());
+  }
+
+  @override
+  bool isVisualSelectionSupported() {
+    return true;
   }
 
   // FIXME: Delete default implementation - let other classes implement it efficiently

@@ -895,6 +895,27 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final contentOffset = componentBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
     return contentOffset & componentBox.size;
   }
+
+  @override
+  bool displayCaretForExpandedSelectionWithExtent(DocumentPosition position) {
+    final path = widget.presenter.document.getNodePathById(position.nodeId);
+    if (path == null || path.isRoot) {
+      return true;
+    }
+    var childPosition = CompositeNodePosition(path.last, position.nodePosition);
+    // Ask each CompositeNode, if they would like to have caret inside selection
+    for (var i = 0; i < path.length - 1; i += 1) {
+      final component = getComponentByNodeId(path[i]);
+      if (component is! CompositeComponent) {
+        throw Exception('Unexpected component "${component.runtimeType}". CompositeComponent was expected');
+      }
+      if (!component.displayCaretWithExpandedSelection(childPosition)) {
+        return false;
+      }
+      childPosition = CompositeNodePosition(path[i], childPosition);
+    }
+    return true;
+  }
 }
 
 class _PresenterComponentBuilder extends StatefulWidget {

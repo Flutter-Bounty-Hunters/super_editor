@@ -743,15 +743,6 @@ void selectRegion({
     return;
   }
 
-  final selectionToAdjust = DocumentSelection(base: basePosition, extent: extentPosition);
-  final adjusted = editor.document.adjustSelectionByCompositeNodes(selectionToAdjust);
-  if (adjusted != selectionToAdjust) {
-    basePosition = adjusted.base;
-    extentPosition = adjusted.extent;
-    // If selection was adjusted by CompositeNode - that means we are selecting by Nodes, not text
-    selectionType = SelectionType.position;
-  }
-
   if (selectionType == SelectionType.paragraph) {
     final baseParagraphSelection = getParagraphSelection(
       docPosition: basePosition,
@@ -798,14 +789,17 @@ void selectRegion({
     extentPosition = extentWordSelection.extent;
   }
 
-  final selection = editor.composer.selection;
+  final currentSelection = editor.composer.selection;
+  var newSelection = DocumentSelection(base: basePosition, extent: extentPosition);
+  if (expandSelection && currentSelection != null) {
+    // If desired, expand the selection instead of replacing it.
+    newSelection = editor.document.expandSelection(currentSelection, extentPosition);
+  }
+  newSelection = editor.document.refineSelectionWithCompositeNodeAdjustments(newSelection);
+
   editor.execute([
     ChangeSelectionRequest(
-      DocumentSelection(
-        // If desired, expand the selection instead of replacing it.
-        base: expandSelection ? selection?.base ?? basePosition : basePosition,
-        extent: extentPosition,
-      ),
+      newSelection,
       SelectionChangeType.expandSelection,
       SelectionReason.userInteraction,
     ),

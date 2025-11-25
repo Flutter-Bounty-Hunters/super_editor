@@ -1173,17 +1173,27 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   @override
   @Deprecated("Use getNodeIndexInParent() instead")
   int getNodeIndex(DocumentNode node) {
+    return getNodeIndexInParent(node);
+  }
+
+  @override
+  int getNodeIndexInParent(DocumentNode node) {
     if (getNodeById(node.id) != node) {
       // We found a node by id, but it wasn't the node we expected. Therefore, we couldn't find the requested node.
       return -1;
     }
-    return getNodeIndexById(node.id);
+    return getNodeIndexInParentByPath(_getNodePathByIdOrThrow(node.id));
   }
 
   @override
-  @Deprecated("Use getNodeIndexInParent() instead")
+  @Deprecated("Use getNodeIndexInParentById() instead")
   int getNodeIndexById(String nodeId) {
-    return getNodeIndexInParent(_getNodePathByIdOrThrow(nodeId));
+    return getNodeIndexInParentById(nodeId);
+  }
+
+  @override
+  int getNodeIndexInParentById(String nodeId) {
+    return getNodeIndexInParentByPath(_getNodePathByIdOrThrow(nodeId));
   }
 
   @override
@@ -1198,7 +1208,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       case NodeTraverseMode.allLeafs:
         return getLeafNodes(since: path, reversed: true).firstOrNull?.$2;
       case NodeTraverseMode.sameParent:
-        final nodeIndex = getNodeIndexInParent(path);
+        final nodeIndex = getNodeIndexInParentByPath(path);
         Iterable<DocumentNode> parentNodes;
         if (path.isRoot) {
           parentNodes = _nodes;
@@ -1222,7 +1232,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       case NodeTraverseMode.allLeafs:
         return getLeafNodes(since: path).firstOrNull?.$2;
       case NodeTraverseMode.sameParent:
-        final nodeIndex = getNodeIndexInParent(path);
+        final nodeIndex = getNodeIndexInParentByPath(path);
         Iterable<DocumentNode> parentNodes;
         if (path.isRoot) {
           parentNodes = _nodes;
@@ -1260,33 +1270,13 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  int getNodeIndexInParent(NodePath path) {
+  int getNodeIndexInParentByPath(NodePath path) {
     final parentPath = path.parent;
     if (parentPath == null) {
       return _nodeIndicesById[path.rootNodeId] ?? -1;
     }
     final parent = getNodeAtPath(parentPath) as CompositeNode;
     return parent.getChildIndexByNodeId(path.nodeId);
-  }
-
-  @override
-  TextAffinity getAffinityBetweenPaths(NodePath basePath, NodePath extentPath) {
-    // Getting paths for the children of last common parents
-    // for example if paths are: 'a.b.c.e' and 'a.b.d'
-    // it should resolve to 'a.b.c' and 'a.b.d' paths to check affinity
-    var basePathCommon = NodePath.withNodeId(basePath.rootNodeId);
-    var extentPathCommon = NodePath.withNodeId(extentPath.rootNodeId);
-    for (var i = 1; i < min(basePath.length, extentPath.length); i += 1) {
-      basePathCommon = basePathCommon.child(basePath[i]);
-      extentPathCommon = extentPathCommon.child(extentPath[i]);
-      if (basePath[i] != extentPath[i]) {
-        break;
-      }
-    }
-
-    return getNodeIndexInParent(basePathCommon) < getNodeIndexInParent(extentPathCommon)
-        ? TextAffinity.downstream
-        : TextAffinity.upstream;
   }
 
   @override
@@ -1311,88 +1301,128 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     return getNodesInsideById(position1.nodeId, position2.nodeId);
   }
 
+  /// Returns **all leaf nodes** that lie within the range between the node with [nodeId1]
+  /// and the node with [nodeId2], **inclusive** of both endpoints.
+  ///
+  /// The traversal is performed in document order: the method automatically determines
+  /// which of the two nodes comes first and iterates from the earlier ("upstream")
+  /// node to the later ("downstream") one, collecting only leaf nodes along the way.
+  ///
+  /// ### How partial selection inside [CompositeNode] works
+  /// If the range partially covers a [CompositeNode] (e.g., both anchors are inside the same composite,
+  /// or the lowest common ancestor is a composite), the method delegates to that composite node's
+  /// [CompositeNode.getSelectedChildrenBetween] to filter which of its **leaf descendants**
+  /// should be included. This enables smart partial selections — e.g., a table might include
+  /// only cells in certain rows, not the entire structure.
+  ///
+  /// Intermediate composite nodes are **not** returned; only leaves are.
+  ///
+  /// ### Throws
+  /// - [Exception] if either node ID does not exist in the document.
+  /// - [Exception] if either node is a [CompositeNode] (or any non-leaf node).
+  /// - [Exception] if the downstream node is not reachable after the upstream node
+  ///   (indicates corrupted or unnormalized document structure).
+  ///
   @override
   List<DocumentNode> getNodesInsideById(String nodeId1, String nodeId2) {
-    final path1 = _nodePathById[nodeId1]!;
-    final path2 = _nodePathById[nodeId2]!;
+    final path1 = _nodePathById[nodeId1];
+    final path2 = _nodePathById[nodeId2];
 
-    final affinity = getAffinityBetweenPaths(path1, path2);
-    var upstreamPath = affinity == TextAffinity.downstream ? path1 : path2;
-    var downstreamPath = affinity == TextAffinity.downstream ? path2 : path1;
+    if (path1 == null) {
+      throw Exception('No such position in document: $path1');
+    }
+    if (path2 == null) {
+      throw Exception('No such position in document: $path2');
+    }
+    if (getNodeAtPath(path1) case final node when node is CompositeNode) {
+      throw Exception(
+        'getNodesInsideById: nodeId1 ($nodeId1) points to a CompositeNode (${node.runtimeType}). '
+        'Only leaf nodes are allowed as range anchors.',
+      );
+    }
+    if (getNodeAtPath(path2) case final node when node is CompositeNode) {
+      throw Exception(
+        'getNodesInsideById: nodeId2 ($nodeId2) points to a CompositeNode (${node.runtimeType}). '
+        'Only leaf nodes are allowed as range anchors.',
+      );
+    }
 
-    final selectionPerNodeId = <String, List<String>>{};
+    if (path1 == path2) {
+      return [getNodeAtPath(path1)!];
+    }
 
-    // TODO: Implement this even when nodeId1 and nodeId2 does not have same parent,
-    // but are inside CompositeNode
+    final (upstreamPath, downstreamPath) = _selectUpstreamDownstreamPaths(path1, path2);
 
-    // If nodes have common parent - check selection within parents to identify
-    // which nodes we should iterate through
-    for (var i = 1; i < min(upstreamPath.length, downstreamPath.length); i += 1) {
-      final abovePathParent = getNodeById(upstreamPath[i - 1]) as CompositeNode;
-      final belowPathParent = getNodeById(downstreamPath[i - 1]) as CompositeNode;
-      if (abovePathParent.id == belowPathParent.id) {
-        final selection = abovePathParent.getSelectedChildrenBetween(upstreamPath[i], downstreamPath[i]);
+    final selectedNodeIdsPerParentId = <String, List<String>>{};
+
+    if (!upstreamPath.isRoot || !downstreamPath.isRoot) {
+      // When one of nodes is inside CompositeNode, compute additional node filtering,
+      // based on [getSelectedChildrenBetween] implementation of CompositeNode.
+      // Here we are looking for last common parent and call [getSelectedChildrenBetween].
+      // If there is no common parent compute selection based on beginning/end position
+
+      final (upDivergingChild, downDivergingChild) = upstreamPath.divergingChildrenWith(downstreamPath);
+
+      void addParentSelection(String parentId, {String? from, String? to}) {
+        final parent = getNodeById(parentId) as CompositeNode;
+        final selection = parent.getSelectedChildrenBetween(
+          from ?? parent.children.first.id,
+          to ?? parent.children.last.id,
+        );
         if (selection != null) {
-          if (selection.first != upstreamPath[i]) {
-            throw Exception(
-              'Invalid getSelectedChildrenBetween implementation in ${abovePathParent.runtimeType}. First child must be "${upstreamPath[i]}" but ${selection.first} returned',
-            );
-          }
-          if (selection.last != downstreamPath[i]) {
-            throw Exception(
-              'Invalid getSelectedChildrenBetween implementation in ${abovePathParent.runtimeType}. Last child must be "${downstreamPath[i]}" but ${selection.last} returned',
-            );
-          }
-          selectionPerNodeId[abovePathParent.id] = selection;
+          selectedNodeIdsPerParentId[parentId] = selection;
+        }
+      }
+
+      if (upDivergingChild.parent != null && upDivergingChild.parent == downDivergingChild.parent) {
+        // the difference is not since root node - we have a common CompositeNode
+        addParentSelection(
+          upDivergingChild.parent!.nodeId,
+          from: upDivergingChild.nodeId,
+          to: downDivergingChild.nodeId,
+        );
+      } else {
+        if (!upstreamPath.isRoot) {
+          addParentSelection(upstreamPath.rootNodeId, from: upstreamPath[1]);
+        }
+        if (!downstreamPath.isRoot) {
+          addParentSelection(downstreamPath.rootNodeId, to: downstreamPath[1]);
         }
       }
     }
-
-    // Extend selection to include all children of parents with custom selection
-    final sincePath = upstreamPath; //_pathMyMovingInParent(upstreamPath, selectionPerNodeId.keys, moveBackward: true);
-    final untilPath = downstreamPath; //_pathMyMovingInParent(downstreamPath, selectionPerNodeId.keys);
-
-    final result = <DocumentNode>[];
 
     var success = false;
+    final result = <DocumentNode>[getNodeAtPath(upstreamPath)!];
 
-    final node1 = getNodeAtPath(upstreamPath);
-    if (node1 == null) {
-      throw Exception('No such position in document: $upstreamPath');
-    }
-    result.add(node1);
-    if (upstreamPath == downstreamPath) {
-      return result;
-    }
-
-    print('----');
-    print('Custom selection nodes: $selectionPerNodeId');
-
-    for (final (path, node) in getLeafNodes(since: sincePath)) {
+    for (final (path, node) in getLeafNodes(since: upstreamPath)) {
       var shouldSkip = false;
-      for (var i = 1; i < path.length; i += 1) {
-        final selection = selectionPerNodeId[path[i - 1]];
-        if (selection != null && !selection.contains(path[i])) {
-          shouldSkip = true;
-          break;
+
+      if (selectedNodeIdsPerParentId.isNotEmpty) {
+        // Loop through all parents in path and check if its child conforms selection
+        for (var i = 0; i < path.length - 1; i += 1) {
+          final selection = selectedNodeIdsPerParentId[path[i]];
+          if (selection != null) {
+            shouldSkip = !selection.contains(path[i + 1]);
+            // Since selectedNodeIdsPerParentId is calculated for last common parent only
+            // no need to loop further
+            break;
+          }
         }
       }
+
       if (!shouldSkip) {
         result.add(node);
       }
 
-      if (path == untilPath) {
-        // result.add(lastNode!);
-        // print('Add ${path}');
+      if (path == downstreamPath) {
         success = true;
         break;
       }
     }
-
-    // print('Result: ${result.map((n) => n.id)}');
     if (!success) {
       throw Exception(
-          'Unable to find $untilPath below $sincePath. Make sure positions are normalized and nodes exists');
+        'Unable to find $downstreamPath below $upstreamPath. Make sure positions are normalized and nodes exists',
+      );
     }
     return result;
   }
@@ -1424,7 +1454,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     required DocumentNode newNode,
   }) {
     final existingNodePath = _getNodePathByIdOrThrow(existingNodeId);
-    final nodeIndex = getNodeIndexInParent(existingNodePath);
+    final nodeIndex = getNodeIndexInParentByPath(existingNodePath);
     if (existingNodePath.isRoot) {
       _nodes.insert(nodeIndex, newNode);
       _refreshNodeIdCaches();
@@ -1444,7 +1474,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     required DocumentNode newNode,
   }) {
     final existingNodePath = _getNodePathByIdOrThrow(existingNodeId);
-    final nodeIndex = getNodeIndexInParent(existingNodePath);
+    final nodeIndex = getNodeIndexInParentByPath(existingNodePath);
     if (existingNodePath.isRoot) {
       if (nodeIndex >= 0 && nodeIndex < _nodes.length) {
         _nodes.insert(nodeIndex + 1, newNode);
@@ -1616,7 +1646,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       );
     }
 
-    final index = getNodeIndexInParent(NodePath.withNodeId(path.rootNodeId));
+    final index = getNodeIndexInParentByPath(NodePath.withNodeId(path.rootNodeId));
 
     if (index >= 0) {
       _nodes.removeAt(index);
@@ -1772,6 +1802,13 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     _didReset = true;
   }
 
+  (NodePath, NodePath) _selectUpstreamDownstreamPaths(NodePath path1, NodePath path2) {
+    final (baseDivergingChild, extentDivergingChild) = path1.divergingChildrenWith(path2);
+    final isDownstream =
+        getNodeIndexInParentByPath(baseDivergingChild) < getNodeIndexInParentByPath(extentDivergingChild);
+    return isDownstream ? (path1, path2) : (path2, path1);
+  }
+
   void _replaceChildrenAtPath(
     NodePath path,
     List<DocumentNode> Function(CompositeNode parent, List<DocumentNode>) replacer,
@@ -1780,9 +1817,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     assert(node is CompositeNode);
     final replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
       nodePath: path,
-      childrenReplacer: (CompositeNode parent, List<DocumentNode> children) {
-        return replacer(parent, children);
-      },
+      childrenReplacer: replacer,
     );
     replaceNodeById(path.rootNodeId, replacement);
   }
@@ -1813,30 +1848,6 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       throw Exception('Unable to find node by id "$nodeId"');
     }
     return path;
-  }
-
-  /// Looking for first nodeId in [parentsToMove], then move to first or last child recursively
-  NodePath _pathMyMovingInParent(NodePath path, Iterable<String> parentsToMove, {bool moveBackward = false}) {
-    if (parentsToMove.isEmpty) {
-      return path;
-    }
-    final newIds = <String>[];
-    for (final nodeId in path) {
-      if (parentsToMove.contains(nodeId)) {
-        newIds.add(nodeId);
-        var parent = getNodeById(nodeId);
-        while (parent is CompositeNode) {
-          final position = moveBackward ? parent.beginningPosition : parent.endPosition;
-          final childNodeId = (position as CompositeNodePosition).childNodeId;
-          newIds.add(childNodeId);
-          parent = getNodeById(childNodeId);
-        }
-        break;
-      } else {
-        newIds.add(nodeId);
-      }
-    }
-    return NodePath(newIds);
   }
 
   /// Updates all the maps which use the node id as the key.

@@ -1537,7 +1537,7 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
   }
 
   void _updateDragHandleSelection(DocumentSelection newSelection) {
-    newSelection = widget.document.adjustSelectionByCompositeNodes(newSelection);
+    newSelection = widget.document.refineSelectionWithCompositeNodeAdjustments(newSelection);
     if (newSelection != widget.selection.value) {
       widget.setSelection(newSelection);
       HapticFeedback.lightImpact();

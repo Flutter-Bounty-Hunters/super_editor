@@ -302,12 +302,13 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
     final extentPath = _document.getNodePathById(documentSelection.extent.nodeId)!;
     if (basePath.contains(node.id) && extentPath.contains(node.id)) {
       // If the selection is fully within this CompositeNode
-      final compositeBasePosition = _makeCompositeNodeChildPosition(
+
+      final compositeBasePosition = CompositeNodePosition.projectPositionIntoParent(
         node.id,
         basePath,
         documentSelection.base.nodePosition,
       );
-      final compositeExtentPosition = _makeCompositeNodeChildPosition(
+      final compositeExtentPosition = CompositeNodePosition.projectPositionIntoParent(
         node.id,
         extentPath,
         documentSelection.extent.nodePosition,
@@ -335,7 +336,7 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
 
       if (basePath.contains(node.id)) {
         // Selection starts inside CompositeNode, but ends outside
-        basePosition = _makeCompositeNodeChildPosition(
+        basePosition = CompositeNodePosition.projectPositionIntoParent(
           node.id,
           basePath,
           documentSelection.base.nodePosition,
@@ -345,7 +346,7 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
       } else if (extentPath.contains(node.id)) {
         // Selection starts outside CompositeNode, but ends inside
         basePosition = isDownstream ? node.beginningPosition : node.endPosition;
-        extentPosition = _makeCompositeNodeChildPosition(
+        extentPosition = CompositeNodePosition.projectPositionIntoParent(
           node.id,
           extentPath,
           documentSelection.extent.nodePosition,
@@ -365,17 +366,6 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
         isExtent: isExtent,
       );
     }
-  }
-
-  CompositeNodePosition _makeCompositeNodeChildPosition(String parentId, NodePath path, NodePosition position) {
-    assert(path.nodeId != parentId, 'Path should be to child node, not parent');
-    var result = position;
-    final indexInBasePath = path.indexOfNodeId(parentId);
-    for (var i = path.length - 1; i > indexInBasePath; i -= 1) {
-      result = CompositeNodePosition(path[i], result);
-    }
-    // Due to validation, it had to run at least one iteration above
-    return result as CompositeNodePosition;
   }
 }
 

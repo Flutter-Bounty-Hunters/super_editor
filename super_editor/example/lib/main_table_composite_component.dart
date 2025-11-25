@@ -346,7 +346,7 @@ class _DemoTableNode extends CompositeNode {
     return _MultipleCellsSelection(
       base: base as CompositeNodePosition,
       extent: extent as CompositeNodePosition,
-      selectedCells: _childrenForSquareSelection(
+      selectedCells: getSelectedChildrenBetween(
         base.childNodeId,
         extent.childNodeId,
       ),
@@ -355,17 +355,23 @@ class _DemoTableNode extends CompositeNode {
   }
 
   List<String> getSelectedChildrenBetween(String upstreamChildId, String downstreamChildId) {
-    final selectedChildren = _childrenForSquareSelection(upstreamChildId, downstreamChildId);
+    final baseIndex = getChildTableIndex(upstreamChildId);
+    final extentIndex = getChildTableIndex(downstreamChildId);
 
-    // Making sure that upstreamChildId goes first
-    selectedChildren.remove(upstreamChildId);
-    selectedChildren.insert(0, upstreamChildId);
+    final minX = min(baseIndex.x, extentIndex.x);
+    final maxX = max(baseIndex.x, extentIndex.x);
+    final minY = min(baseIndex.y, extentIndex.y);
+    final maxY = max(baseIndex.y, extentIndex.y);
 
-    // Making sure that downstreamChildId goes last
-    selectedChildren.remove(downstreamChildId);
-    selectedChildren.add(downstreamChildId);
+    final result = <String>[];
 
-    return selectedChildren;
+    for (var y = minY; y <= maxY; y += 1) {
+      for (var x = minX; x <= maxX; x += 1) {
+        result.add(getChildAtIndex(_DemoTableIndex(x, y)).id);
+      }
+    }
+
+    return result;
   }
 
   CompositeNodePosition? adjustUpstreamPosition({
@@ -374,7 +380,7 @@ class _DemoTableNode extends CompositeNode {
   }) {
     // When both positions within the table, but different cells
     if (downstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
-      final selection = _childrenForSquareSelection(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
+      final selection = getSelectedChildrenBetween(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
       final firstChild = getChildByNodeId(selection.first)!;
       return CompositeNodePosition(firstChild.id, firstChild.beginningPosition);
     }
@@ -394,8 +400,9 @@ class _DemoTableNode extends CompositeNode {
     required CompositeNodePosition downstreamPosition,
     CompositeNodePosition? upstreamPosition,
   }) {
+    // When both positions within the table, but different cells
     if (upstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
-      final selection = _childrenForSquareSelection(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
+      final selection = getSelectedChildrenBetween(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
       final firstChild = getChildByNodeId(selection.last)!;
       return CompositeNodePosition(firstChild.id, firstChild.endPosition);
     }
@@ -465,28 +472,6 @@ class _DemoTableNode extends CompositeNode {
     }
     return children[listIndex];
   }
-
-  /// Returns children that appears should be in selection defined by [baseChildId] and [extentChildId]
-  /// first children is top-left corner, and last children is bottom-right
-  List<String> _childrenForSquareSelection(String baseChildId, String extentChildId) {
-    final baseIndex = getChildTableIndex(baseChildId);
-    final extentIndex = getChildTableIndex(extentChildId);
-
-    final minX = min(baseIndex.x, extentIndex.x);
-    final maxX = max(baseIndex.x, extentIndex.x);
-    final minY = min(baseIndex.y, extentIndex.y);
-    final maxY = max(baseIndex.y, extentIndex.y);
-
-    final result = <String>[];
-
-    for (var y = minY; y <= maxY; y += 1) {
-      for (var x = minX; x <= maxX; x += 1) {
-        result.add(getChildAtIndex(_DemoTableIndex(x, y)).id);
-      }
-    }
-
-    return result;
-  }
 }
 
 class _DemoTableIndex {
@@ -498,6 +483,11 @@ class _DemoTableIndex {
     final y = (index / columnCount).floor();
     final x = index % columnCount;
     return _DemoTableIndex(x, y);
+  }
+
+  @override
+  String toString() {
+    return 'TableIndex[$x, $y]';
   }
 }
 
@@ -706,9 +696,8 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
     return widget.children;
   }
 
-  @override
-  bool isVisualSelectionSupported() {
-    return true;
+  bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
+    return false;
   }
 
   @override

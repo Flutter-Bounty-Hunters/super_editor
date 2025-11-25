@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
@@ -49,21 +50,24 @@ abstract class Document implements Iterable<DocumentNode> {
 
   /// Returns the index of the given [node], or [-1] if the [node]
   /// does not exist within this [Document].
-  @Deprecated("Use getNodeIndexById() instead")
+  @Deprecated("Use getNodeIndexInParent() instead")
   int getNodeIndex(DocumentNode node);
+
+  int getNodeIndexInParent(DocumentNode node);
 
   /// Returns the index of the `DocumentNode` in this `Document` that
   /// has the given [nodeId], or `-1` if the node does not exist.
+  @Deprecated("Use getNodeIndexInParentById() instead")
   int getNodeIndexById(String nodeId);
+
+  int getNodeIndexInParentById(String nodeId);
 
   /// Returns full path to the node by id. Path is a list of parent nodeId, starting from root node
   NodePath? getNodePathById(String nodeId);
 
   /// Returns the index of the `DocumentNode` in parent node. If this
   /// is a root node, then returns the index in this `Document`.
-  int getNodeIndexInParent(NodePath path);
-
-  TextAffinity getAffinityBetweenPaths(NodePath basePath, NodePath extentPath);
+  int getNodeIndexInParentByPath(NodePath path);
 
   /// Returns the [DocumentNode] that appears immediately before the
   /// given [node] in this [Document], or null if the given [node]
@@ -192,9 +196,57 @@ class NodePath with IterableMixin<String> {
     return _segments.indexOf(nodeId);
   }
 
+  /// Returns the deepest common ancestor path of [this] and [another].
+  /// Returns `null` if the paths have no common ancestor
+  /// (one or both are root, or diverge from the very beginning).
+  /// When paths are identical, returns the parent of that path.
+  ///
+  /// The returned path is the longest prefix that is identical in both
+  /// paths, excluding the last segment of this prefix — because the method
+  /// returns a parent path, not the common node itself.
+  ///
+  /// Example: 'a/b/c' and '/a/b/d' → '/a/b'
+  ///          '/a/b/c' and '/a/b/c' → '/a/b'
+  ///          '/a/b'   and '/a/c'   → '/a'
+  ///          '/a'     and '/b'     → null
+  NodePath? deepestCommonAncestor(NodePath another) {
+    if (isRoot || another.isRoot) {
+      return null;
+    }
+    if (this == another) {
+      return parent;
+    }
+
+    final commonParentIds = <String>[];
+    for (var i = 0; i < min(_segments.length, another.length) - 1; i += 1) {
+      if (_segments[i] != another[i]) {
+        break;
+      }
+      commonParentIds.add(another[i]);
+    }
+    return commonParentIds.isEmpty ? null : NodePath(commonParentIds);
+  }
+
+  /// Returns the pair of child node IDs that diverge from the deepest common ancestor
+  /// of [this] and [another].
+  ///
+  /// In other words: finds the deepest node that is present in both paths,
+  /// then returns the next segment (child) from each path.
+  ///
+  (NodePath, NodePath) divergingChildrenWith(NodePath another) {
+    final commonParent = deepestCommonAncestor(another);
+    if (commonParent == null) {
+      return (NodePath([rootNodeId]), NodePath([another.rootNodeId]));
+    }
+    return (
+      commonParent.child(this[commonParent.length]),
+      commonParent.child(another[commonParent.length]),
+    );
+  }
+
   @override
   String toString() {
-    return isRoot ? rootNodeId : _segments.join('.');
+    return isRoot ? rootNodeId : _segments.join('/');
   }
 
   @override

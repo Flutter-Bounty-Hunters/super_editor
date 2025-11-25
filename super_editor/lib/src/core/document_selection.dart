@@ -351,6 +351,14 @@ extension InspectDocumentAffinity on Document {
 
     return affinity;
   }
+
+  TextAffinity getAffinityBetweenPaths(NodePath basePath, NodePath extentPath) {
+    final (baseDivergingChild, extentDivergingChild) = basePath.divergingChildrenWith(extentPath);
+
+    return getNodeIndexInParentByPath(baseDivergingChild) < getNodeIndexInParentByPath(extentDivergingChild)
+        ? TextAffinity.downstream
+        : TextAffinity.upstream;
+  }
 }
 
 extension InspectDocumentRange on Document {
@@ -425,34 +433,87 @@ extension InspectDocumentSelection on Document {
 }
 
 extension ExpandDocumentSelection on Document {
-  /// Let CompositeNodes whose leafs are in base or extent position of selection
-  DocumentSelection adjustSelectionByCompositeNodes(DocumentSelection selection) {
-    var base = selection.base;
-    var extent = selection.extent;
+  DocumentSelection expandSelection(DocumentSelection selection, DocumentPosition extentPosition) {
+    if (selection is AdjustedDocumentSelection) {
+      return DocumentSelection(
+        base: selection.original.base,
+        extent: extentPosition,
+      );
+    } else {
+      return DocumentSelection(
+        base: selection.base,
+        extent: extentPosition,
+      );
+    }
+  }
 
-    if (base.nodePosition is CompositeNodePosition || extent.nodePosition is CompositeNodePosition) {
+  /// Applies [CompositeNode]-specific adjustments to a leaf-based selection.
+  ///
+  /// Walks bottom-up from both anchors, lifting positions level by level into
+  /// [CompositeNodePosition]. At each level, the corresponding [CompositeNode]
+  /// may adjust the upstream boundary ([adjustUpstreamPosition]) and/or downstream
+  /// boundary ([adjustDownstreamPosition]). If both anchors are inside the same
+  /// composite node, it sees the opposing boundary and can make coordinated changes.
+  ///
+  /// This enables "smart" selection snapping in complex blocks like tables, banners, etc
+  ///
+  /// Returns an [AdjustedDocumentSelection] with possibly modified base/extent
+  /// (but preserving the original for correct shift-click behavior) if any
+  /// composite node performed an adjustment. Otherwise returns the input [selection]
+  /// unchanged.
+  ///
+  /// Requires that both base and extent refer to leaf nodes with leaf positions.
+  DocumentSelection refineSelectionWithCompositeNodeAdjustments(DocumentSelection selection) {
+    if (selection.base.nodePosition is CompositeNodePosition ||
+        selection.extent.nodePosition is CompositeNodePosition) {
       throw Exception('Both base and extent positions must be leaf positions before they can be adjusted');
     }
 
-    final basePath = getNodePathById(base.nodeId)!;
-    final extentPath = getNodePathById(extent.nodeId)!;
-
-    if (basePath.isRoot &&
-        extentPath.isRoot &&
-        base.nodePosition is! CompositeNodePosition &&
-        extent.nodePosition is! CompositeNodePosition) {
-      // as both paths are for root nodes, no CompositeNode is involved
+    final basePath = getNodePathById(selection.base.nodeId)!;
+    final extentPath = getNodePathById(selection.extent.nodeId)!;
+    if (basePath.isRoot && extentPath.isRoot) {
+      // as both paths are for root nodes, no CompositeNode was involved
       return selection;
     }
 
     final isDownstream = getAffinityBetweenPaths(basePath, extentPath) == TextAffinity.downstream;
 
+    final upstream = isDownstream ? selection.base : selection.extent;
+    final downstream = isDownstream ? selection.extent : selection.base;
     final upstreamPath = isDownstream ? basePath : extentPath;
     final downstreamPath = isDownstream ? extentPath : basePath;
 
-    var upstreamPosition = isDownstream ? base.nodePosition : extent.nodePosition;
-    var downstreamPosition = isDownstream ? extent.nodePosition : base.nodePosition;
+    final (upstreamPosition, downstreamPosition, adjusted) = _liftAndAdjustPositions(
+      upstreamPath: upstreamPath,
+      downstreamPath: downstreamPath,
+      upstreamPosition: upstream.nodePosition,
+      downstreamPosition: downstream.nodePosition,
+    );
 
+    if (adjusted) {
+      return AdjustedDocumentSelection(
+        base: DocumentPosition(
+          nodeId: isDownstream ? upstreamPath.rootNodeId : downstreamPath.rootNodeId,
+          nodePosition: isDownstream ? upstreamPosition : downstreamPosition,
+        ).toLeafPosition(),
+        extent: DocumentPosition(
+          nodeId: isDownstream ? downstreamPath.rootNodeId : upstreamPath.rootNodeId,
+          nodePosition: isDownstream ? downstreamPosition : upstreamPosition,
+        ).toLeafPosition(),
+        original: selection,
+      );
+    } else {
+      return selection;
+    }
+  }
+
+  /// Bottom-up lift + adjustment of both positions across shared ancestor levels.
+  (NodePosition, NodePosition, bool) _liftAndAdjustPositions({
+    required NodePosition upstreamPosition,
+    required NodePosition downstreamPosition,
+    required NodePath upstreamPath,
+    required NodePath downstreamPath,
+  }) {
     var adjusted = false;
 
     // Go bottom-up by both paths, and preprocess selection by each CompositeNode
@@ -470,11 +531,7 @@ extension ExpandDocumentSelection on Document {
       CompositeNodePosition? adjustedDownstreamPosition;
 
       if (upstreamParentId != null) {
-        final upstreamParent = getNodeById(upstreamParentId);
-        if (upstreamParent is! CompositeNode) {
-          throw Exception(
-              'Unexpected node ${upstreamParent.runtimeType} for $upstreamParentId. CompositeNode expected');
-        }
+        final upstreamParent = getNodeById(upstreamParentId) as CompositeNode;
         adjustedUpstreamPosition = upstreamParent.adjustUpstreamPosition(
           upstreamPosition: upstreamPosition as CompositeNodePosition,
           downstreamPosition:
@@ -483,16 +540,14 @@ extension ExpandDocumentSelection on Document {
       }
 
       if (downstreamParentId != null) {
-        final downstreamParent = getNodeById(downstreamParentId);
-        if (downstreamParent is! CompositeNode) {
-          throw Exception(
-              'Unexpected node ${downstreamParent.runtimeType} for $downstreamParentId. CompositeNode expected');
-        }
+        final downstreamParent = getNodeById(downstreamParentId) as CompositeNode;
         adjustedDownstreamPosition = downstreamParent.adjustDownstreamPosition(
           downstreamPosition: downstreamPosition as CompositeNodePosition,
           upstreamPosition: upstreamParentId == downstreamParentId ? upstreamPosition as CompositeNodePosition : null,
         );
       }
+      // Writing adjusted positions after getting both upstream/downstream from CompositeNode, so
+      // both adjust upstream/downstream methods takes original ones as input
       if (adjustedUpstreamPosition != null) {
         upstreamPosition = adjustedUpstreamPosition;
         adjusted = true;
@@ -503,19 +558,29 @@ extension ExpandDocumentSelection on Document {
       }
     }
 
-    if (adjusted) {
-      return DocumentSelection(
-        base: DocumentPosition(
-          nodeId: isDownstream ? upstreamPath.rootNodeId : downstreamPath.rootNodeId,
-          nodePosition: isDownstream ? upstreamPosition : downstreamPosition,
-        ).toLeafPosition(),
-        extent: DocumentPosition(
-          nodeId: isDownstream ? downstreamPath.rootNodeId : upstreamPath.rootNodeId,
-          nodePosition: isDownstream ? downstreamPosition : upstreamPosition,
-        ).toLeafPosition(),
-      );
-    } else {
-      return selection;
-    }
+    return (upstreamPosition, downstreamPosition, adjusted);
   }
+}
+
+/// A [DocumentSelection] that preserves the **original** user-intended
+/// selection alongside a possibly **adjusted** (snapped, refined) version.
+///
+/// This is critical for correct **Shift+Click** behavior:
+/// - When extending selection with Shift, the editor must use the **original** base
+///   (where the user first clicked), not the one that was silently moved by a
+///   [CompositeNode] (e.g. table snapping the cursor to the start of a cell).
+/// - But visually and for operations, we want to use the **adjusted** positions.
+///
+/// Without this distinction, Shift+Click selection grows unpredictably.
+///
+/// Use [original] when computing new selection range on Shift+Click.
+/// Use [base]/[extent] (inherited) for rendering and actual operations.
+class AdjustedDocumentSelection extends DocumentSelection {
+  AdjustedDocumentSelection({
+    required super.base,
+    required super.extent,
+    required this.original,
+  });
+
+  final DocumentSelection original;
 }
