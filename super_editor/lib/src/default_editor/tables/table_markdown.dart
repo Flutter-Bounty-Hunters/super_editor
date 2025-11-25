@@ -1,5 +1,8 @@
+import 'dart:collection';
+
 import 'package:attributed_text/attributed_text.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/styles.dart';
@@ -10,6 +13,7 @@ import 'package:super_editor/src/default_editor/selection_upstream_downstream.da
 import 'package:super_editor/src/default_editor/tables/table_block.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
+import 'package:super_editor/src/infrastructure/scrolling/desktop_mouse_wheel_and_trackpad_scrolling.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
 /// Builds [MarkdownTableViewModel]s and [MarkdownTableComponent]s for every [TableBlockNode]
@@ -87,6 +91,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
     super.opacity,
     required this.cells,
     this.border,
+    this.columnWidth = const IntrinsicColumnWidth(),
+    this.fit = TableComponentFit.scale,
     this.inlineWidgetBuilders = const [],
     required this.caretColor,
     DocumentNodeSelection? selection,
@@ -108,6 +114,12 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
   /// Configurable through [TableStyles.border].
   TableBorder? border;
 
+  /// The policy that sizes the width of each column in the table.
+  TableColumnWidth columnWidth;
+
+  /// How the table responds when it wants to be wider than the available width.
+  TableComponentFit fit;
+
   /// A chain of builders that create inline widgets that can be embedded
   /// inside the table's cells.
   InlineWidgetBuilderChain inlineWidgetBuilders;
@@ -128,6 +140,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
           row.map((e) => e.copy()).toList(),
       ],
       border: border,
+      columnWidth: columnWidth,
+      fit: fit,
       inlineWidgetBuilders: inlineWidgetBuilders,
       caretColor: caretColor,
       selection: selection,
@@ -215,6 +229,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
           selection == other.selection &&
           selectionColor == other.selectionColor &&
           border == other.border &&
+          columnWidth == other.columnWidth &&
+          fit == other.fit &&
           const DeepCollectionEquality().equals(cells, other.cells);
 
   @override
@@ -228,7 +244,14 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
       selection.hashCode ^
       selectionColor.hashCode ^
       border.hashCode ^
+      columnWidth.hashCode ^
+      fit.hashCode ^
       cells.hashCode;
+}
+
+enum TableComponentFit {
+  scroll,
+  scale;
 }
 
 /// View model that configures the appearance of a [MarkdownTableComponent]'s cell.
@@ -293,7 +316,7 @@ class MarkdownTableCellViewModel extends SingleColumnLayoutComponentViewModel {
 ///
 /// The table automatically expands to fill the available width, and shrinks to fit when it is wider
 /// than the available width.
-class MarkdownTableComponent extends StatelessWidget {
+class MarkdownTableComponent extends StatefulWidget {
   const MarkdownTableComponent({
     super.key,
     required this.componentKey,
@@ -302,6 +325,63 @@ class MarkdownTableComponent extends StatelessWidget {
 
   final GlobalKey componentKey;
   final MarkdownTableViewModel viewModel;
+
+  @override
+  State<MarkdownTableComponent> createState() => _MarkdownTableComponentState();
+}
+
+class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
+  final _scrollController = ScrollController();
+
+  final _velocitySamples = ListQueue<(Duration timestamp, double offset)>(10);
+
+  @override
+  dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onTrackpadStart(PointerPanZoomStartEvent event) {
+    (_scrollController.position as ScrollPositionWithSingleContext).goIdle();
+  }
+
+  void _onTrackpadUpdate(PointerPanZoomUpdateEvent event) {
+    if (event.panDelta.dx == 0) {
+      return;
+    }
+
+    if (_velocitySamples.length == 10) {
+      _velocitySamples.removeLast();
+    }
+
+    _scrollController.position.pointerScroll(-event.panDelta.dx);
+
+    _velocitySamples.addFirst(
+      (event.timeStamp, _scrollController.position.pixels),
+    );
+  }
+
+  void _onTrackpadEnd(PointerPanZoomEndEvent event) {
+    if (_velocitySamples.length < 2) {
+      // We didn't collect enough samples to calculate a velocity. Fizzle.
+      return;
+    }
+
+    (_scrollController.position as ScrollPositionWithSingleContext).goBallistic(
+      (_velocitySamples.first.$2 - _velocitySamples.last.$2) /
+          ((_velocitySamples.first.$1 - _velocitySamples.last.$1).inMilliseconds / 1000),
+    );
+
+    _velocitySamples.clear();
+  }
+
+  void _onScrollWheel(PointerScrollEvent event) {
+    if (event.scrollDelta.dx == 0) {
+      return;
+    }
+
+    _scrollController.position.pointerScroll(event.scrollDelta.dx);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,36 +395,100 @@ class MarkdownTableComponent extends StatelessWidget {
         //     to select the whole table don't work. The `SelectableBox` seems to be stealing
         //     the pointer events.
         child: SelectableBox(
-          selection: viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
-              ? viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
+          selection: widget.viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
+              ? widget.viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
               : null,
-          selectionColor: viewModel.selectionColor,
+          selectionColor: widget.viewModel.selectionColor,
           child: BoxComponent(
-            key: componentKey,
-            opacity: viewModel.opacity,
-            child: LayoutBuilder(builder: (context, constraints) {
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                //  ^ Shrink to fit when the table is wider than the viewport.
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                    // ^ Expand to fill when the table is narrower than the viewport.
-                  ),
-                  child: Table(
-                    border: viewModel.border ?? TableBorder.all(),
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
-                    children: [
-                      for (int i = 0; i < viewModel.cells.length; i += 1) //
-                        _buildRow(context, viewModel.cells[i], i),
-                    ],
-                  ),
+            key: widget.componentKey,
+            opacity: widget.viewModel.opacity,
+            child: switch (widget.viewModel.fit) {
+              TableComponentFit.scroll => _buildTableWithScrolling(
+                  table: _buildTable(context),
                 ),
-              );
-            }),
+              TableComponentFit.scale => _buildTableToScaleDown(
+                  table: _buildTable(context),
+                ),
+            },
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTableWithScrolling({
+    required Widget table,
+  }) {
+    return ManualScrollHandler(
+      // Scroll the table with the mouse scroll wheel, and trackpads.
+      scrollAxis: Axis.horizontal,
+      onPanZoomStart: _onTrackpadStart,
+      onPanZoomUpdate: _onTrackpadUpdate,
+      onPanZoomEnd: _onTrackpadEnd,
+      onScrollWheel: _onScrollWheel,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.basic,
+        hitTestBehavior: HitTestBehavior.translucent,
+        //               ^ Without `HitTestBehavior.translucent` the `MouseRegion` seems to be stealing
+        //                 the pointer events, making it impossible to place the caret.
+        child: IgnorePointer(
+          //   ^ Without `IgnorePointer` gestures like taping to place the caret or double tapping
+          //     to select the whole table don't work. The `SelectableBox` seems to be stealing
+          //     the pointer events.
+          child: SelectableBox(
+            selection: widget.viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
+                ? widget.viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
+                : null,
+            selectionColor: widget.viewModel.selectionColor,
+            child: Center(
+              child: BoxComponent(
+                key: widget.componentKey,
+                opacity: widget.viewModel.opacity,
+                child: Scrollbar(
+                  controller: _scrollController,
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: table,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableToScaleDown({
+    required Widget table,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          //  ^ Shrink to fit when the table is wider than the viewport.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+              // ^ Expand to fill when the table is narrower than the viewport.
+            ),
+            child: _buildTable(context),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTable(BuildContext context) {
+    return Table(
+      border: widget.viewModel.border ?? TableBorder.all(),
+      defaultColumnWidth: widget.viewModel.columnWidth,
+      children: [
+        for (int i = 0; i < widget.viewModel.cells.length; i += 1) //
+          _buildRow(context, widget.viewModel.cells[i], i),
+      ],
     );
   }
 
@@ -369,7 +513,7 @@ class MarkdownTableComponent extends StatelessWidget {
           richText: cell.text.computeInlineSpan(
             context,
             cell.textStyleBuilder,
-            viewModel.inlineWidgetBuilders,
+            widget.viewModel.inlineWidgetBuilders,
           ),
           textAlign: cell.textAlign,
         ),

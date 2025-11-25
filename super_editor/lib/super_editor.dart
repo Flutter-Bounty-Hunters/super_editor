@@ -95,6 +95,7 @@ export 'src/infrastructure/platforms/ios/magnifier.dart';
 export 'src/infrastructure/platforms/ios/selection_heuristics.dart';
 export 'src/infrastructure/platforms/mac/mac_ime.dart';
 export 'src/infrastructure/platforms/mobile_documents.dart';
+export 'src/infrastructure/scrolling/desktop_mouse_wheel_and_trackpad_scrolling.dart';
 export 'src/infrastructure/scrolling_diagnostics/scrolling_diagnostics.dart';
 export 'src/infrastructure/signal_notifier.dart';
 export 'src/infrastructure/sliver_hybrid_stack.dart';
