@@ -125,9 +125,6 @@ abstract class Document implements Iterable<DocumentNode> {
   void addListener(DocumentChangeListener listener);
 
   void removeListener(DocumentChangeListener listener);
-
-  /// Returns [true] if document can delete specified leaf node (based on [isDeletable] and [canDeleteChild] methods).
-  bool canDeleteNode(NodePath path);
 }
 
 enum NodeTraverseMode {
@@ -227,7 +224,7 @@ class NodePath with IterableMixin<String> {
     return commonParentIds.isEmpty ? null : NodePath(commonParentIds);
   }
 
-  /// Returns the pair of child node IDs that diverge from the deepest common ancestor
+  /// Returns the pair of child node paths that diverge from the deepest common ancestor
   /// of [this] and [another].
   ///
   /// In other words: finds the deepest node that is present in both paths,

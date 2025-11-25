@@ -319,22 +319,6 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     return node is ImeNodeSerialization ? (node as ImeNodeSerialization).toImeText() : _imeNonSerializableChildChar;
   }
 
-  bool canInsertChildAfter(String nodeId) {
-    return true;
-  }
-
-  bool canDeleteChild(String nodeId) {
-    final nodeToDelete = getChildByNodeId(nodeId);
-    if (nodeToDelete == null || !nodeToDelete.isDeletable) {
-      return false;
-    }
-    // If CompositeNode is not deletable, at least one child must be inside
-    if (!isDeletable && children.length == 1) {
-      return false;
-    }
-    return true;
-  }
-
   List<String>? getSelectedChildrenBetween(String upstreamChildId, String downstreamChildId) {
     return null;
   }

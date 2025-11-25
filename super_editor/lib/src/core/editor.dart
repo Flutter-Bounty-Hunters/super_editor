@@ -1162,12 +1162,17 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   @override
-  DocumentNode? getNodeAt(int index) {
-    if (index < 0 || index >= _nodes.length) {
+  DocumentNode? getNodeAt(int index, {String? parentNodeId}) {
+    Iterable<DocumentNode> parentNodes = _nodes;
+    if (parentNodeId != null) {
+      final parentNode = getNodeById(parentNodeId) as CompositeNode;
+      parentNodes = parentNode.children;
+    }
+    if (index < 0 || index >= parentNodes.length) {
       return null;
     }
 
-    return _nodes[index];
+    return parentNodes.elementAt(index);
   }
 
   @override
@@ -1359,7 +1364,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       // When one of nodes is inside CompositeNode, compute additional node filtering,
       // based on [getSelectedChildrenBetween] implementation of CompositeNode.
       // Here we are looking for last common parent and call [getSelectedChildrenBetween].
-      // If there is no common parent compute selection based on beginning/end position
+      // If there is no common parent - compute selection based on beginning/end position
 
       final (upDivergingChild, downDivergingChild) = upstreamPath.divergingChildrenWith(downstreamPath);
 
@@ -1503,23 +1508,19 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   }
 
   /// Deletes the node at the given [index].
-  void deleteNodeAt(int index) {
+  void deleteNodeAt(int index, {String? parentNodeId}) {
+    if (parentNodeId != null) {
+      final parentNode = getNodeById(parentNodeId) as CompositeNode;
+      final child = parentNode.getChildAt(index);
+      deleteNode(child.id);
+      return;
+    }
     if (index >= 0 && index < _nodes.length) {
       _nodes.removeAt(index);
       _refreshNodeIdCaches();
     } else {
       editorDocLog.warning('Could not delete node. Index out of range: $index');
     }
-  }
-
-  @override
-  bool canDeleteNode(NodePath path) {
-    final node = getNodeAtPath(path);
-    if (node == null) {
-      return false;
-    }
-    final parent = path.parent != null ? getNodeAtPath(path.parent!) as CompositeNode : null;
-    return parent?.canDeleteChild(node.id) ?? node.isDeletable;
   }
 
   /// Deletes node at [nodePath] and returns list of deleted nodes that were actually deleted
@@ -1595,7 +1596,23 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
   /// in the [Document] to the given [targetIndex].
   ///
   /// If none of the nodes in this document match [nodeId], throws an error.
-  void moveNode({required String nodeId, required int targetIndex}) {
+  void moveNode({required String nodeId, required int targetIndex, String? parentNodeId}) {
+    if (parentNodeId != null) {
+      final parentPath = getNodePathById(parentNodeId);
+      if (parentPath == null) {
+        throw Exception('Could not find node with nodeId: $parentNodeId');
+      }
+      _replaceChildrenAtPath(parentPath, (parent, children) {
+        final newChildren = List.of(children);
+        final childIndex = parent.getChildIndexByNodeId(nodeId);
+        final child = newChildren.removeAt(childIndex);
+        newChildren.insert(targetIndex, child);
+        return newChildren;
+      });
+      // We are not calling _refreshNodeIdCaches here, as NodePath should not be changed
+      // when we moving within same parent, plus it's called later in _replaceChildrenAtPath
+      return;
+    }
     final node = getNodeById(nodeId);
     if (node == null) {
       throw Exception('Could not find node with nodeId: $nodeId');
@@ -1613,15 +1630,7 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     required DocumentNode oldNode,
     required DocumentNode newNode,
   }) {
-    final index = _nodes.indexOf(oldNode);
-
-    if (index >= 0) {
-      _nodes.removeAt(index);
-      _nodes.insert(index, newNode);
-      _refreshNodeIdCaches();
-    } else {
-      throw Exception('Could not find oldNode: ${oldNode.id}');
-    }
+    return replaceNodeById(oldNode.id, newNode);
   }
 
   /// Replaces the node with the given [nodeId] with the given [newNode].
@@ -1654,81 +1663,6 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       _refreshNodeIdCaches();
     } else {
       throw Exception('Could not find node with ID: ${path.rootNodeId}');
-    }
-  }
-
-  // TODO: Delete
-  void replaceNodeByPath(NodePath path, DocumentNode newNode) {
-    var replacement = newNode;
-    if (!path.isRoot) {
-      final node = getNodeById(path.rootNodeId);
-      assert(node is CompositeNode);
-      replacement = (node as CompositeNode).copyAndReplaceLeafChildren(
-        nodePath: path.parent!,
-        childrenReplacer: (CompositeNode leafNode, List<DocumentNode> children) {
-          return children.map((c) => c.id == path.nodeId ? newNode : c).toList();
-        },
-      );
-    }
-    return replaceNodeById(path.rootNodeId, replacement);
-  }
-
-  // TODO: Delete
-  /// Inserts [newNode] immediately at given index.
-  void insertNodeAtPath({NodePath? parent, required DocumentNode newNode, required int index}) {
-    if (parent == null) {
-      return insertNodeAt(index, newNode);
-    } else {
-      if (getNodeAtPath(parent) == null) {
-        throw Exception('Unable to insert into parent "$parent". This node does not exists');
-      }
-      return _replaceChildrenAtPath(parent, (parent, children) {
-        final newChildren = List.of(children);
-        newChildren.insert(index, newNode);
-        return newChildren;
-      });
-    }
-  }
-
-  // TODO: Delete
-  /// Inserts [newNode] immediately after the given [existingNode].
-  void insertNodeAfterPath({
-    required NodePath existingNodePath,
-    required DocumentNode newNode,
-  }) {
-    if (existingNodePath.isRoot) {
-      return insertNodeAfter(
-        existingNodeId: existingNodePath.rootNodeId,
-        newNode: newNode,
-      );
-    } else {
-      return _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
-        final insertIndex = parent.getChildIndexByNodeId(existingNodePath.nodeId) + 1;
-        final newChildren = List.of(children);
-        newChildren.insert(insertIndex, newNode);
-        return newChildren;
-      });
-    }
-  }
-
-  // TODO: Delete
-  /// Inserts [newNode] immediately after the given [existingNode].
-  void insertNodeBeforePath({
-    required NodePath existingNodePath,
-    required DocumentNode newNode,
-  }) {
-    if (existingNodePath.isRoot) {
-      return insertNodeBefore(
-        existingNodeId: existingNodePath.rootNodeId,
-        newNode: newNode,
-      );
-    } else {
-      return _replaceChildrenAtPath(existingNodePath.parent!, (parent, children) {
-        final insertIndex = parent.getChildIndexByNodeId(existingNodePath.nodeId);
-        final newChildren = List.of(children);
-        newChildren.insert(insertIndex, newNode);
-        return newChildren;
-      });
     }
   }
 
