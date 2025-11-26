@@ -426,35 +426,14 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
       onPanZoomUpdate: _onTrackpadUpdate,
       onPanZoomEnd: _onTrackpadEnd,
       onScrollWheel: _onScrollWheel,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.basic,
-        hitTestBehavior: HitTestBehavior.translucent,
-        //               ^ Without `HitTestBehavior.translucent` the `MouseRegion` seems to be stealing
-        //                 the pointer events, making it impossible to place the caret.
-        child: IgnorePointer(
-          //   ^ Without `IgnorePointer` gestures like taping to place the caret or double tapping
-          //     to select the whole table don't work. The `SelectableBox` seems to be stealing
-          //     the pointer events.
-          child: SelectableBox(
-            selection: widget.viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
-                ? widget.viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
-                : null,
-            selectionColor: widget.viewModel.selectionColor,
-            child: Center(
-              child: BoxComponent(
-                key: widget.componentKey,
-                opacity: widget.viewModel.opacity,
-                child: Scrollbar(
-                  controller: _scrollController,
-                  scrollbarOrientation: ScrollbarOrientation.bottom,
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: table,
-                  ),
-                ),
-              ),
-            ),
+      child: Center(
+        child: Scrollbar(
+          controller: _scrollController,
+          scrollbarOrientation: ScrollbarOrientation.bottom,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: table,
           ),
         ),
       ),
