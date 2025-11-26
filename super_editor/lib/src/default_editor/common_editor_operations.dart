@@ -1043,6 +1043,9 @@ class CommonEditorOperations {
     if (nodeAfter is! TextNode) {
       return false;
     }
+    if (!CombineParagraphsCommand.canPerform(document, firstNodeId: node.id, secondNodeId: nodeAfter.id)) {
+      return false;
+    }
 
     final firstNodeTextLength = node.text.length;
 
@@ -1317,6 +1320,9 @@ class CommonEditorOperations {
       return false;
     }
     if (nodeAbove is! TextNode) {
+      return false;
+    }
+    if (!CombineParagraphsCommand.canPerform(document, firstNodeId: nodeAbove.id, secondNodeId: node.id)) {
       return false;
     }
 

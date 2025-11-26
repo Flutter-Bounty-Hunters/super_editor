@@ -68,7 +68,7 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
     // The next position right must be the beginning position of the next component.
     // TODO: This assumes left-to-right content ordering, which isn't true for some
     //       languages. Revisit this when/if we need RTL support for this behavior.
-    return getChildRightToChild(nodeId);
+    return getChildBelowChild(nodeId);
   }
 
   bool displayCaretWithExpandedSelection(CompositeNodePosition position) {

@@ -308,6 +308,13 @@ class _BannerNode extends CompositeNode {
     throw UnimplementedError();
   }
 
+  // DocumentNode? makeReplacementWhenEmpty(String nodeId) {
+  //   return ParagraphNode(id: nodeId, text: AttributedText());
+  // }
+  //
+  // @override
+  // bool get isIsolating => true;
+
   @override
   String? copyContent(NodeSelection selection) {
     final compositeSelection = selection;

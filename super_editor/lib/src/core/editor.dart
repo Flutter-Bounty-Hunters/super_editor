@@ -1523,59 +1523,41 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
-  /// Deletes node at [nodePath] and returns list of deleted nodes that were actually deleted
-  /// If deleteEmptyCompositeNode is true, the parent [CompositeNode] containing the node with [nodePath]
-  //  will also be deleted if it becomes empty after removing the child.
-  List<DocumentNode> deleteNodeAtPath(NodePath nodePath, {bool deleteEmptyCompositeNode = false}) {
+  bool deleteNodeAtPath(NodePath nodePath) {
     if (nodePath.isRoot) {
       final nodeToDelete = getNodeAtPath(nodePath);
       if (nodeToDelete == null) {
         throw Exception('Unable to delete node. No node at path $nodePath');
       }
-      final index = getNodeIndexById(nodePath.rootNodeId);
+      final index = getNodeIndexInParentById(nodePath.rootNodeId);
       if (index < 0) {
-        return [];
+        return false;
       }
 
       _nodes.removeAt(index);
       _refreshNodeIdCaches();
 
-      return [nodeToDelete];
+      return true;
     } else {
       final parent = getNodeAtPath(nodePath.parent!) as CompositeNode;
       final nodeToDelete = parent.getChildByNodeId(nodePath.nodeId);
       if (nodeToDelete == null) {
-        // children does not exists at given path
-        return [];
-      }
-
-      if (parent.children.length == 1 && deleteEmptyCompositeNode) {
-        // We are about to remove last child of CompositeNode.
-        // and deleteEmptyCompositeNode set to true -> delete empty parents recursively
-        return [
-          nodeToDelete,
-          ...deleteNodeAtPath(
-            nodePath.parent!,
-            deleteEmptyCompositeNode: deleteEmptyCompositeNode,
-          )
-        ];
+        // child does not exists at given path
+        return false;
       }
       _replaceChildrenAtPath(nodePath.parent!, (parent, children) {
         return children.where((c) => c.id != nodeToDelete.id).toList();
       });
       _refreshNodeIdCaches();
-      return [nodeToDelete];
+      return true;
     }
   }
 
   /// Deletes the given [node] from the [Document].
-  /// If deleteEmptyCompositeNodes is set, prefer to use deleteNodeAtPath to create
-  /// Events for each deleted node
-  bool deleteNode(String nodeId, {bool deleteEmptyCompositeNodes = true}) {
+  bool deleteNode(String nodeId) {
     final path = getNodePathById(nodeId);
     if (path != null) {
-      final deleted = deleteNodeAtPath(path, deleteEmptyCompositeNode: deleteEmptyCompositeNodes);
-      return deleted.isNotEmpty;
+      return deleteNodeAtPath(path);
     }
     return false;
   }
@@ -1658,6 +1640,43 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     } else {
       throw Exception('Could not find node with ID: ${path.rootNodeId}');
     }
+  }
+
+  /// Called when CompositeNode became empty after child deletion.
+  /// Based on replacement returned by [CompositeNode.makeReplacementWhenEmpty] either
+  /// inserts replacement as a first child, or deletes CompositeNode (recursively).
+  List<EditEvent> postProcessEmptyCompositeNode(
+    CompositeNode node,
+    String replacementChildId,
+  ) {
+    assert(node.children.isEmpty);
+
+    final producedEvents = <EditEvent>[];
+    final replacementNode = node.makeReplacementWhenEmpty(replacementChildId);
+    if (replacementNode != null) {
+      insertNodeAt(0, replacementNode, parentNodeId: node.id);
+      producedEvents.add(
+        DocumentEdit(
+          NodeInsertedEvent(replacementNode.id, 0, parentNodeId: node.id),
+        ),
+      );
+    } else {
+      final parentId = getNodePathById(node.id)?.parent?.nodeId;
+      deleteNode(node.id);
+      producedEvents.add(
+        DocumentEdit(
+          NodeRemovedEvent(node.id, node, parentNodeId: parentId),
+        ),
+      );
+      // If deleted CompositeNode is a child of another CompositeNode - handle it recursively
+      if (parentId != null) {
+        final parentNode = getNodeById(parentId) as CompositeNode;
+        if (parentNode.children.isEmpty) {
+          producedEvents.addAll(postProcessEmptyCompositeNode(parentNode, node.id));
+        }
+      }
+    }
+    return producedEvents;
   }
 
   /// Returns [true] if the content of the [other] [Document] is equivalent

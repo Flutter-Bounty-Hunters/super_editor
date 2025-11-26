@@ -319,6 +319,12 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     return node is ImeNodeSerialization ? (node as ImeNodeSerialization).toImeText() : _imeNonSerializableChildChar;
   }
 
+  /// If true — this node is "isolating":
+  /// - Cursor cannot escape it on Backspace/Delete at edges
+  /// - Content cannot merge with previous/next nodes
+  /// - When emptied, cursor stays inside (usually with a placeholder)
+  bool get isIsolating => false;
+
   List<String>? getSelectedChildrenBetween(String upstreamChildId, String downstreamChildId) {
     return null;
   }
@@ -334,6 +340,12 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     required CompositeNodePosition downstreamPosition,
     CompositeNodePosition? upstreamPosition,
   }) {
+    return null;
+  }
+
+  /// Returns a node to insert as first child when this CompositeNode becomes empty
+  /// or `null` if this CompositeNode should be removed.
+  DocumentNode? makeReplacementWhenEmpty(String nodeId) {
     return null;
   }
 }

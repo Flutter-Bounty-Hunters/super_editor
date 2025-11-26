@@ -527,6 +527,13 @@ class _DemoTableCellNode extends CompositeNode {
     // TODO: implement copyWithAddedMetadata
     throw UnimplementedError();
   }
+
+  DocumentNode? makeReplacementWhenEmpty(String nodeId) {
+    return ParagraphNode(id: nodeId, text: AttributedText());
+  }
+
+  @override
+  bool get isIsolating => true;
 }
 
 class _DemoTableCellViewModel extends CompositeNodeViewModel {

@@ -361,12 +361,14 @@ class NodeMovedEvent extends NodeDocumentChange {
 
 /// A [DocumentNode] was removed from the [Document].
 class NodeRemovedEvent extends NodeDocumentChange {
-  const NodeRemovedEvent(this.nodeId, this.removedNode);
+  const NodeRemovedEvent(this.nodeId, this.removedNode, {this.parentNodeId});
 
   @override
   final String nodeId;
 
   final DocumentNode removedNode;
+
+  final String? parentNodeId;
 
   @override
   String describe() => "Removed node: $nodeId";
