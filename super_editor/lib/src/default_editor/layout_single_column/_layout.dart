@@ -68,6 +68,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   final Map<String, GlobalKey> _nodeIdsToComponentKeys = {};
   final Map<GlobalKey, String> _componentKeysToNodeIds = {};
 
+  /// Similar to [_nodeIdsToComponentKeys], but only for non-root nodes, so that it
+  /// won't affect existing logic based on _nodeIdsToComponentKeys iterations.
+  /// Used only to reuse component keys between renders
+  final Map<String, Map<String, GlobalKey<DocumentComponent>>> _parentNodeIdToChildrenComponentKeys = {};
+
   // Keys are cached in top-to-bottom order so that we can visually
   // traverse components without repeatedly querying a `Document`
   // to determine component ordering.
@@ -770,6 +775,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final newNodeIds = <GlobalKey, String>{};
     _topToBottomComponentKeys.clear();
 
+    final childComponentProvider = _ChildrenComponentKeyProvider(_parentNodeIdToChildrenComponentKeys);
+
     final viewModel = widget.presenter.viewModel;
     editorLayoutLog.fine("Rendering layout view model: ${viewModel.hashCode}");
     for (final componentViewModel in viewModel.componentViewModels) {
@@ -779,6 +786,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       );
       newNodeIds[componentKey] = componentViewModel.nodeId;
       editorLayoutLog.finer('Node -> Key: ${componentViewModel.nodeId} -> $componentKey');
+
+      childComponentProvider.registerComponentKeysForChildren(componentViewModel.nodeId, componentViewModel);
 
       _topToBottomComponentKeys.add(componentKey);
 
@@ -794,11 +803,14 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
               componentBuilders: widget.componentBuilders,
               componentKey: componentKey,
               componentViewModel: newComponentViewModel,
+              childComponentKeyProvider: (childId) => childComponentProvider.getKey(componentViewModel.nodeId, childId),
             );
           },
         ),
       );
     }
+
+    childComponentProvider.replaceExisting();
 
     _nodeIdsToComponentKeys
       ..clear()
@@ -1006,6 +1018,7 @@ class _Component extends StatelessWidget {
     // constraint is >= 3.6.0, just ignore `unused_element_parameter`.
     // ignore: unused_element, unused_element_parameter
     this.showDebugPaint = false,
+    required this.childComponentKeyProvider,
   }) : super(key: key);
 
   /// Builders for every type of component that this layout displays.
@@ -1024,6 +1037,8 @@ class _Component extends StatelessWidget {
 
   /// Whether to add debug paint to the component.
   final bool showDebugPaint;
+
+  final GlobalKey<DocumentComponent> Function(String nodeId) childComponentKeyProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -1077,17 +1092,12 @@ class _Component extends StatelessWidget {
 
   ComponentWidgetBuilder _createChildBuilder(BuildContext context) {
     return (SingleColumnLayoutComponentViewModel componentViewModel) {
-      final childComponentKey = GlobalKey<DocumentComponent>();
-
-      // TODO: We should do something similar to _PresenterComponentBuilder to build only single child when its changed
-      // but that also requires changing SingleColumnLayoutPresenterChangeListener API (to include information about
-      // children changes)
+      final childComponentKey = childComponentKeyProvider(componentViewModel.nodeId);
       return (
         childComponentKey,
         _buildComponent(
               SingleColumnDocumentComponentContext(
                 context: context,
-                // FIXME: Normally this key is tied to a node and is cached. But child components don't have nodes...
                 componentKey: childComponentKey,
                 // Recursively generate functions to build deeper and deeper children.
                 buildChildComponent: _createChildBuilder(context),
@@ -1108,5 +1118,44 @@ class _Component extends StatelessWidget {
       ),
       child: component,
     );
+  }
+}
+
+class _ChildrenComponentKeyProvider {
+  _ChildrenComponentKeyProvider(this._existing);
+
+  final Map<String, Map<String, GlobalKey<DocumentComponent>>> _existing;
+  final _new = <String, Map<String, GlobalKey<DocumentComponent>>>{};
+
+  /// Returns a [GlobalKey] for the component at [nodeId] within [rootNodeId].
+  /// Reuses existing keys when possible, otherwise creates and registers a new one.
+  void createKeyForNode(String rootNodeId, String nodeId) {
+    // 1. Reuse from previous render
+    // 2. Reuse from current render
+    // 3. Create new if not found
+    final key = _existing[rootNodeId]?[nodeId] ?? GlobalKey<DocumentComponent>();
+
+    // 4. Register it in _new
+    final rootMap = _new.putIfAbsent(rootNodeId, () => <String, GlobalKey<DocumentComponent>>{});
+    rootMap[nodeId] = key;
+  }
+
+  GlobalKey<DocumentComponent> getKey(String rootNodeId, String nodeId) {
+    return _existing[rootNodeId]?[nodeId] ?? _new[rootNodeId]![nodeId]!;
+  }
+
+  void registerComponentKeysForChildren(String rootNodeId, SingleColumnLayoutComponentViewModel viewModel) {
+    if (viewModel is CompositeNodeViewModel) {
+      for (final child in viewModel.children) {
+        createKeyForNode(rootNodeId, child.nodeId);
+        registerComponentKeysForChildren(rootNodeId, child);
+      }
+    }
+  }
+
+  void replaceExisting() {
+    _existing.clear();
+    _existing.addAll(_new);
+    _new.clear();
   }
 }
