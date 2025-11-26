@@ -353,6 +353,7 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
   Widget build(BuildContext context) {
     return switch (widget.viewModel.fit) {
       TableComponentFit.scroll => SingleAxisTrackpadAndWheelScroller(
+          axis: Axis.horizontal,
           controller: _scrollController,
           child: Center(
             child: Scrollbar(

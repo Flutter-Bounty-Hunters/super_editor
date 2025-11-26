@@ -147,55 +147,41 @@ class _DeferredOwnershipTrackpadAndMouseWheelScroller extends StatefulWidget {
 
 class _DeferredOwnershipTrackpadAndMouseWheelScrollerState
     extends State<_DeferredOwnershipTrackpadAndMouseWheelScroller> {
-  late final _ManualHandlerEntry _entry;
-
-  @override
-  void initState() {
-    super.initState();
-    _entry = _ManualHandlerEntry(
-      id: this,
-      onStart: _internalOnStart,
-      onUpdate: _internalOnUpdate,
-      onEnd: _internalOnEnd,
-      onScrollWheel: _internalOnScrollWheel,
-    );
-  }
-
-  void _internalOnStart(PointerPanZoomStartEvent e) {
+  void _onTrackpadStart(PointerPanZoomStartEvent e) {
     widget.onPanZoomStart?.call(e);
   }
 
-  void _internalOnUpdate(PointerPanZoomUpdateEvent e) {
+  void _onTrackpadUpdate(PointerPanZoomUpdateEvent e) {
     if (GlobalScrollLock.instance._owner == null) {
       switch (widget.scrollAxis) {
         case Axis.horizontal:
           if (e.panDelta.dx.abs() > e.panDelta.dy.abs()) {
-            GlobalScrollLock.instance.requestLock(_entry);
+            GlobalScrollLock.instance.requestLock(this);
           }
         case Axis.vertical:
           if (e.panDelta.dy.abs() > e.panDelta.dx.abs()) {
-            GlobalScrollLock.instance.requestLock(_entry);
+            GlobalScrollLock.instance.requestLock(this);
           }
       }
     }
 
-    if (GlobalScrollLock.instance._owner != _entry) {
+    if (GlobalScrollLock.instance._owner != this) {
       return;
     }
 
     widget.onPanZoomUpdate?.call(e);
   }
 
-  void _internalOnEnd(PointerPanZoomEndEvent e) {
-    if (GlobalScrollLock.instance._owner != _entry) {
+  void _onTrackpadEnd(PointerPanZoomEndEvent e) {
+    if (GlobalScrollLock.instance._owner != this) {
       return;
     }
 
     widget.onPanZoomEnd?.call(e);
-    GlobalScrollLock.instance.release(_entry);
+    GlobalScrollLock.instance.release(this);
   }
 
-  void _internalOnScrollWheel(PointerScrollEvent e) {
+  void _onScrollWheelChange(PointerScrollEvent e) {
     if (GlobalScrollLock.instance._owner != null) {
       return;
     }
@@ -206,41 +192,18 @@ class _DeferredOwnershipTrackpadAndMouseWheelScrollerState
   @override
   Widget build(BuildContext context) {
     return Listener(
-      onPointerPanZoomStart: _entry.onStart,
-      onPointerPanZoomUpdate: _entry.onUpdate,
-      onPointerPanZoomEnd: _entry.onEnd,
+      onPointerPanZoomStart: _onTrackpadStart,
+      onPointerPanZoomUpdate: _onTrackpadUpdate,
+      onPointerPanZoomEnd: _onTrackpadEnd,
       onPointerSignal: (event) {
         if (event is PointerScrollEvent) {
-          _entry.onScrollWheel(event);
+          _onScrollWheelChange(event);
         }
       },
       behavior: HitTestBehavior.opaque,
       child: widget.child,
     );
   }
-}
-
-class _ManualHandlerEntry {
-  _ManualHandlerEntry({
-    required this.id,
-    required this.onStart,
-    required this.onUpdate,
-    required this.onEnd,
-    required this.onScrollWheel,
-  });
-
-  final Object id;
-
-  final void Function(PointerPanZoomStartEvent) onStart;
-  final void Function(PointerPanZoomUpdateEvent) onUpdate;
-  final void Function(PointerPanZoomEndEvent) onEnd;
-  final void Function(PointerScrollEvent) onScrollWheel;
-
-  @override
-  bool operator ==(Object other) => other is _ManualHandlerEntry && identical(other.id, id);
-
-  @override
-  int get hashCode => identityHashCode(id);
 }
 
 /// A singleton that provides a lock for interested/participating scrollables.
