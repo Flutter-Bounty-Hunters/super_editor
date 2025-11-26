@@ -356,14 +356,18 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
           axis: Axis.horizontal,
           controller: _scrollController,
           child: Center(
-            child: Scrollbar(
-              controller: _scrollController,
-              scrollbarOrientation: ScrollbarOrientation.bottom,
-              child: SingleChildScrollView(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: Scrollbar(
                 controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                child: _buildTableComponent(
-                  table: _buildTable(context),
+                scrollbarOrientation: ScrollbarOrientation.bottom,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: _buildTableComponent(
+                    table: _buildTable(context),
+                  ),
                 ),
               ),
             ),
