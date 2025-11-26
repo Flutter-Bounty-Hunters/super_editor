@@ -10,6 +10,7 @@ import 'package:super_editor/src/default_editor/selection_upstream_downstream.da
 import 'package:super_editor/src/default_editor/tables/table_block.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
+import 'package:super_editor/src/infrastructure/scrolling/desktop_mouse_wheel_and_trackpad_scrolling.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
 /// Builds [MarkdownTableViewModel]s and [MarkdownTableComponent]s for every [TableBlockNode]
@@ -20,7 +21,13 @@ import 'package:super_text_layout/super_text_layout.dart';
 ///
 /// See [TableStyles] for the styles that can be applied to the table through a [Stylesheet].
 class MarkdownTableComponentBuilder implements ComponentBuilder {
-  const MarkdownTableComponentBuilder();
+  const MarkdownTableComponentBuilder({
+    this.columnWidth = const IntrinsicColumnWidth(),
+    this.fit = TableComponentFit.scale,
+  });
+
+  final TableColumnWidth columnWidth;
+  final TableComponentFit fit;
 
   @override
   SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
@@ -32,6 +39,8 @@ class MarkdownTableComponentBuilder implements ComponentBuilder {
       nodeId: node.id,
       createdAt: node.metadata[NodeMetadata.createdAt],
       padding: EdgeInsets.zero,
+      columnWidth: columnWidth,
+      fit: fit,
       cells: [
         for (int i = 0; i < node.rowCount; i += 1) //
           [
@@ -87,6 +96,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
     super.opacity,
     required this.cells,
     this.border,
+    this.columnWidth = const IntrinsicColumnWidth(),
+    this.fit = TableComponentFit.scale,
     this.inlineWidgetBuilders = const [],
     required this.caretColor,
     DocumentNodeSelection? selection,
@@ -108,6 +119,12 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
   /// Configurable through [TableStyles.border].
   TableBorder? border;
 
+  /// The policy that sizes the width of each column in the table.
+  TableColumnWidth columnWidth;
+
+  /// How the table responds when it wants to be wider than the available width.
+  TableComponentFit fit;
+
   /// A chain of builders that create inline widgets that can be embedded
   /// inside the table's cells.
   InlineWidgetBuilderChain inlineWidgetBuilders;
@@ -128,6 +145,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
           row.map((e) => e.copy()).toList(),
       ],
       border: border,
+      columnWidth: columnWidth,
+      fit: fit,
       inlineWidgetBuilders: inlineWidgetBuilders,
       caretColor: caretColor,
       selection: selection,
@@ -215,6 +234,8 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
           selection == other.selection &&
           selectionColor == other.selectionColor &&
           border == other.border &&
+          columnWidth == other.columnWidth &&
+          fit == other.fit &&
           const DeepCollectionEquality().equals(cells, other.cells);
 
   @override
@@ -228,7 +249,14 @@ class MarkdownTableViewModel extends SingleColumnLayoutComponentViewModel with S
       selection.hashCode ^
       selectionColor.hashCode ^
       border.hashCode ^
+      columnWidth.hashCode ^
+      fit.hashCode ^
       cells.hashCode;
+}
+
+enum TableComponentFit {
+  scroll,
+  scale;
 }
 
 /// View model that configures the appearance of a [MarkdownTableComponent]'s cell.
@@ -291,9 +319,14 @@ class MarkdownTableCellViewModel extends SingleColumnLayoutComponentViewModel {
 /// A block level selection means that the table is either fully selected or not selected at all,
 /// i.e., there is no selection of individual cells.
 ///
-/// The table automatically expands to fill the available width, and shrinks to fit when it is wider
-/// than the available width.
-class MarkdownTableComponent extends StatelessWidget {
+/// Table components support two sizing properties:
+///  * [viewModel.columnWidth]: How to size every column, using the standard Flutter `Table` property.
+///  * [viewModel.fit]: Whether to shrink the table to fit the width, or to scroll horizontally
+///
+/// It is the responsibility of the user to ensure that `columnWidth` and `fit` do not conflict with
+/// each other, such as a column width that takes up a percentage space, while setting the fit to scroll,
+/// which would be a layout error.
+class MarkdownTableComponent extends StatefulWidget {
   const MarkdownTableComponent({
     super.key,
     required this.componentKey,
@@ -304,7 +337,49 @@ class MarkdownTableComponent extends StatelessWidget {
   final MarkdownTableViewModel viewModel;
 
   @override
+  State<MarkdownTableComponent> createState() => _MarkdownTableComponentState();
+}
+
+class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
+  final _scrollController = ScrollController();
+
+  @override
+  dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return switch (widget.viewModel.fit) {
+      TableComponentFit.scroll => SingleAxisTrackpadAndWheelScroller(
+          axis: Axis.horizontal,
+          controller: _scrollController,
+          child: Center(
+            child: _ScrollbarWithoutGap(
+              scrollController: _scrollController,
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: _buildTableComponent(
+                  table: _buildTable(context),
+                ),
+              ),
+            ),
+          ),
+        ),
+      TableComponentFit.scale => _buildTableComponent(
+          table: _buildTableToScaleDown(
+            table: _buildTable(context),
+          ),
+        ),
+    };
+  }
+
+  Widget _buildTableComponent({
+    required Widget table,
+  }) {
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
       hitTestBehavior: HitTestBehavior.translucent,
@@ -315,36 +390,48 @@ class MarkdownTableComponent extends StatelessWidget {
         //     to select the whole table don't work. The `SelectableBox` seems to be stealing
         //     the pointer events.
         child: SelectableBox(
-          selection: viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
-              ? viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
+          selection: widget.viewModel.selection?.nodeSelection is UpstreamDownstreamNodeSelection
+              ? widget.viewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection
               : null,
-          selectionColor: viewModel.selectionColor,
+          selectionColor: widget.viewModel.selectionColor,
           child: BoxComponent(
-            key: componentKey,
-            opacity: viewModel.opacity,
-            child: LayoutBuilder(builder: (context, constraints) {
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                //  ^ Shrink to fit when the table is wider than the viewport.
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                    // ^ Expand to fill when the table is narrower than the viewport.
-                  ),
-                  child: Table(
-                    border: viewModel.border ?? TableBorder.all(),
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
-                    children: [
-                      for (int i = 0; i < viewModel.cells.length; i += 1) //
-                        _buildRow(context, viewModel.cells[i], i),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            key: widget.componentKey,
+            opacity: widget.viewModel.opacity,
+            child: table,
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTableToScaleDown({
+    required Widget table,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          //  ^ Shrink to fit when the table is wider than the viewport.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+              // ^ Expand to fill when the table is narrower than the viewport.
+            ),
+            child: _buildTable(context),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTable(BuildContext context) {
+    return Table(
+      border: widget.viewModel.border ?? TableBorder.all(),
+      defaultColumnWidth: widget.viewModel.columnWidth,
+      children: [
+        for (int i = 0; i < widget.viewModel.cells.length; i += 1) //
+          _buildRow(context, widget.viewModel.cells[i], i),
+      ],
     );
   }
 
@@ -369,9 +456,47 @@ class MarkdownTableComponent extends StatelessWidget {
           richText: cell.text.computeInlineSpan(
             context,
             cell.textStyleBuilder,
-            viewModel.inlineWidgetBuilders,
+            widget.viewModel.inlineWidgetBuilders,
           ),
           textAlign: cell.textAlign,
+        ),
+      ),
+    );
+  }
+}
+
+/// Scrollbar that internally fixes a dumb Flutter gap bug.
+///
+/// Some Flutter genius thought it was a good idea for all scrollbars in all locations to
+/// inset themselves by the `MediaQuery` padding. This adds gaps between scrollbars and their
+/// viewport in almost every location because most uses aren't full-screen.
+///
+/// Issue ticket: https://github.com/flutter/flutter/issues/150544
+class _ScrollbarWithoutGap extends StatelessWidget {
+  const _ScrollbarWithoutGap({
+    required this.scrollController,
+    required this.scrollbarOrientation,
+    required this.child,
+  });
+
+  final ScrollController scrollController;
+  final ScrollbarOrientation scrollbarOrientation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      removeBottom: true,
+      removeLeft: true,
+      removeRight: true,
+      child: Scrollbar(
+        controller: scrollController,
+        scrollbarOrientation: scrollbarOrientation,
+        child: MediaQuery(
+          data: MediaQuery.of(context),
+          child: child,
         ),
       ),
     );
