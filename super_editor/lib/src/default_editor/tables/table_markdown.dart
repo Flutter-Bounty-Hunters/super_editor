@@ -1,8 +1,5 @@
-import 'dart:collection';
-
 import 'package:attributed_text/attributed_text.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/styles.dart';
@@ -322,8 +319,13 @@ class MarkdownTableCellViewModel extends SingleColumnLayoutComponentViewModel {
 /// A block level selection means that the table is either fully selected or not selected at all,
 /// i.e., there is no selection of individual cells.
 ///
-/// The table automatically expands to fill the available width, and shrinks to fit when it is wider
-/// than the available width.
+/// Table components support two sizing properties:
+///  * [viewModel.columnWidth]: How to size every column, using the standard Flutter `Table` property.
+///  * [viewModel.fit]: Whether to shrink the table to fit the width, or to scroll horizontally
+///
+/// It is the responsibility of the user to ensure that `columnWidth` and `fit` do not conflict with
+/// each other, such as a column width that takes up a percentage space, while setting the fit to scroll,
+/// which would be a layout error.
 class MarkdownTableComponent extends StatefulWidget {
   const MarkdownTableComponent({
     super.key,
@@ -341,66 +343,17 @@ class MarkdownTableComponent extends StatefulWidget {
 class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
   final _scrollController = ScrollController();
 
-  final _velocitySamples = ListQueue<(Duration timestamp, double offset)>(10);
-
   @override
   dispose() {
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onTrackpadStart(PointerPanZoomStartEvent event) {
-    (_scrollController.position as ScrollPositionWithSingleContext).goIdle();
-  }
-
-  void _onTrackpadUpdate(PointerPanZoomUpdateEvent event) {
-    if (event.panDelta.dx == 0) {
-      return;
-    }
-
-    if (_velocitySamples.length == 10) {
-      _velocitySamples.removeLast();
-    }
-
-    _scrollController.position.pointerScroll(-event.panDelta.dx);
-
-    _velocitySamples.addFirst(
-      (event.timeStamp, _scrollController.position.pixels),
-    );
-  }
-
-  void _onTrackpadEnd(PointerPanZoomEndEvent event) {
-    if (_velocitySamples.length < 2) {
-      // We didn't collect enough samples to calculate a velocity. Fizzle.
-      return;
-    }
-
-    (_scrollController.position as ScrollPositionWithSingleContext).goBallistic(
-      (_velocitySamples.first.$2 - _velocitySamples.last.$2) /
-          ((_velocitySamples.first.$1 - _velocitySamples.last.$1).inMilliseconds / 1000),
-    );
-
-    _velocitySamples.clear();
-  }
-
-  void _onScrollWheel(PointerScrollEvent event) {
-    if (event.scrollDelta.dx == 0) {
-      return;
-    }
-
-    _scrollController.position.pointerScroll(event.scrollDelta.dx);
-  }
-
   @override
   Widget build(BuildContext context) {
     return switch (widget.viewModel.fit) {
-      TableComponentFit.scroll => ManualScrollHandler(
-          // Scroll the table with the mouse scroll wheel, and trackpads.
-          scrollAxis: Axis.horizontal,
-          onPanZoomStart: _onTrackpadStart,
-          onPanZoomUpdate: _onTrackpadUpdate,
-          onPanZoomEnd: _onTrackpadEnd,
-          onScrollWheel: _onScrollWheel,
+      TableComponentFit.scroll => SingleAxisTrackpadAndWheelScroller(
+          controller: _scrollController,
           child: Center(
             child: Scrollbar(
               controller: _scrollController,
