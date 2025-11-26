@@ -409,9 +409,7 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 child: _buildTableComponent(
-                  table: _buildTableWithScrolling(
-                    table: _buildTable(context),
-                  ),
+                  table: _buildTable(context),
                 ),
               ),
             ),
@@ -445,30 +443,6 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
           child: BoxComponent(
             key: widget.componentKey,
             opacity: widget.viewModel.opacity,
-            child: table,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableWithScrolling({
-    required Widget table,
-  }) {
-    return ManualScrollHandler(
-      // Scroll the table with the mouse scroll wheel, and trackpads.
-      scrollAxis: Axis.horizontal,
-      onPanZoomStart: _onTrackpadStart,
-      onPanZoomUpdate: _onTrackpadUpdate,
-      onPanZoomEnd: _onTrackpadEnd,
-      onScrollWheel: _onScrollWheel,
-      child: Center(
-        child: Scrollbar(
-          controller: _scrollController,
-          scrollbarOrientation: ScrollbarOrientation.bottom,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
             child: table,
           ),
         ),
