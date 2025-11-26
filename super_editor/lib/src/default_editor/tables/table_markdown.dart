@@ -356,18 +356,14 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
           axis: Axis.horizontal,
           controller: _scrollController,
           child: Center(
-            child: MediaQuery.removePadding(
-              context: context,
-              removeBottom: true,
-              child: Scrollbar(
+            child: _ScrollbarWithoutGap(
+              scrollController: _scrollController,
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              child: SingleChildScrollView(
                 controller: _scrollController,
-                scrollbarOrientation: ScrollbarOrientation.bottom,
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: _buildTableComponent(
-                    table: _buildTable(context),
-                  ),
+                scrollDirection: Axis.horizontal,
+                child: _buildTableComponent(
+                  table: _buildTable(context),
                 ),
               ),
             ),
@@ -463,6 +459,44 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
             widget.viewModel.inlineWidgetBuilders,
           ),
           textAlign: cell.textAlign,
+        ),
+      ),
+    );
+  }
+}
+
+/// Scrollbar that internally fixes a dumb Flutter gap bug.
+///
+/// Some Flutter genius thought it was a good idea for all scrollbars in all locations to
+/// inset themselves by the `MediaQuery` padding. This adds gaps between scrollbars and their
+/// viewport in almost every location because most uses aren't full-screen.
+///
+/// Issue ticket: https://github.com/flutter/flutter/issues/150544
+class _ScrollbarWithoutGap extends StatelessWidget {
+  const _ScrollbarWithoutGap({
+    required this.scrollController,
+    required this.scrollbarOrientation,
+    required this.child,
+  });
+
+  final ScrollController scrollController;
+  final ScrollbarOrientation scrollbarOrientation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      removeBottom: true,
+      removeLeft: true,
+      removeRight: true,
+      child: Scrollbar(
+        controller: scrollController,
+        scrollbarOrientation: scrollbarOrientation,
+        child: MediaQuery(
+          data: MediaQuery.of(context),
+          child: child,
         ),
       ),
     );
