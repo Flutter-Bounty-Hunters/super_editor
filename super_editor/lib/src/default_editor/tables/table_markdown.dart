@@ -24,7 +24,13 @@ import 'package:super_text_layout/super_text_layout.dart';
 ///
 /// See [TableStyles] for the styles that can be applied to the table through a [Stylesheet].
 class MarkdownTableComponentBuilder implements ComponentBuilder {
-  const MarkdownTableComponentBuilder();
+  const MarkdownTableComponentBuilder({
+    this.columnWidth = const IntrinsicColumnWidth(),
+    this.fit = TableComponentFit.scale,
+  });
+
+  final TableColumnWidth columnWidth;
+  final TableComponentFit fit;
 
   @override
   SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
@@ -36,6 +42,8 @@ class MarkdownTableComponentBuilder implements ComponentBuilder {
       nodeId: node.id,
       createdAt: node.metadata[NodeMetadata.createdAt],
       padding: EdgeInsets.zero,
+      columnWidth: columnWidth,
+      fit: fit,
       cells: [
         for (int i = 0; i < node.rowCount; i += 1) //
           [
@@ -385,6 +393,41 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
 
   @override
   Widget build(BuildContext context) {
+    return switch (widget.viewModel.fit) {
+      TableComponentFit.scroll => ManualScrollHandler(
+          // Scroll the table with the mouse scroll wheel, and trackpads.
+          scrollAxis: Axis.horizontal,
+          onPanZoomStart: _onTrackpadStart,
+          onPanZoomUpdate: _onTrackpadUpdate,
+          onPanZoomEnd: _onTrackpadEnd,
+          onScrollWheel: _onScrollWheel,
+          child: Center(
+            child: Scrollbar(
+              controller: _scrollController,
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: _buildTableComponent(
+                  table: _buildTableWithScrolling(
+                    table: _buildTable(context),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      TableComponentFit.scale => _buildTableComponent(
+          table: _buildTableToScaleDown(
+            table: _buildTable(context),
+          ),
+        ),
+    };
+  }
+
+  Widget _buildTableComponent({
+    required Widget table,
+  }) {
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
       hitTestBehavior: HitTestBehavior.translucent,
@@ -402,14 +445,7 @@ class _MarkdownTableComponentState extends State<MarkdownTableComponent> {
           child: BoxComponent(
             key: widget.componentKey,
             opacity: widget.viewModel.opacity,
-            child: switch (widget.viewModel.fit) {
-              TableComponentFit.scroll => _buildTableWithScrolling(
-                  table: _buildTable(context),
-                ),
-              TableComponentFit.scale => _buildTableToScaleDown(
-                  table: _buildTable(context),
-                ),
-            },
+            child: table,
           ),
         ),
       ),
