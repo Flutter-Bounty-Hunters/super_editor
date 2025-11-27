@@ -576,6 +576,36 @@ extension ExpandDocumentSelection on Document {
   }
 }
 
+extension DocumentSelectionNodeLookup on Document {
+  /// Returns the first [DocumentNode] after [startingNode] in [direction] whose
+  /// [DocumentComponent] is visually selectable and matches [nearX]
+  /// [nearX] is in document coordinate space and might be used to match correct node vertically
+  /// when moving up and down (for example to get correct column in a table)
+  DocumentNode? getNextSelectableNode({
+    required DocumentNode startingNode,
+    required DocumentLayoutResolver documentLayoutResolver,
+    required DocumentNodeLookupDirection direction,
+    double? nearX,
+  }) {
+    final layout = documentLayoutResolver();
+    final iterator = _DirectionalLeafNodeIterator(
+      this,
+      documentLayoutResolver,
+      sinceNode: startingNode,
+      direction: direction,
+      nearX: nearX,
+    );
+    while (iterator.moveNext()) {
+      final current = iterator.current;
+      final component = layout.getComponentByNodeId(current.id);
+      if (component != null && component.isVisualSelectionSupported()) {
+        return current;
+      }
+    }
+    return null;
+  }
+}
+
 /// A [DocumentSelection] that preserves the **original** user-intended
 /// selection alongside a possibly **adjusted** (snapped, refined) version.
 ///
@@ -597,4 +627,104 @@ class AdjustedDocumentSelection extends DocumentSelection {
   });
 
   final DocumentSelection original;
+}
+
+enum DocumentNodeLookupDirection { up, down, left, right }
+
+/// Similar DeepFirstSearch to _LeafNodeIterator, but:
+/// - follows direction with [getFirstChildInDirection] and [getNextChildInDirection] calls
+/// - uses nearX for up/down directions (so when you jump down from paragraph to table, it can go to correct column)
+class _DirectionalLeafNodeIterator implements Iterator<DocumentNode> {
+  final Document _document;
+  final DocumentLayoutResolver _layoutResolver;
+
+  final _path = <String>[];
+  final _parentComponents = <CompositeComponent>[];
+
+  final DocumentNodeLookupDirection _direction;
+  final double? nearX;
+
+  DocumentNode? _currentNode;
+
+  _DirectionalLeafNodeIterator(
+    this._document,
+    this._layoutResolver, {
+    required DocumentNode sinceNode,
+    required DocumentNodeLookupDirection direction,
+    this.nearX,
+  }) : _direction = direction {
+    final path = _document.getNodePathById(sinceNode.id)!;
+    final layout = _layoutResolver();
+    for (var i = 0; i < path.length - 1; i += 1) {
+      final parentId = path[i];
+      _parentComponents.add(layout.getComponentByNodeId(parentId) as CompositeComponent);
+      _path.add(parentId);
+    }
+    _path.add(path.nodeId);
+    _currentNode = sinceNode;
+  }
+
+  @override
+  get current => _currentNode!;
+
+  @override
+  bool moveNext() {
+    return _moveWithinCurrentParent();
+  }
+
+  bool _moveWithinCurrentParent() {
+    final nodeId = _path.last;
+    final nextNodeId = _nextNodeId(nodeId);
+
+    if (nextNodeId != null) {
+      _path[_path.length - 1] = nextNodeId;
+      return _fallToLeaf();
+    } else {
+      if (_parentComponents.isNotEmpty) {
+        // moving up
+        _parentComponents.removeLast();
+        _path.removeLast();
+        return _moveWithinCurrentParent();
+      } else {
+        // we reached end of document
+        return false;
+      }
+    }
+  }
+
+  bool _fallToLeaf() {
+    final nodeId = _path.last;
+    final component = _layoutResolver().getComponentByNodeId(nodeId);
+    final node = _document.getNodeById(nodeId);
+
+    if (node is CompositeNode) {
+      // current node is a CompositeNode, go deeper
+      _parentComponents.add(component as CompositeComponent);
+
+      double? offsetInComponent;
+      if (nearX != null) {
+        offsetInComponent = _layoutResolver()
+            .getAncestorOffsetFromDocumentOffset(Offset(nearX!, 0), component.context.findRenderObject())
+            .dx;
+      }
+      _path.add(component.getFirstChildInDirection(_direction, nearX: offsetInComponent).nodeId);
+      return _fallToLeaf();
+    } else {
+      // leaf node found, finish search
+      _currentNode = node;
+      return true;
+    }
+  }
+
+  String? _nextNodeId(String sinceNodeId) {
+    if (_parentComponents.isEmpty) {
+      final goForward =
+          _direction == DocumentNodeLookupDirection.right || _direction == DocumentNodeLookupDirection.down;
+      return goForward
+          ? _document.getNodeAfterById(sinceNodeId, mode: NodeTraverseMode.sameParent)?.id
+          : _document.getNodeBeforeById(sinceNodeId, mode: NodeTraverseMode.sameParent)?.id;
+    } else {
+      return _parentComponents.last.getNextChildInDirection(sinceNodeId, _direction)?.nodeId;
+    }
+  }
 }

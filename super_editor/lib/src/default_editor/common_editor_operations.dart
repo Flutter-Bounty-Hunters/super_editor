@@ -326,7 +326,11 @@ class CommonEditorOperations {
       }
 
       // Move to next node
-      final nextNode = _getUpstreamSelectableNodeBefore(node);
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.left,
+      );
 
       if (nextNode == null) {
         // We're at the beginning of the document and can't go anywhere.
@@ -449,7 +453,11 @@ class CommonEditorOperations {
       }
 
       // Move to next node
-      final nextNode = _getDownstreamSelectableNodeAfter(node);
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.right,
+      );
 
       if (nextNode == null) {
         // We're at the beginning/end of the document and can't go
@@ -552,7 +560,17 @@ class CommonEditorOperations {
 
     if (newExtentNodePosition == null) {
       // Move to next node
-      final nextNode = _getUpstreamSelectableNodeBefore(node);
+      final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+      final offsetToMatch = documentLayoutResolver()
+          .getDocumentOffsetFromAncestorOffset(offsetInExtent, extentComponent.context.findRenderObject());
+
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.up,
+        nearX: offsetToMatch.dx,
+      );
+
       if (nextNode != null) {
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
@@ -560,8 +578,9 @@ class CommonEditorOperations {
           editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
           return false;
         }
-        final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-        newExtentNodePosition = nextComponent.getEndPositionNearX(offsetToMatch.dx);
+        final offsetInNextComponent = documentLayoutResolver()
+            .getAncestorOffsetFromDocumentOffset(offsetToMatch, nextComponent.context.findRenderObject());
+        newExtentNodePosition = nextComponent.getEndPositionNearX(offsetInNextComponent.dx);
       } else {
         // We're at the top of the document. Move the cursor to the
         // beginning of the current node.
@@ -623,7 +642,15 @@ class CommonEditorOperations {
 
     if (newExtentNodePosition == null) {
       // Move to next node
-      final nextNode = _getDownstreamSelectableNodeAfter(node);
+      final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+      final offsetToMatch = documentLayoutResolver()
+          .getDocumentOffsetFromAncestorOffset(offsetInExtent, extentComponent.context.findRenderObject());
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.down,
+        nearX: offsetToMatch.dx,
+      );
       if (nextNode != null) {
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
@@ -631,8 +658,9 @@ class CommonEditorOperations {
           editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
           return false;
         }
-        final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-        newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetToMatch.dx);
+        final offsetInNextComponent = documentLayoutResolver()
+            .getAncestorOffsetFromDocumentOffset(offsetToMatch, nextComponent.context.findRenderObject());
+        newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetInNextComponent.dx);
       } else {
         // We're at the bottom of the document. Move the cursor to the
         // end of the current node.
@@ -671,7 +699,11 @@ class CommonEditorOperations {
     NodePosition? newPosition;
 
     // Try to find a new selection downstream.
-    final downstreamNode = _getDownstreamSelectableNodeAfter(startingNode);
+    final downstreamNode = document.getNextSelectableNode(
+      startingNode: startingNode,
+      documentLayoutResolver: documentLayoutResolver,
+      direction: DocumentNodeLookupDirection.right,
+    );
     if (downstreamNode != null) {
       newNodeId = downstreamNode.id;
       final nextComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -680,7 +712,11 @@ class CommonEditorOperations {
 
     // Try to find a new selection upstream.
     if (newPosition == null) {
-      final upstreamNode = _getUpstreamSelectableNodeBefore(startingNode);
+      final upstreamNode = document.getNextSelectableNode(
+        startingNode: startingNode,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.left,
+      );
       if (upstreamNode != null) {
         newNodeId = upstreamNode.id;
         final previousComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -862,48 +898,6 @@ class CommonEditorOperations {
         const ClearComposingRegionRequest(),
       ]);
     }
-  }
-
-  /// Returns the first [DocumentNode] before [startingNode] whose
-  /// [DocumentComponent] is visually selectable.
-  DocumentNode? _getUpstreamSelectableNodeBefore(DocumentNode startingNode) {
-    bool foundSelectableNode = false;
-    DocumentNode prevNode = startingNode;
-    DocumentNode? selectableNode;
-    do {
-      selectableNode = document.getNodeBeforeById(prevNode.id);
-
-      if (selectableNode != null) {
-        final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
-        if (nextComponent != null) {
-          foundSelectableNode = nextComponent.isVisualSelectionSupported();
-        }
-        prevNode = selectableNode;
-      }
-    } while (!foundSelectableNode && selectableNode != null);
-
-    return selectableNode;
-  }
-
-  /// Returns the first [DocumentNode] after [startingNode] whose
-  /// [DocumentComponent] is visually selectable.
-  DocumentNode? _getDownstreamSelectableNodeAfter(DocumentNode startingNode) {
-    bool foundSelectableNode = false;
-    DocumentNode prevNode = startingNode;
-    DocumentNode? selectableNode;
-    do {
-      selectableNode = document.getNodeAfterById(prevNode.id);
-
-      if (selectableNode != null) {
-        final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
-        if (nextComponent != null) {
-          foundSelectableNode = nextComponent.isVisualSelectionSupported();
-        }
-        prevNode = selectableNode;
-      }
-    } while (!foundSelectableNode && selectableNode != null);
-
-    return selectableNode;
   }
 
   /// Deletes a unit of content that comes after the [DocumentComposer]'s

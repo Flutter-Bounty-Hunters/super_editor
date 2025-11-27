@@ -35,7 +35,11 @@ bool moveSelectionToNearestSelectableNode({
   NodePosition? newPosition;
 
   // Try to find a new selection downstream.
-  final downstreamNode = getDownstreamSelectableNodeAfter(document, documentLayoutResolver, startingNode);
+  final downstreamNode = editor.document.getNextSelectableNode(
+    startingNode: startingNode,
+    documentLayoutResolver: documentLayoutResolver,
+    direction: DocumentNodeLookupDirection.right,
+  );
   if (downstreamNode != null) {
     newNodeId = downstreamNode.id;
     final nextComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -44,7 +48,11 @@ bool moveSelectionToNearestSelectableNode({
 
   // Try to find a new selection upstream.
   if (newPosition == null) {
-    final upstreamNode = getUpstreamSelectableNodeBefore(document, documentLayoutResolver, startingNode);
+    final upstreamNode = editor.document.getNextSelectableNode(
+      startingNode: startingNode,
+      documentLayoutResolver: documentLayoutResolver,
+      direction: DocumentNodeLookupDirection.left,
+    );
     if (upstreamNode != null) {
       newNodeId = upstreamNode.id;
       final previousComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -98,31 +106,6 @@ DocumentNode? getDownstreamSelectableNodeAfter(
   DocumentNode? selectableNode;
   do {
     selectableNode = document.getNodeAfter(prevNode);
-
-    if (selectableNode != null) {
-      final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
-      if (nextComponent != null) {
-        foundSelectableNode = nextComponent.isVisualSelectionSupported();
-      }
-      prevNode = selectableNode;
-    }
-  } while (!foundSelectableNode && selectableNode != null);
-
-  return selectableNode;
-}
-
-/// Returns the first [DocumentNode] before [startingNode] whose
-/// [DocumentComponent] is visually selectable.
-DocumentNode? getUpstreamSelectableNodeBefore(
-  Document document,
-  DocumentLayoutResolver documentLayoutResolver,
-  DocumentNode startingNode,
-) {
-  bool foundSelectableNode = false;
-  DocumentNode prevNode = startingNode;
-  DocumentNode? selectableNode;
-  do {
-    selectableNode = document.getNodeBefore(prevNode);
 
     if (selectableNode != null) {
       final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
@@ -219,7 +202,11 @@ bool moveCaretUpstream({
 
   if (newExtentNodePosition == null) {
     // Move to next node
-    final nextNode = getUpstreamSelectableNodeBefore(editor.document, () => documentLayout, node);
+    final nextNode = editor.document.getNextSelectableNode(
+      startingNode: node,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.left,
+    );
 
     if (nextNode == null) {
       // We're at the beginning of the document and can't go anywhere.
@@ -297,7 +284,11 @@ bool moveCaretDownstream({
 
   if (newExtentNodePosition == null) {
     // Move to next node
-    final nextNode = getDownstreamSelectableNodeAfter(editor.document, () => documentLayout, node);
+    final nextNode = editor.document.getNextSelectableNode(
+      startingNode: node,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.right,
+    );
 
     if (nextNode == null) {
       // We're at the beginning/end of the document and can't go
@@ -378,7 +369,17 @@ bool moveCaretUp({
 
   if (newExtentNodePosition == null) {
     // Move to next node
-    final nextNode = getUpstreamSelectableNodeBefore(editor.document, () => documentLayout, node);
+    final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+    final offsetToMatch = documentLayout.getDocumentOffsetFromAncestorOffset(
+      offsetInExtent,
+      extentComponent.context.findRenderObject(),
+    );
+    final nextNode = editor.document.getNextSelectableNode(
+      startingNode: node,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.up,
+      nearX: offsetToMatch.dx,
+    );
     if (nextNode != null) {
       newExtentNodeId = nextNode.id;
       final nextComponent = documentLayout.getComponentByNodeId(nextNode.id);
@@ -386,8 +387,11 @@ bool moveCaretUp({
         editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
         return false;
       }
-      final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-      newExtentNodePosition = nextComponent.getEndPositionNearX(offsetToMatch.dx);
+      final offsetInNextComponent = documentLayout.getAncestorOffsetFromDocumentOffset(
+        offsetToMatch,
+        nextComponent.context.findRenderObject(),
+      );
+      newExtentNodePosition = nextComponent.getEndPositionNearX(offsetInNextComponent.dx);
     } else {
       // We're at the top of the document. Move the cursor to the
       // beginning of the current node.
@@ -461,7 +465,17 @@ bool moveCaretDown({
 
   if (newExtentNodePosition == null) {
     // Move to next node
-    final nextNode = getDownstreamSelectableNodeAfter(editor.document, () => documentLayout, node);
+    final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+    final offsetToMatch = documentLayout.getDocumentOffsetFromAncestorOffset(
+      offsetInExtent,
+      extentComponent.context.findRenderObject(),
+    );
+    final nextNode = editor.document.getNextSelectableNode(
+      startingNode: node,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.down,
+      nearX: offsetToMatch.dx,
+    );
     if (nextNode != null) {
       newExtentNodeId = nextNode.id;
       final nextComponent = documentLayout.getComponentByNodeId(nextNode.id);
@@ -469,8 +483,11 @@ bool moveCaretDown({
         editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
         return false;
       }
-      final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-      newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetToMatch.dx);
+      final offsetInNextComponent = documentLayout.getAncestorOffsetFromDocumentOffset(
+        offsetToMatch,
+        nextComponent.context.findRenderObject(),
+      );
+      newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetInNextComponent.dx);
     } else {
       // We're at the bottom of the document. Move the cursor to the
       // end of the current node.

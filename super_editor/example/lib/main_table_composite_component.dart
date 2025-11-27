@@ -417,6 +417,18 @@ class _DemoTableNode extends CompositeNode {
     return null;
   }
 
+  CompositeNode? resolveWhenChildrenAffected({
+    required List<String> removedChildIds,
+    required List<String> emptiedChildIds,
+    required bool selectionFlowedThrough,
+  }) {
+    if (emptiedChildIds.length == children.length) {
+      // When selected through whole table and pressed delete - delete it completely
+      return null;
+    }
+    return this;
+  }
+
   @override
   DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
     // TODO: implement copyWithAddedMetadata
@@ -485,6 +497,10 @@ class _DemoTableIndex {
     return _DemoTableIndex(x, y);
   }
 
+  int toListIndex(int columnCount) {
+    return y * columnCount + x;
+  }
+
   @override
   String toString() {
     return 'TableIndex[$x, $y]';
@@ -528,8 +544,15 @@ class _DemoTableCellNode extends CompositeNode {
     throw UnimplementedError();
   }
 
-  DocumentNode? makeReplacementWhenEmpty(String nodeId) {
-    return ParagraphNode(id: nodeId, text: AttributedText());
+  CompositeNode? resolveWhenChildrenAffected({
+    required List<String> removedChildIds,
+    required List<String> emptiedChildIds,
+    required bool selectionFlowedThrough,
+  }) {
+    if (children.isEmpty) {
+      return copyWithChildren([ParagraphNode(id: removedChildIds.last, text: AttributedText())]);
+    }
+    return this;
   }
 
   @override
@@ -710,6 +733,57 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
     return true;
   }
 
+  CompositeComponentChild? getNextChildInDirection(String sinceChildId, DocumentNodeLookupDirection direction) {
+    final children = getChildren();
+    final index = children.indexWhere((c) => c.nodeId == sinceChildId);
+
+    final cellIndex = _DemoTableIndex.fromListIndex(index, widget.columnsCount);
+
+    _DemoTableIndex nextCellIndex;
+
+    switch (direction) {
+      case DocumentNodeLookupDirection.up:
+        nextCellIndex = _DemoTableIndex(cellIndex.x, cellIndex.y - 1);
+      case DocumentNodeLookupDirection.down:
+        nextCellIndex = _DemoTableIndex(cellIndex.x, cellIndex.y + 1);
+      case DocumentNodeLookupDirection.left:
+        nextCellIndex = cellIndex.x > 0
+            ? _DemoTableIndex(cellIndex.x - 1, cellIndex.y)
+            : _DemoTableIndex(widget.columnsCount - 1, cellIndex.y - 1);
+      case DocumentNodeLookupDirection.right:
+        nextCellIndex = cellIndex.x < widget.columnsCount - 1
+            ? _DemoTableIndex(cellIndex.x + 1, cellIndex.y)
+            : _DemoTableIndex(0, cellIndex.y + 1);
+    }
+
+    final listIndex = nextCellIndex.toListIndex(widget.columnsCount);
+    if (listIndex >= 0 && listIndex < children.length) {
+      return children[listIndex];
+    } else {
+      return null;
+    }
+  }
+
+  CompositeComponentChild getFirstChildInDirection(DocumentNodeLookupDirection direction, {double? nearX}) {
+    _DemoTableIndex index;
+    if (direction == DocumentNodeLookupDirection.up || direction == DocumentNodeLookupDirection.down) {
+      final targetColumn = nearX != null ? getColumnIndexForX(nearX) : 0;
+      if (direction == DocumentNodeLookupDirection.up) {
+        index = _DemoTableIndex(targetColumn, rowsCount - 1);
+      } else {
+        index = _DemoTableIndex(targetColumn, 0);
+      }
+    } else {
+      if (direction == DocumentNodeLookupDirection.left) {
+        index = _DemoTableIndex(columnsCount - 1, rowsCount - 1);
+      } else {
+        index = _DemoTableIndex(0, 0);
+      }
+    }
+
+    return getChildren()[index.toListIndex(columnsCount)];
+  }
+
   @override
   CompositeComponentChild getChildForOffset(Offset componentOffset) {
     final renderObject = _tableKey.currentContext!.findRenderObject() as RenderTable;
@@ -738,4 +812,24 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
   CompositeComponentChild getChildForCell(int col, int row) {
     return widget.children[row * widget.columnsCount + col];
   }
+
+  int getColumnIndexForX(double x) {
+    final renderTable = _tableKey.currentContext?.findRenderObject() as RenderTable?;
+    if (renderTable != null && renderTable.rows > 0) {
+      final firstRow = renderTable.row(0);
+      var column = 0;
+      var width = 0.0;
+      for (final cell in firstRow) {
+        width += cell.size.width;
+        if (width > x) {
+          return column;
+        }
+        column += 1;
+      }
+    }
+    return 0;
+  }
+
+  int get columnsCount => widget.columnsCount;
+  int get rowsCount => (getChildren().length / widget.columnsCount).floor();
 }

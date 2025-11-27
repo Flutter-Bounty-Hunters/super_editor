@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
+import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/flutter/geometry.dart';
 
@@ -38,37 +39,29 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
     return getChildren().firstWhereOrNull((c) => c.nodeId == nodeId);
   }
 
-  CompositeComponentChild? getChildAboveChild(String nodeId) {
+  CompositeComponentChild? getNextChildInDirection(String sinceChildId, DocumentNodeLookupDirection direction) {
     final children = getChildren();
-    final index = children.indexWhere((c) => c.nodeId == nodeId);
-    if (index > 0) {
-      return children[index - 1];
-    }
-    return null;
-  }
-
-  CompositeComponentChild? getChildBelowChild(String nodeId) {
-    final children = getChildren();
-    final index = children.indexWhere((c) => c.nodeId == nodeId);
-    if (index == -1 || index == children.length - 1) {
-      // Nothing below this child.
+    final index = children.indexWhere((c) => c.nodeId == sinceChildId);
+    if (index == -1) {
       return null;
     }
-    return children[index + 1];
+
+    final backward = direction == DocumentNodeLookupDirection.up || direction == DocumentNodeLookupDirection.left;
+    final nextIndex = backward ? index - 1 : index + 1;
+
+    if (nextIndex >= 0 && nextIndex < children.length) {
+      return children[nextIndex];
+    } else {
+      return null;
+    }
   }
 
-  CompositeComponentChild? getChildLeftToChild(String nodeId) {
-    // The next position left must be the ending position of the previous component.
-    // TODO: This assumes left-to-right content ordering, which isn't true for some
-    //       languages. Revisit this when/if we need RTL support for this behavior.
-    return getChildAboveChild(nodeId);
-  }
-
-  CompositeComponentChild? getChildRightToChild(String nodeId) {
-    // The next position right must be the beginning position of the next component.
-    // TODO: This assumes left-to-right content ordering, which isn't true for some
-    //       languages. Revisit this when/if we need RTL support for this behavior.
-    return getChildBelowChild(nodeId);
+  CompositeComponentChild getFirstChildInDirection(DocumentNodeLookupDirection direction, {double? nearX}) {
+    if (direction == DocumentNodeLookupDirection.up || direction == DocumentNodeLookupDirection.left) {
+      return getChildren().last;
+    } else {
+      return getChildren().first;
+    }
   }
 
   bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
@@ -305,82 +298,22 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
 
   @override
   NodePosition? movePositionUp(NodePosition currentPosition) {
-    if (currentPosition is! CompositeNodePosition) {
-      return null;
-    }
-
-    final child = getChildByNodeId(currentPosition.childNodeId)!;
-    final upWithinChild = child.component.movePositionUp(currentPosition.childNodePosition);
-    if (upWithinChild != null) {
-      return currentPosition.moveWithinChild(upWithinChild);
-    }
-
-    final previousChild = getChildAboveChild(currentPosition.childNodeId);
-    if (previousChild == null) {
-      return null;
-    }
-    // The next position up must be the ending position of the previous component.
-    return CompositeNodePosition(previousChild.nodeId, previousChild.component.getEndPosition());
+    throw Exception('This method should not be called for CompositeNode');
   }
 
   @override
   NodePosition? movePositionDown(NodePosition currentPosition) {
-    if (currentPosition is! CompositeNodePosition) {
-      return null;
-    }
-
-    final child = getChildByNodeId(currentPosition.childNodeId)!;
-    final downWithinChild = child.component.movePositionDown(currentPosition.childNodePosition);
-    if (downWithinChild != null) {
-      return currentPosition.moveWithinChild(downWithinChild);
-    }
-
-    final nextChild = getChildBelowChild(currentPosition.childNodeId);
-    if (nextChild == null) {
-      return null;
-    }
-    // The next position down must be the beginning position of the next component.
-    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getBeginningPosition());
+    throw Exception('This method should not be called for CompositeNode');
   }
 
   @override
   NodePosition? movePositionLeft(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    if (currentPosition is! CompositeNodePosition) {
-      return null;
-    }
-
-    final child = getChildByNodeId(currentPosition.childNodeId)!;
-    final leftWithinChild = child.component.movePositionLeft(currentPosition.childNodePosition, movementModifier);
-    if (leftWithinChild != null) {
-      return currentPosition.moveWithinChild(leftWithinChild);
-    }
-
-    final previousChild = getChildLeftToChild(currentPosition.childNodeId);
-    if (previousChild == null) {
-      return null;
-    }
-
-    return CompositeNodePosition(previousChild.nodeId, previousChild.component.getEndPosition());
+    throw Exception('This method should not be called for CompositeNode');
   }
 
   @override
   NodePosition? movePositionRight(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    if (currentPosition is! CompositeNodePosition) {
-      return null;
-    }
-
-    final child = getChildByNodeId(currentPosition.childNodeId)!;
-    final rightWithinChild = child.component.movePositionRight(currentPosition.childNodePosition, movementModifier);
-    if (rightWithinChild != null) {
-      return currentPosition.moveWithinChild(rightWithinChild);
-    }
-
-    final nextChild = getChildRightToChild(currentPosition.childNodeId);
-    if (nextChild == null) {
-      return null;
-    }
-
-    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getBeginningPosition());
+    throw Exception('This method should not be called for CompositeNode');
   }
 
   @override

@@ -683,7 +683,11 @@ void moveToNearestSelectableComponent(
   NodePosition? newPosition;
 
   // Try to find a new selection downstream.
-  final downstreamNode = getDownstreamSelectableNodeAfter(editor.document, () => documentLayout, startingNode);
+  final downstreamNode = editor.document.getNextSelectableNode(
+    startingNode: startingNode,
+    documentLayoutResolver: () => documentLayout,
+    direction: DocumentNodeLookupDirection.right,
+  );
   if (downstreamNode != null) {
     newNodeId = downstreamNode.id;
     final nextComponent = documentLayout.getComponentByNodeId(newNodeId);
@@ -692,7 +696,11 @@ void moveToNearestSelectableComponent(
 
   // Try to find a new selection upstream.
   if (newPosition == null) {
-    final upstreamNode = getUpstreamSelectableNodeBefore(editor.document, () => documentLayout, startingNode);
+    final upstreamNode = editor.document.getNextSelectableNode(
+      startingNode: startingNode,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.left,
+    );
     if (upstreamNode != null) {
       newNodeId = upstreamNode.id;
       final previousComponent = documentLayout.getComponentByNodeId(newNodeId);

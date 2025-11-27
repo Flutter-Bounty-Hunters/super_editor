@@ -486,42 +486,22 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
   }
 
   @override
-  CompositeComponentChild? getChildAboveChild(String nodeId) {
+  CompositeComponentChild getFirstChildInDirection(DocumentNodeLookupDirection direction, {double? nearX}) {
     if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getChildAboveChild(nodeId);
+      return (_childDocumentComponent as CompositeComponent).getFirstChildInDirection(direction, nearX: nearX);
     }
     throw Exception(
-      'Invalid getChildAboveChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+      'Invalid getFirstChildInDirection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
     );
   }
 
   @override
-  CompositeComponentChild? getChildBelowChild(String nodeId) {
+  CompositeComponentChild? getNextChildInDirection(String sinceChildId, DocumentNodeLookupDirection direction) {
     if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getChildByNodeId(nodeId);
+      return (_childDocumentComponent as CompositeComponent).getNextChildInDirection(sinceChildId, direction);
     }
     throw Exception(
-      'Invalid getChildBelowChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
-    );
-  }
-
-  @override
-  CompositeComponentChild? getChildLeftToChild(String nodeId) {
-    if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getChildLeftToChild(nodeId);
-    }
-    throw Exception(
-      'Invalid getChildLeftToChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
-    );
-  }
-
-  @override
-  CompositeComponentChild? getChildRightToChild(String nodeId) {
-    if (_childDocumentComponent is CompositeComponent) {
-      return (_childDocumentComponent as CompositeComponent).getChildRightToChild(nodeId);
-    }
-    throw Exception(
-      'Invalid getChildRightToChild call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+      'Invalid getNextChildInDirection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
     );
   }
 

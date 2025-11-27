@@ -343,10 +343,33 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
     return null;
   }
 
-  /// Returns a node to insert as first child when this CompositeNode becomes empty
-  /// or `null` if this CompositeNode should be removed.
-  DocumentNode? makeReplacementWhenEmpty(String nodeId) {
-    return null;
+  /// Called after a deletion operation when one or more of this node’s children
+  /// were either removed completely or became empty (i.e. a child CompositeNode
+  /// returned a placeholder because its own content was deleted).
+  ///
+  /// This is the single hook that allows a composite node to react to structural
+  /// degradation of its subtree (e.g. an empty table cell, an empty table, etc.).
+  ///
+  /// Parameters:
+  /// - [removedChildIds] – IDs of children that were fully removed
+  /// - [emptiedChildIds] – IDs of children that still exist but became empty (and then copied with a placeholder)
+  /// - [selectionFlowedThrough] – true if the deleted selection started before this
+  ///                               node and ended after it (the node was completely
+  ///                               inside a larger text selection). false if the
+  ///                               selection was isolated to this node or partial.
+  /// Returns:
+  /// - `this`          – keep this node unchanged
+  /// - `null`          – remove this node entirely
+  /// - `this.copyWith(…)` – replace this node with a modified version
+  CompositeNode? resolveWhenChildrenAffected({
+    required List<String> removedChildIds,
+    required List<String> emptiedChildIds,
+    required bool selectionFlowedThrough,
+  }) {
+    if (children.isEmpty) {
+      return null;
+    }
+    return this;
   }
 }
 

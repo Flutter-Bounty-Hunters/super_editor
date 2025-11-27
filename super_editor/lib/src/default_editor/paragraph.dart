@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/document_composite_nodes.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/edit_context.dart';
@@ -816,12 +817,7 @@ class CombineParagraphsCommand extends EditCommand {
       ),
     ];
 
-    if (secondNodeParentId != null) {
-      final secondNodeParent = document.getNodeById(secondNodeParentId) as CompositeNode;
-      if (secondNodeParent.children.isEmpty) {
-        changes.addAll(document.postProcessEmptyCompositeNode(secondNodeParent, secondNode.id));
-      }
-    }
+    changes.addAll(document.postProcessCompositeNodesAfterDeletion(changes: changes));
 
     executor.logChanges(changes);
   }

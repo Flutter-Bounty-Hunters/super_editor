@@ -4,6 +4,7 @@ import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/document_composite_nodes.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
@@ -775,14 +776,12 @@ class DeleteContentCommand extends EditCommand {
     }
     final startNodePath = document.getNodePathById(startNode.id)!;
     final startNodeIndex = document.getNodeIndexInParentByPath(startNodePath);
-    final aboveStartNodePath = document.getLeafNodes(since: startNodePath, reversed: true).firstOrNull?.$1;
 
     final endNode = document.getNode(normalizedRange.end);
     if (endNode == null) {
       throw Exception('Could not locate end node for DeleteSelectionCommand: ${normalizedRange.end}');
     }
     final endNodePath = document.getNodePathById(endNode.id)!;
-    final belowEndNodePath = document.getLeafNodes(since: endNodePath).firstOrNull?.$1;
 
     // We expect that this command will only be called when the delete range
     // contains at least one deletable node.
@@ -904,11 +903,9 @@ class DeleteContentCommand extends EditCommand {
       ]);
     }
 
-    /// Deleting empty composite nodes, that are still empty even after we inserted emptyParagraph at caret position
-    logChanges(_postProcessEmptyCompositeNodes(
-      document: document,
-      startPath: aboveStartNodePath,
-      endPath: belowEndNodePath,
+    logChanges(document.postProcessCompositeNodesAfterDeletion(
+      startPath: startNodePath,
+      endPath: endNodePath,
       changes: currentEvents,
     ));
 
@@ -1017,39 +1014,6 @@ class DeleteContentCommand extends EditCommand {
       }
     }
     return changes;
-  }
-
-  List<EditEvent> _postProcessEmptyCompositeNodes({
-    required MutableDocument document,
-    required NodePath? startPath,
-    required NodePath? endPath,
-    required List<EditEvent> changes,
-  }) {
-    final documentEvents = <EditEvent>[];
-    for (final (path, node) in document.getLeafNodes(
-      since: startPath,
-      treatEmptyCompositeNodesAsLeaf: true,
-    )) {
-      if (path == endPath) {
-        break;
-      }
-      if (node is CompositeNode && node.children.isEmpty) {
-        String? firstChildId;
-        // Going in reverse order, as deletion happens in reversed order too, so that way
-        // first appearance - is lastly deleted node - so the first child of the parent before deletion
-        for (final change in changes.reversed) {
-          if (change is DocumentEdit && change.change is NodeRemovedEvent) {
-            final event = change.change as NodeRemovedEvent;
-            if (event.parentNodeId == node.id) {
-              firstChildId = event.nodeId;
-              break;
-            }
-          }
-        }
-        documentEvents.addAll(document.postProcessEmptyCompositeNode(node, firstChildId ?? Editor.createNodeId()));
-      }
-    }
-    return documentEvents;
   }
 
   List<EditEvent> _deleteRangeWithinNodeFromPositionToEnd({

@@ -1642,43 +1642,6 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
-  /// Called when CompositeNode became empty after child deletion.
-  /// Based on replacement returned by [CompositeNode.makeReplacementWhenEmpty] either
-  /// inserts replacement as a first child, or deletes CompositeNode (recursively).
-  List<EditEvent> postProcessEmptyCompositeNode(
-    CompositeNode node,
-    String replacementChildId,
-  ) {
-    assert(node.children.isEmpty);
-
-    final producedEvents = <EditEvent>[];
-    final replacementNode = node.makeReplacementWhenEmpty(replacementChildId);
-    if (replacementNode != null) {
-      insertNodeAt(0, replacementNode, parentNodeId: node.id);
-      producedEvents.add(
-        DocumentEdit(
-          NodeInsertedEvent(replacementNode.id, 0, parentNodeId: node.id),
-        ),
-      );
-    } else {
-      final parentId = getNodePathById(node.id)?.parent?.nodeId;
-      deleteNode(node.id);
-      producedEvents.add(
-        DocumentEdit(
-          NodeRemovedEvent(node.id, node, parentNodeId: parentId),
-        ),
-      );
-      // If deleted CompositeNode is a child of another CompositeNode - handle it recursively
-      if (parentId != null) {
-        final parentNode = getNodeById(parentId) as CompositeNode;
-        if (parentNode.children.isEmpty) {
-          producedEvents.addAll(postProcessEmptyCompositeNode(parentNode, node.id));
-        }
-      }
-    }
-    return producedEvents;
-  }
-
   /// Returns [true] if the content of the [other] [Document] is equivalent
   /// to the content of this [Document].
   ///
