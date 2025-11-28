@@ -7,6 +7,7 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
 import '../test_runners.dart';
+import '../test_tools.dart';
 import 'supereditor_test_tools.dart';
 
 void main() {
@@ -34,6 +35,112 @@ void main() {
       // Ensure that the text was pasted into the paragraph.
       final nodeId = doc.first.id;
       expect(SuperEditorInspector.findTextInComponent(nodeId).toPlainText(), "Pasted text: This was pasted here");
+    });
+
+    testAllInputsOnDesktop(
+        'pastes some text without newlines in the middle of a paragraph, placing the caret at the end of the pasted text',
+        (
+      tester, {
+      required TextInputSource inputSource,
+    }) async {
+      final testContext = await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .withInputSource(inputSource)
+          .pump();
+
+      // Place the caret at the empty paragraph.
+      await tester.placeCaretInParagraph('1', 0);
+
+      // Type some text.
+      switch (inputSource) {
+        case TextInputSource.keyboard:
+          await tester.typeKeyboardText('This is a paragraph.');
+        case TextInputSource.ime:
+          await tester.typeImeText('This is a paragraph.');
+      }
+
+      // Place the cursor somewhere in the middle of the text.
+      await tester.placeCaretInParagraph('1', 8);
+
+      // Simulate pasting multiple lines.
+      tester
+        ..simulateClipboard()
+        ..setSimulatedClipboardContent('some content in ');
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        await tester.pressCmdV();
+      } else {
+        await tester.pressCtlV();
+      }
+
+      // Ensure the text is correctly pasted and the caret is placed at the
+      // end of the pasted text.
+      final doc = testContext.document;
+      expect(doc.nodeCount, 1);
+      expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(), 'This is some content in a paragraph.');
+      expect(
+          testContext.composer.selection,
+          selectionEquivalentTo(const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 24),
+            ),
+          )));
+    });
+
+    testAllInputsOnDesktop(
+        'pastes some text with newlines in the middle of a paragraph, correctly splitting it, inserting nodes and placing the caret at the end of the pasted text',
+        (
+      tester, {
+      required TextInputSource inputSource,
+    }) async {
+      final testContext = await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .withInputSource(inputSource)
+          .pump();
+
+      // Place the caret at the empty paragraph.
+      await tester.placeCaretInParagraph('1', 0);
+
+      // Type some text.
+      switch (inputSource) {
+        case TextInputSource.keyboard:
+          await tester.typeKeyboardText('This is a paragraph.');
+        case TextInputSource.ime:
+          await tester.typeImeText('This is a paragraph.');
+      }
+
+      // Place the cursor somewhere in the middle of the text.
+      await tester.placeCaretInParagraph('1', 8);
+
+      // Simulate pasting multiple lines.
+      tester
+        ..simulateClipboard()
+        ..setSimulatedClipboardContent('''some content in a paragraph.
+There is a second paragraph here.
+And a third one is also ''');
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        await tester.pressCmdV();
+      } else {
+        await tester.pressCtlV();
+      }
+
+      // Ensure the text is correctly pasted and the caret is placed at the
+      // end of the pasted text.
+      final doc = testContext.document;
+      expect(doc.nodeCount, 3);
+      expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(), 'This is some content in a paragraph.');
+      expect((doc.getNodeAt(1)! as ParagraphNode).text.toPlainText(), 'There is a second paragraph here.');
+      expect((doc.getNodeAt(2)! as ParagraphNode).text.toPlainText(), 'And a third one is also a paragraph.');
+      expect(
+          testContext.composer.selection,
+          selectionEquivalentTo(DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: testContext.document.last.id,
+              nodePosition: const TextNodePosition(offset: 24),
+            ),
+          )));
     });
 
     testWidgetsOnApple('pastes within a list item', (tester) async {
