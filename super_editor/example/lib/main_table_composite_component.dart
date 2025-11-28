@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:super_editor/super_editor.dart';
 
 void main() {
@@ -71,7 +72,13 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
                   imageUrl:
                       "https://www.thedroidsonroids.com/wp-content/uploads/2023/08/flutter_blog_series_What-is-Flutter-app-development-.png",
                 ),
-              ])
+              ]),
+              _DemoTableCellNode(id: 'cell[3, 0]', children: [
+                ParagraphNode(
+                  id: Editor.createNodeId(),
+                  text: AttributedText("Top"),
+                ),
+              ]),
             ],
             [
               _DemoTableCellNode(id: 'cell[0, 1]', children: [
@@ -87,6 +94,12 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
                 ),
               ]),
               _DemoTableCellNode(id: 'cell[2, 1]', children: [
+                ParagraphNode(
+                  id: Editor.createNodeId(),
+                  text: AttributedText("Center Right"),
+                ),
+              ]),
+              _DemoTableCellNode(id: 'cell[3, 1]', children: [
                 ParagraphNode(
                   id: Editor.createNodeId(),
                   text: AttributedText("Center Right"),
@@ -109,6 +122,12 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
                 ),
               ]),
               _DemoTableCellNode(id: 'cell[2, 2]', children: [
+                ParagraphNode(
+                  id: Editor.createNodeId(),
+                  text: AttributedText("Last cell"),
+                ),
+              ]),
+              _DemoTableCellNode(id: 'cell[3, 2]', children: [
                 ParagraphNode(
                   id: Editor.createNodeId(),
                   text: AttributedText("Last cell"),
@@ -169,6 +188,12 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
         componentBuilders: [
           _DemoTableComponentBuilder(),
           ...defaultComponentBuilders,
+        ],
+        keyboardActions: [
+          tabToNextCell,
+          shiftPlusArrowToSelectCellsInsideOrGoOutside,
+          shiftPlusArrowThroughTableToSelectByRow,
+          ...defaultImeKeyboardActions,
         ],
       ),
     );
@@ -346,6 +371,8 @@ class _DemoTableNode extends CompositeNode {
 
   final int columnCount;
 
+  int get rowsCount => (children.length / columnCount).floor();
+
   @override
   NodeSelection computeSelection({required NodePosition base, required NodePosition extent}) {
     assert(base is CompositeNodePosition);
@@ -445,33 +472,15 @@ class _DemoTableNode extends CompositeNode {
 
   @override
   DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
-    // TODO: implement copyWithAddedMetadata
-    throw UnimplementedError();
+    return _DemoTableNode(id: id, children: children, columnCount: columnCount, metadata: {
+      ...metadata,
+      ...newProperties,
+    });
   }
 
   @override
   DocumentNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
-    // TODO: implement copyAndReplaceMetadata
-    throw UnimplementedError();
-  }
-
-  @override
-  String? copyContent(NodeSelection selection) {
-    final compositeSelection = selection;
-    if (compositeSelection is! CompositeNodeSelection) {
-      throw Exception('Unexpected selection type ${compositeSelection.runtimeType}');
-    }
-    // Maybe this should go to base class, so we only have to override the case when more than one
-    // child node in the selection?
-    if (compositeSelection.extent.childNodeId == compositeSelection.base.childNodeId) {
-      final child = getChildByNodeId(compositeSelection.extent.childNodeId)!;
-      final childSelection = child.computeSelection(
-        base: compositeSelection.base.childNodePosition,
-        extent: compositeSelection.extent.childNodePosition,
-      );
-      return child.copyContent(childSelection);
-    }
-    throw UnimplementedError('Copy more than one child node is not yet implemented');
+    return _DemoTableNode(id: id, children: children, columnCount: columnCount, metadata: newMetadata);
   }
 
   CompositeNode copyWithChildren(List<DocumentNode> newChildren) {
@@ -542,20 +551,12 @@ class _DemoTableCellNode extends CompositeNode {
 
   @override
   DocumentNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
-    // TODO: implement copyAndReplaceMetadata
-    throw UnimplementedError();
-  }
-
-  @override
-  String? copyContent(NodeSelection selection) {
-    // TODO: implement copyContent
-    throw UnimplementedError();
+    return _DemoTableCellNode(id: id, children: children, metadata: newMetadata);
   }
 
   @override
   DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
-    // TODO: implement copyWithAddedMetadata
-    throw UnimplementedError();
+    return _DemoTableCellNode(id: id, children: children, metadata: {...metadata, ...newProperties});
   }
 
   CompositeNode? resolveWhenChildrenAffected({
@@ -823,11 +824,8 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
         break;
       }
     }
-    return getChildForCell(columnIndex - 1, rowIndex - 1);
-  }
-
-  CompositeComponentChild getChildForCell(int col, int row) {
-    return widget.children[row * widget.columnsCount + col];
+    final listIndex = _DemoTableIndex(columnIndex - 1, rowIndex - 1).toListIndex(widget.columnsCount);
+    return widget.children[listIndex];
   }
 
   int getColumnIndexForX(double x) {
@@ -849,4 +847,413 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
 
   int get columnsCount => widget.columnsCount;
   int get rowsCount => (getChildren().length / widget.columnsCount).floor();
+}
+
+(_DemoTableNode, _DemoTableCellNode)? _getTableNode(Document doc, String nodeId) {
+  final path = doc.getNodePathById(nodeId)!;
+
+  _DemoTableNode? table;
+  _DemoTableCellNode? cell;
+  for (final nodeId in path.reversed) {
+    final node = doc.getNodeById(nodeId);
+    if (node is _DemoTableCellNode) {
+      cell = node;
+    } else if (node is _DemoTableNode) {
+      table = node;
+    }
+    if (cell != null && table != null) {
+      return (table, cell);
+    }
+  }
+  return null;
+}
+
+ExecutionInstruction tabToNextCell({
+  required SuperEditorContext editContext,
+  required KeyEvent keyEvent,
+}) {
+  if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  if (keyEvent.logicalKey != LogicalKeyboardKey.tab) {
+    return ExecutionInstruction.continueExecution;
+  }
+  final selection = editContext.composer.selection;
+  if (selection == null) {
+    return ExecutionInstruction.continueExecution;
+  }
+  if (selection.base.nodeId != selection.extent.nodeId) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final resolvedTable = _getTableNode(editContext.document, selection.base.nodeId);
+  if (resolvedTable == null) {
+    return ExecutionInstruction.continueExecution;
+  }
+  final (table, cell) = resolvedTable;
+
+  final direction =
+      HardwareKeyboard.instance.isShiftPressed ? DocumentNodeLookupDirection.left : DocumentNodeLookupDirection.right;
+
+  DocumentNode? nextChild;
+
+  final tableComponent = editContext.documentLayout.getComponentByNodeId(table.id) as CompositeComponent;
+  final nextChildId = tableComponent.getNextChildInDirection(cell.id, direction)?.nodeId;
+  if (nextChildId != null) {
+    nextChild = editContext.document.getNodeById(nextChildId);
+  }
+
+  if (nextChild == null) {
+    // We are in the first or last cell - interrupt execution
+    return ExecutionInstruction.haltExecution;
+  }
+
+  editContext.editor.execute([
+    ChangeSelectionRequest(
+      DocumentSelection.collapsed(
+        position: DocumentPosition(
+          nodeId: nextChild.id,
+          nodePosition:
+              direction == DocumentNodeLookupDirection.left ? nextChild.endPosition : nextChild.beginningPosition,
+        ).toLeafPosition(),
+      ),
+      SelectionChangeType.pushCaret,
+      SelectionReason.userInteraction,
+    ),
+  ]);
+
+  return ExecutionInstruction.haltExecution;
+}
+
+/// This instruction does following:
+/// if base and extent are inside table cell, and user press shift + arrow, and there
+/// nothing to go inside Cell node, then it select next cell in desired direction (adjusting both base and extent
+/// positions).
+/// Also, if base is inside table and next extent position is outside table - adjusts base to rows and allows jumping outside
+ExecutionInstruction shiftPlusArrowToSelectCellsInsideOrGoOutside({
+  required SuperEditorContext editContext,
+  required KeyEvent keyEvent,
+}) {
+  if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final arrows = {
+    LogicalKeyboardKey.arrowDown,
+    LogicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowLeft,
+    LogicalKeyboardKey.arrowRight
+  };
+  if (!arrows.contains(keyEvent.logicalKey)) {
+    return ExecutionInstruction.continueExecution;
+  }
+  var selection = editContext.composer.selection;
+  if (selection == null) {
+    return ExecutionInstruction.continueExecution;
+  }
+  if (selection is AdjustedDocumentSelection) {
+    selection = selection.original;
+  }
+  if (!HardwareKeyboard.instance.isShiftPressed) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final resolvedBaseTable = _getTableNode(editContext.document, selection.base.nodeId);
+  final resolvedExtentTable = _getTableNode(editContext.document, selection.extent.nodeId);
+  if (resolvedBaseTable == null) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final (table, baseCell) = resolvedBaseTable;
+  var multiCellSelection = true;
+
+  _DemoTableIndex extentIndex;
+  DocumentComponent extentComponent;
+  NodePosition extentPosition;
+  if (resolvedExtentTable != null) {
+    final (extentTable, extentCell) = resolvedExtentTable;
+    multiCellSelection = baseCell.id != extentCell.id;
+    extentIndex = table.getChildTableIndex(extentCell.id);
+    extentComponent = editContext.documentLayout.getComponentByNodeId(extentCell.id)!;
+    extentPosition = CompositeNodePosition.projectPositionIntoParent(
+      extentCell.id,
+      editContext.document.getNodePathById(selection.extent.nodeId)!,
+      selection.extent.nodePosition,
+    );
+    if (extentTable.id != table.id) {
+      return ExecutionInstruction.continueExecution;
+    }
+  } else {
+    final isUpstream = editContext.document.getAffinityForSelection(selection) == TextAffinity.upstream;
+    extentIndex = !isUpstream ? _DemoTableIndex(0, table.rowsCount) : _DemoTableIndex(0, -1);
+    extentComponent = editContext.documentLayout.getComponentByNodeId(selection.extent.nodeId)!;
+    extentPosition = selection.extent.nodePosition;
+  }
+
+  _DemoTableIndex? nextCellIndex;
+  DocumentNodeLookupDirection? goOutsideTableDirection;
+
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowRight &&
+      (extentComponent.movePositionRight(extentPosition) == null || multiCellSelection)) {
+    if (extentIndex.x + 1 < table.columnCount) {
+      nextCellIndex = _DemoTableIndex(extentIndex.x + 1, extentIndex.y);
+    }
+  }
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowLeft &&
+      (extentComponent.movePositionLeft(extentPosition) == null || multiCellSelection)) {
+    if (extentIndex.x - 1 >= 0) {
+      nextCellIndex = _DemoTableIndex(extentIndex.x - 1, extentIndex.y);
+    }
+  }
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowDown &&
+      (extentComponent.movePositionDown(extentPosition) == null || multiCellSelection)) {
+    if (extentIndex.y + 1 < table.rowsCount) {
+      nextCellIndex = _DemoTableIndex(extentIndex.x, extentIndex.y + 1);
+    }
+    goOutsideTableDirection = DocumentNodeLookupDirection.down;
+  }
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowUp &&
+      (extentComponent.movePositionUp(extentPosition) == null || multiCellSelection)) {
+    if (extentIndex.y - 1 >= 0) {
+      nextCellIndex = _DemoTableIndex(extentIndex.x, extentIndex.y - 1);
+    }
+    goOutsideTableDirection = DocumentNodeLookupDirection.up;
+  }
+
+  if (resolvedExtentTable == null) {
+    // extent is outside table
+    if (goOutsideTableDirection != null) {
+      final nextNode = editContext.document.getNextSelectableNode(
+        startingNode: editContext.document.getNodeById(selection.extent.nodeId)!,
+        documentLayoutResolver: () => editContext.documentLayout,
+        direction: goOutsideTableDirection,
+      );
+      // and next node is also outside table - continue execution
+      if (nextNode == null || !editContext.document.getNodePathById(nextNode.id)!.contains(table.id)) {
+        return ExecutionInstruction.continueExecution;
+      }
+    } else {
+      // and user pressed left or right - continue
+      return ExecutionInstruction.continueExecution;
+    }
+  }
+
+  // Select multiple cells inside Table
+  if (nextCellIndex != null) {
+    var nextCell = table.getChildAtIndex(nextCellIndex);
+
+    final adjustedCells = table.getSelectedChildrenBetween(baseCell.id, nextCell.id);
+    final firstCell = table.getChildByNodeId(adjustedCells.first)!;
+    final lastCell = table.getChildByNodeId(adjustedCells.last)!;
+
+    final newSelection = DocumentSelection(
+      base: DocumentPosition(
+        nodeId: baseCell.id,
+        nodePosition: baseCell.beginningPosition,
+      ).toLeafPosition(),
+      extent: DocumentPosition(
+        nodeId: nextCell.id,
+        nodePosition: nextCell.endPosition,
+      ).toLeafPosition(),
+    );
+
+    final adjusted = AdjustedDocumentSelection(
+      base: DocumentPosition(
+        nodeId: firstCell.id,
+        nodePosition: firstCell.beginningPosition,
+      ).toLeafPosition(),
+      extent: DocumentPosition(
+        nodeId: lastCell.id,
+        nodePosition: lastCell.endPosition,
+      ).toLeafPosition(),
+      original: newSelection,
+    );
+
+    editContext.editor.execute([
+      ChangeSelectionRequest(
+        adjusted,
+        SelectionChangeType.pushCaret,
+        SelectionReason.userInteraction,
+      ),
+    ]);
+    return ExecutionInstruction.haltExecution;
+  }
+
+  // Next cell is out of bounds, so let's go outside table
+  if (goOutsideTableDirection != null && resolvedExtentTable != null) {
+    final goDown = goOutsideTableDirection == DocumentNodeLookupDirection.down;
+    final nextNode = editContext.document.getNextSelectableNode(
+      startingNode: table,
+      documentLayoutResolver: () => editContext.documentLayout,
+      direction: goOutsideTableDirection,
+    );
+    if (nextNode != null) {
+      final newSelection = DocumentSelection(
+        base: DocumentPosition(
+          nodeId: baseCell.id,
+          nodePosition: baseCell.beginningPosition,
+        ).toLeafPosition(),
+        extent: DocumentPosition(
+          nodeId: nextNode.id,
+          nodePosition: goDown ? nextNode.endPosition : nextNode.beginningPosition,
+        ).toLeafPosition(),
+      );
+      final baseCellIndex = table.getChildTableIndex(baseCell.id);
+      final firstCellIndex = _DemoTableIndex(goDown ? 0 : table.columnCount - 1, baseCellIndex.y);
+      final firstCell = table.getChildAtIndex(firstCellIndex);
+      final adjusted = AdjustedDocumentSelection(
+        base: DocumentPosition(
+          nodeId: firstCell.id,
+          nodePosition: goDown ? firstCell.beginningPosition : firstCell.endPosition,
+        ).toLeafPosition(),
+        extent: newSelection.extent,
+        original: newSelection,
+      );
+      editContext.editor.execute([
+        ChangeSelectionRequest(
+          adjusted,
+          SelectionChangeType.pushCaret,
+          SelectionReason.userInteraction,
+        ),
+      ]);
+    }
+    return ExecutionInstruction.haltExecution;
+  }
+
+  // Multiple cells selected inside table, and there is nowhere to go (for example
+  // when user press left on first column) - stop execution to not corrupt selection inside cell.
+  if (multiCellSelection) {
+    return ExecutionInstruction.haltExecution;
+  }
+
+  return ExecutionInstruction.continueExecution;
+}
+
+/// If base is outside table and next node is inside table - adjust extent, so it rounded to rows
+ExecutionInstruction shiftPlusArrowThroughTableToSelectByRow({
+  required SuperEditorContext editContext,
+  required KeyEvent keyEvent,
+}) {
+  if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final arrows = {
+    LogicalKeyboardKey.arrowDown,
+    LogicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowLeft,
+    LogicalKeyboardKey.arrowRight
+  };
+  if (!arrows.contains(keyEvent.logicalKey)) {
+    return ExecutionInstruction.continueExecution;
+  }
+  var selection = editContext.composer.selection;
+  if (selection == null) {
+    return ExecutionInstruction.continueExecution;
+  }
+  if (selection is AdjustedDocumentSelection) {
+    selection = selection.original;
+  }
+  if (!HardwareKeyboard.instance.isShiftPressed) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final resolvedBaseTable = _getTableNode(editContext.document, selection.base.nodeId);
+  final extentTable = _getTableNode(editContext.document, selection.extent.nodeId);
+
+  if (resolvedBaseTable != null) {
+    // we are inside table - continue
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final baseNode = editContext.document.getNodeById(selection.base.nodeId)!;
+  final extentNode = editContext.document.getNodeById(selection.extent.nodeId)!;
+  final extentComponent = editContext.documentLayout.getComponentByNodeId(selection.extent.nodeId)!;
+
+  final selectionThroughTable = extentTable != null;
+
+  if ({LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight}.contains(keyEvent.logicalKey)) {
+    if (selectionThroughTable) {
+      return ExecutionInstruction.haltExecution;
+    }
+    return ExecutionInstruction.continueExecution;
+  }
+
+  // Arrow down, but can go within leaf node (and no selection between table and non table)
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowDown &&
+      (extentComponent.movePositionDown(selection.extent.nodePosition) != null) &&
+      !selectionThroughTable) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  // Arrow up, but can go within leaf node (and no selection between table and non table)
+  if (keyEvent.logicalKey == LogicalKeyboardKey.arrowUp &&
+      (extentComponent.movePositionUp(selection.extent.nodePosition) != null) &&
+      !selectionThroughTable) {
+    return ExecutionInstruction.continueExecution;
+  }
+
+  final goUp = keyEvent.logicalKey == LogicalKeyboardKey.arrowUp;
+
+  DocumentNode? newExtentNode;
+  bool? isUpstream;
+
+  if (extentTable != null) {
+    // When selection starts before or after table and ends inside table, then user press shift+arrow
+    final (table, extentCell) = extentTable;
+    isUpstream = editContext.document.getAffinityBetweenNodes(baseNode, extentCell) != TextAffinity.downstream;
+
+    final cellIndex = table.getChildTableIndex(extentCell.id);
+    final nextCellIndex = _DemoTableIndex(isUpstream ? 0 : table.columnCount - 1, cellIndex.y + (goUp ? -1 : 1));
+
+    if (nextCellIndex.y >= table.rowsCount || nextCellIndex.y < 0) {
+      newExtentNode = editContext.document.getNextSelectableNode(
+        startingNode: table,
+        documentLayoutResolver: () => editContext.documentLayout,
+        direction: goUp ? DocumentNodeLookupDirection.up : DocumentNodeLookupDirection.down,
+      );
+    } else {
+      if (resolvedBaseTable == null) {
+        newExtentNode = table.getChildAtIndex(nextCellIndex);
+      }
+    }
+    if (newExtentNode == null) {
+      // The extent is inside table
+      return ExecutionInstruction.haltExecution;
+    }
+  } else {
+    final nodeAfterExtent = editContext.document.getNextSelectableNode(
+      startingNode: extentNode,
+      documentLayoutResolver: () => editContext.documentLayout,
+      direction: goUp ? DocumentNodeLookupDirection.up : DocumentNodeLookupDirection.down,
+    );
+    if (nodeAfterExtent != null) {
+      isUpstream = editContext.document.getAffinityBetweenNodes(baseNode, nodeAfterExtent) != TextAffinity.downstream;
+      final nodeAfterExtentTable = _getTableNode(editContext.document, nodeAfterExtent.id);
+      if (nodeAfterExtentTable != null && resolvedBaseTable == null) {
+        final (table, cell) = nodeAfterExtentTable;
+        final cellIndex = table.getChildTableIndex(cell.id);
+        final nextCellIndex = _DemoTableIndex(isUpstream ? 0 : table.columnCount - 1, cellIndex.y);
+        newExtentNode = table.getChildAtIndex(nextCellIndex);
+      }
+    }
+  }
+
+  if (newExtentNode != null) {
+    final nextExtent = DocumentPosition(
+      nodeId: newExtentNode.id,
+      nodePosition: isUpstream! ? newExtentNode.beginningPosition : newExtentNode.endPosition,
+    ).toLeafPosition();
+    editContext.editor.execute([
+      ChangeSelectionRequest(
+        DocumentSelection(base: selection.base, extent: nextExtent),
+        SelectionChangeType.pushCaret,
+        SelectionReason.userInteraction,
+      ),
+    ]);
+    return ExecutionInstruction.haltExecution;
+  }
+
+  return ExecutionInstruction.continueExecution;
 }

@@ -153,6 +153,8 @@ class NodePath with IterableMixin<String> {
   @override
   Iterator<String> get iterator => _segments.iterator;
 
+  Iterable<String> get reversed => _segments.reversed;
+
   String operator [](int index) => _segments[index];
 
   @override

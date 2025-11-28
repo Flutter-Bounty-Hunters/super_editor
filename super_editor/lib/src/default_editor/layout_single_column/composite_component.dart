@@ -163,22 +163,75 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
 
   @override
   NodePosition? movePositionUp(NodePosition currentPosition) {
-    throw CompositePositionUsageException();
+    if (currentPosition is! CompositeNodePosition) {
+      return null;
+    }
+
+    final child = getChildByNodeId(currentPosition.childNodeId)!;
+    final upWithinChild = child.component.movePositionUp(currentPosition.childNodePosition);
+    if (upWithinChild != null) {
+      return currentPosition.moveWithinChild(upWithinChild);
+    }
+    final nextChild = getNextChildInDirection(currentPosition.childNodeId, DocumentNodeLookupDirection.up);
+    if (nextChild == null) {
+      return null;
+    }
+    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getEndPosition());
   }
 
   @override
   NodePosition? movePositionDown(NodePosition currentPosition) {
-    throw CompositePositionUsageException();
+    if (currentPosition is! CompositeNodePosition) {
+      return null;
+    }
+
+    final child = getChildByNodeId(currentPosition.childNodeId)!;
+    final downWithinChild = child.component.movePositionDown(currentPosition.childNodePosition);
+    if (downWithinChild != null) {
+      return currentPosition.moveWithinChild(downWithinChild);
+    }
+    final nextChild = getNextChildInDirection(currentPosition.childNodeId, DocumentNodeLookupDirection.down);
+    if (nextChild == null) {
+      return null;
+    }
+    // The next position down must be the beginning position of the next component.
+    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getBeginningPosition());
   }
 
   @override
   NodePosition? movePositionLeft(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    throw CompositePositionUsageException();
+    if (currentPosition is! CompositeNodePosition) {
+      return null;
+    }
+
+    final child = getChildByNodeId(currentPosition.childNodeId)!;
+    final childPosition = child.component.movePositionLeft(currentPosition.childNodePosition, movementModifier);
+    if (childPosition != null) {
+      return currentPosition.moveWithinChild(childPosition);
+    }
+    final nextChild = getNextChildInDirection(currentPosition.childNodeId, DocumentNodeLookupDirection.left);
+    if (nextChild == null) {
+      return null;
+    }
+    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getEndPosition());
   }
 
   @override
   NodePosition? movePositionRight(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    throw CompositePositionUsageException();
+    if (currentPosition is! CompositeNodePosition) {
+      return null;
+    }
+
+    final child = getChildByNodeId(currentPosition.childNodeId)!;
+    final childPosition = child.component.movePositionRight(currentPosition.childNodePosition, movementModifier);
+    if (childPosition != null) {
+      return currentPosition.moveWithinChild(childPosition);
+    }
+    final nextChild = getNextChildInDirection(currentPosition.childNodeId, DocumentNodeLookupDirection.right);
+    if (nextChild == null) {
+      return null;
+    }
+    return CompositeNodePosition(nextChild.nodeId, nextChild.component.getBeginningPosition());
   }
 
   @override
