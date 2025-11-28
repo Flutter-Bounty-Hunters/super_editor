@@ -314,7 +314,7 @@ class _DemoTableViewModel extends CompositeNodeViewModel with SelectionAwareView
   bool shouldApplySelectionToChildren() {
     final nodeSelection = selection?.nodeSelection;
     if (nodeSelection is _MultipleCellsSelection) {
-      return true; //!nodeSelection.filled;
+      return !nodeSelection.filled;
     }
     return true;
   }

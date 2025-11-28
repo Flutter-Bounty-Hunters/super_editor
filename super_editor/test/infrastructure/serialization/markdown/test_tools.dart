@@ -11,7 +11,8 @@ class FakeImageComponentBuilder implements ComponentBuilder {
   final Size size;
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+      PresenterContext presenterContext, Document document, DocumentNode node) {
     return null;
   }
 
