@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
+import 'package:super_keyboard/super_keyboard.dart';
 
 /// A scaffold for a chat experience in which a conversation thread is
 /// displayed, with a message editor mounted to the bottom of the chat area.
@@ -723,6 +724,20 @@ class RenderMessagePageScaffold extends RenderBox {
   }
 
   void _onDragEnd() {
+    if (SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.closing) {
+      // To avoid a stuttering collapse animation, when dragging ends and the keyboard
+      // is closing, we immediately jump to a collapsed preview mode. If we animated
+      // like normal, then on every frame as the keyboard gets shorter, we have to
+      // restart the animation simulation, which results in a stuttering, buggy animation.
+      _velocityStopwatch.stop();
+
+      _isExpandingOrCollapsing = false;
+      _desiredDragHeight = null;
+      _controller.desiredSheetMode = MessagePageSheetMode.collapsed;
+      _controller.collapsedMode = MessagePageSheetCollapsedMode.preview;
+      return;
+    }
+
     _velocityStopwatch.stop();
 
     final velocity = _velocityTracker.getVelocityEstimate()?.pixelsPerSecond.dy ?? 0;
@@ -732,6 +747,7 @@ class RenderMessagePageScaffold extends RenderBox {
 
   void _startBottomSheetHeightSimulation({
     required double velocity,
+    MessagePageSheetMode? desiredSheetMode,
   }) {
     _ticker.stop();
 
@@ -740,13 +756,14 @@ class RenderMessagePageScaffold extends RenderBox {
       MessagePageSheetCollapsedMode.intrinsic => min(_intrinsicHeight, _bottomSheetCollapsedMaximumHeight),
     };
 
-    _controller.desiredSheetMode = velocity.abs() > 500 //
-        ? velocity < 0
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed
-        : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed;
+    _controller.desiredSheetMode = desiredSheetMode ??
+        (velocity.abs() > 500 //
+            ? velocity < 0
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed
+            : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed);
 
     _updateBottomSheetHeightSimulation(velocity: velocity);
   }
@@ -802,6 +819,7 @@ class RenderMessagePageScaffold extends RenderBox {
     );
     messagePageLayoutLog.info(' - Final height: $_simulationGoalHeight');
     messagePageLayoutLog.info(' - Initial velocity: $velocity');
+
     _simulation = SpringSimulation(
       const SpringDescription(
         mass: 1,

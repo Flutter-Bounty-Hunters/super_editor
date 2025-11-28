@@ -1,3 +1,41 @@
+## [0.3.0-dev.42]
+### Nov 26, 2025
+* ADJUSTMENT: `MarkdownTableComponent`s now let you specify a column width policy, and a fit policy.
+* FEATURE: Added a `GlobalScrollLock` to prevent two-dimensional scrolling with trackpad and Magic Mouse
+  when the user expects only a single axis to scroll. E.g., scrolling a document vertically vs scrolling
+  a table component horizontally.
+  * Used by `SingleAxisTrackpadAndWheelScroller` to implement single-axis trackpad and scroll wheel scrolling.
+  * Override your existing gesture-based scrollables with a `DeferToTrackpadsAndMouseWheelsScrollBehavior` to
+    get them to defer to the `GlobalScrollLock`, too.
+
+## [0.3.0-dev.41]
+### Nov 24, 2025
+* BREAKING: Centralized all `SuperEditor` IME connections. This change was made in an attempt to fix
+            some non-reproducible issues where the IME keyboard would lose connection to a `SuperEditor`.
+   * To upgrade to this version, you need to give each of your `SuperEditor` widgets a unique `inputRole`.
+     The specific value of the `inputRole` doesn't matter, so long as different `SuperEditor`s in your app
+     use different values.
+* BREAKING: Moved all `super_editor_quill` code into `super_editor`. Will now
+  deprecate `super_editor_quill` in favor of just using `super_editor`.
+* FEATURE: Create a `SuperMessage` widget, which is an intrinsically sized document, like a
+  `SuperReader` with intrinsic sizing and no scrolling. Made for chat use-cases.
+
+## [0.3.0-dev.40]
+### Nov 13, 2025
+* BREAKING: Moved all `super_editor_markdown` code into `super_editor`. Will now
+   deprecate `super_editor_markdown` in favor of just using `super_editor`.
+
+## [0.3.0-dev.39]
+### Nov 13, 2025
+* FIX: `MessagePageScaffold` bottom sheet animation glitches fixed.
+* ADJUSTMENT: `MessagePageScaffold` now has an optional maximum intrinsic height when 
+   not in "expanded" mode.
+* FIX: When an `Editable` or listener responding to an `Editable` can now immediately 
+   submit `Editor` requests without blowing up.
+* ADJUSTMENT: Don't require a `MutableDocument` or `MutableDocumentComposer` when calling
+   `createDefaultEditor()`.
+* FIX: Move remaining `OverlayController.show()` calls to post frame callbacks.
+
 ## [0.3.0-dev.38]
 ### Nov 9, 2025
 * BREAKING, FIX: Rework `SuperEditorPlugin` lifecycle because we discovered that when

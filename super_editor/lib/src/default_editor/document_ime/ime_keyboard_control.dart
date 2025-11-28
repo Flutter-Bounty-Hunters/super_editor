@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Widget that opens and closes the software keyboard, when requested.
@@ -14,7 +15,7 @@ class SoftwareKeyboardOpener extends StatefulWidget {
   const SoftwareKeyboardOpener({
     Key? key,
     required this.controller,
-    required this.imeConnection,
+    required this.inputId,
     required this.createImeClient,
     required this.createImeConfiguration,
     required this.child,
@@ -22,7 +23,7 @@ class SoftwareKeyboardOpener extends StatefulWidget {
 
   final SoftwareKeyboardController? controller;
 
-  final ValueNotifier<TextInputConnection?> imeConnection;
+  final SuperImeInputId inputId;
 
   final TextInputClient Function() createImeClient;
 
@@ -58,33 +59,60 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
     // their `dispose()` methods. If we `detach()` right now, the
     // ancestor widgets would cause errors in their `dispose()` methods.
     WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
-      widget.controller?.detach();
+      // Check that we're still the delegate at the end of the frame, because
+      // some other widget may have replaced us as the delegate.
+      if (widget.controller?._delegate == this) {
+        widget.controller?.detach();
+      }
     });
     super.dispose();
   }
 
+  bool get _ownsIme => SuperIme.instance.isOwner(widget.inputId);
+
   @override
-  bool get isConnectedToIme => widget.imeConnection.value?.attached ?? false;
+  bool get isConnectedToIme => SuperIme.instance.isInputAttachedToOS(widget.inputId);
 
   @override
   void open({
     required int viewId,
   }) {
+    if (!_ownsIme) {
+      SuperIme.instance.takeOwnership(widget.inputId);
+    }
+
     editorImeLog.info("[SoftwareKeyboard] - showing keyboard");
-    widget.imeConnection.value ??= TextInput.attach(widget.createImeClient(), widget.createImeConfiguration());
-    widget.imeConnection.value!.show();
+    SuperIme.instance.openConnection(
+      widget.inputId,
+      widget.createImeClient(),
+      widget.createImeConfiguration(),
+      showKeyboard: true,
+    );
   }
 
   @override
   void hide() {
-    SystemChannels.textInput.invokeListMethod("TextInput.hide");
+    // Wait until end of frame to try to hide the keyboard so that all IME ownership
+    // changes have time to finish, and we can check if we're the final owner.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_ownsIme) {
+        editorImeLog.info("[SoftwareKeyboard] - tried to hide keyboard, but we don't own IME (${widget.inputId})");
+        return;
+      }
+
+      SystemChannels.textInput.invokeListMethod("TextInput.hide");
+    });
   }
 
   @override
   void close() {
+    if (!_ownsIme) {
+      editorImeLog.info("[SoftwareKeyboard] - tried to close keyboard, but we don't own IME (${widget.inputId})");
+      return;
+    }
+
     editorImeLog.info("[SoftwareKeyboard] - closing IME connection.");
-    widget.imeConnection.value?.close();
-    widget.imeConnection.value = null;
+    SuperIme.instance.clearConnection(widget.inputId);
   }
 
   @override

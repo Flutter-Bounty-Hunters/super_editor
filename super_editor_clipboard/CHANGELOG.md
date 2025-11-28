@@ -1,3 +1,9 @@
+## [0.2.0]
+### Nov 25, 2025
+* DEPENDENCY CHANGES:
+  * Removed dependency on `super_editor_markdown` in favor of just `super_editor`
+  * Upgraded `super_editor` to `0.3.0-dev.41`
+
 ## [0.1.3]
 ### Aug 27, 2025
 * ADJUSTMENT: Upgraded `super_editor` dependency to `^0.3.0-dev.33`.

@@ -17,7 +17,7 @@ dependencies:
     path: ../../super_editor
   super_text_layout:
     path: ../../super_text_layout
-  google_fonts: ^6.2.1
+  google_fonts: ^6.3.2
   overlord: ^0.4.2
 
 dependency_overrides:
@@ -25,8 +25,6 @@ dependency_overrides:
   # against changes that they're making to other mono-repo packages
   super_editor:
     path: ../../super_editor
-  super_editor_markdown:
-    path: ../../super_editor_markdown
   super_text_layout:
     path: ../../super_text_layout
   attributed_text:
