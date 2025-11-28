@@ -463,6 +463,9 @@ ExecutionInstruction mergeNodeWithNextWhenDeleteIsPressed({
   if (nextNode is! TextNode) {
     return ExecutionInstruction.continueExecution;
   }
+  if (!CombineParagraphsCommand.canPerform(editContext.document, firstNodeId: node.id, secondNodeId: nextNode.id)) {
+    return ExecutionInstruction.continueExecution;
+  }
 
   final currentParagraphLength = node.text.length;
 

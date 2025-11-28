@@ -312,13 +312,14 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
     }
 
     if (expandSelection) {
+      var newSelection = widget.document.expandSelection(_currentSelection!, docPosition);
+      newSelection = widget.document.refineSelectionWithCompositeNodeAdjustments(newSelection);
+
       // The user tapped while pressing shift and there's an existing
       // selection. Move the extent of the selection to where the user tapped.
       widget.editor.execute([
         ChangeSelectionRequest(
-          _currentSelection!.copyWith(
-            extent: docPosition,
-          ),
+          newSelection,
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
@@ -707,13 +708,16 @@ Updating drag selection:
           : extentWordSelection.start;
     }
 
+    var newSelection = DocumentSelection(base: basePosition, extent: extentPosition);
+    if (expandSelection && _currentSelection != null) {
+      // If desired, expand the selection instead of replacing it.
+      newSelection = widget.document.expandSelection(_currentSelection!, extentPosition);
+    }
+    newSelection = widget.document.refineSelectionWithCompositeNodeAdjustments(newSelection);
+
     widget.editor.execute([
       ChangeSelectionRequest(
-        DocumentSelection(
-          // If desired, expand the selection instead of replacing it.
-          base: expandSelection ? _currentSelection?.base ?? basePosition : basePosition,
-          extent: extentPosition,
-        ),
+        newSelection,
         SelectionChangeType.expandSelection,
         SelectionReason.userInteraction,
       ),

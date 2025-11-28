@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_component.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 
 import 'document.dart';
 import 'document_selection.dart';
@@ -93,6 +95,10 @@ abstract class DocumentLayout {
   /// the given [nodeId], or [null] if no such component exists.
   DocumentComponent? getComponentByNodeId(String nodeId);
 
+  /// Returns the [DocumentComponent] that renders leaf [DocumentNode] within [CompositeNode]
+  /// or root [DocumentNode] based on [nodePath]
+  DocumentComponent? getComponentByNodePath(NodePath nodePath);
+
   /// Converts [ancestorOffset] from the [ancestor]'s coordinate space to the
   /// same location on the screen within this [DocumentLayout]'s coordinate space.
   Offset getDocumentOffsetFromAncestorOffset(Offset ancestorOffset, [RenderObject? ancestor]);
@@ -107,6 +113,8 @@ abstract class DocumentLayout {
 
   /// Returns the [DocumentPosition] at the end of the last selectable component.
   DocumentPosition? findLastSelectablePosition();
+
+  bool displayCaretForExpandedSelectionWithExtent(DocumentPosition position);
 }
 
 /// Contract for all widgets that operate as document components
@@ -318,7 +326,7 @@ mixin DocumentComponent<T extends StatefulWidget> on State<T> {
 /// to the component that's being wrapped. The only thing that the implementer needs
 /// to provide is [childDocumentComponentKey], which is a `GlobalKey` that provides
 /// access to the child [DocumentComponent].
-mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T> {
+mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentComponent<T>, CompositeComponent<T> {
   @protected
   GlobalKey get childDocumentComponentKey;
 
@@ -450,6 +458,71 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
   @override
   MouseCursor? getDesiredCursorAtOffset(Offset localOffset) {
     return _childDocumentComponent.getDesiredCursorAtOffset(_getChildOffset(localOffset));
+  }
+
+  @override
+  CompositeComponentChild? getChildByNodeId(String childId) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildByNodeId(childId);
+    }
+    throw Exception(
+      'Invalid getChildByNodeId call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  DocumentComponent<StatefulWidget>? getChildComponentById(String childId) {
+    return getChildByNodeId(childId)?.component;
+  }
+
+  @override
+  List<CompositeComponentChild> getChildren() {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildren();
+    }
+    throw Exception(
+      'Invalid getChildren call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild getFirstChildInDirection(DocumentNodeLookupDirection direction, {double? nearX}) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getFirstChildInDirection(direction, nearX: nearX);
+    }
+    throw Exception(
+      'Invalid getFirstChildInDirection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild? getNextChildInDirection(String sinceChildId, DocumentNodeLookupDirection direction) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getNextChildInDirection(sinceChildId, direction);
+    }
+    throw Exception(
+      'Invalid getNextChildInDirection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  CompositeComponentChild getChildForOffset(Offset componentOffset) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).getChildForOffset(componentOffset);
+    }
+    throw Exception(
+      'Invalid getChildForOffset call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
+  }
+
+  @override
+  bool displayCaretWithExpandedSelection(CompositeNodePosition position) {
+    if (_childDocumentComponent is CompositeComponent) {
+      return (_childDocumentComponent as CompositeComponent).displayCaretWithExpandedSelection(position);
+    }
+    throw Exception(
+      'Invalid displayCaretWithExpandedSelection call at ${_childDocumentComponent.runtimeType}. CompositeComponent not implemented',
+    );
   }
 }
 

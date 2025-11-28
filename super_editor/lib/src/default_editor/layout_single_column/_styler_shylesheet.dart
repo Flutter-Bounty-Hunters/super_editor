@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 import 'package:super_editor/src/core/styles.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 
 import '../../core/document.dart';
 import '_presenter.dart';
@@ -66,6 +67,14 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     }
 
     viewModel.applyStyles(aggregateStyles);
+
+    // Recursively apply styles to the children of CompositeNode
+    if (node is CompositeNode && viewModel is CompositeNodeViewModel) {
+      for (int i = 0; i < node.children.length; i += 1) {
+        final child = node.getChildAt(i);
+        _styleComponent(document, child, viewModel.children[i]);
+      }
+    }
 
     return viewModel;
   }
