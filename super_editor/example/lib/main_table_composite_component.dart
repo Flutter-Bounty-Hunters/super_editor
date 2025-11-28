@@ -492,6 +492,27 @@ class _DemoTableNode extends CompositeNode {
     );
   }
 
+  String? copyChildrenContent(List<CompositeNodeChildTextContent> content) {
+    // Copy as CSV as an example
+    final result = StringBuffer();
+    int? currentRow;
+    bool afterNewline = true;
+    for (final child in content) {
+      final index = getChildTableIndex(child.childNodeId);
+      if (currentRow != null && currentRow != index.y) {
+        result.writeln();
+        afterNewline = true;
+      }
+      if (!afterNewline) {
+        result.write(',');
+      }
+      result.write('"${child.text}"');
+      currentRow = index.y;
+      afterNewline = false;
+    }
+    return result.toString();
+  }
+
   _DemoTableIndex getChildTableIndex(String childId) {
     final index = children.indexWhere((c) => c.id == childId);
     if (index == -1) {

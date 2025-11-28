@@ -214,6 +214,73 @@ abstract class CompositeNode extends DocumentNode {
     return false;
   }
 
+  String? copyChildrenContent(List<CompositeNodeChildTextContent> content) {
+    return content.map((c) => c.text).join('\n');
+  }
+
+  @override
+  String? copyContent(NodeSelection selection) {
+    if (selection is! CompositeNodeSelection) {
+      return null;
+    }
+    final upstreamPosition = selectUpstreamPosition(selection.base, selection.extent) as CompositeNodePosition;
+    final downstreamPosition =
+        selection.base.childNodeId == upstreamPosition.childNodeId ? selection.extent : selection.base;
+
+    var childrenIds = getSelectedChildrenBetween(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
+    if (childrenIds == null) {
+      final fromIndex = getChildIndexByNodeId(upstreamPosition.childNodeId);
+      final toIndex = getChildIndexByNodeId(downstreamPosition.childNodeId);
+      childrenIds = children.toList().sublist(fromIndex, toIndex + 1).map((c) => c.id).toList();
+    }
+
+    final childrenContent = <CompositeNodeChildTextContent>[];
+    for (var i = 0; i < childrenIds.length; i += 1) {
+      final selectedChild = getChildByNodeId(childrenIds[i])!;
+      NodeSelection childNodeSelection;
+
+      if (i == 0) {
+        // This is the first node and it may be partially selected.
+        final baseSelectionPosition = selectedChild.id == selection.base.childNodeId
+            ? selection.base.childNodePosition
+            : selection.extent.childNodePosition;
+
+        final extentSelectionPosition =
+            childrenIds.length > 1 ? selectedChild.endPosition : selection.extent.childNodePosition;
+
+        childNodeSelection = selectedChild.computeSelection(
+          base: baseSelectionPosition,
+          extent: extentSelectionPosition,
+        );
+      } else if (i == childrenIds.length - 1) {
+        // This is the last node and it may be partially selected.
+        final nodePosition = selectedChild.id == selection.base.childNodeId
+            ? selection.base.childNodePosition
+            : selection.extent.childNodePosition;
+
+        childNodeSelection = selectedChild.computeSelection(
+          base: selectedChild.beginningPosition,
+          extent: nodePosition,
+        );
+      } else {
+        // This node is fully selected. Copy the whole thing.
+        childNodeSelection = selectedChild.computeSelection(
+          base: selectedChild.beginningPosition,
+          extent: selectedChild.endPosition,
+        );
+      }
+
+      final nodeContent = selectedChild.copyContent(childNodeSelection);
+      if (nodeContent != null) {
+        childrenContent.add(CompositeNodeChildTextContent(selectedChild.id, nodeContent));
+      }
+    }
+    if (childrenContent.isEmpty) {
+      return null;
+    }
+    return copyChildrenContent(childrenContent);
+  }
+
   @override
   NodePosition selectUpstreamPosition(NodePosition position1, NodePosition position2) {
     if (position1 is! CompositeNodePosition) {
@@ -378,6 +445,12 @@ class CompositeNodePosition implements NodePosition {
 
   @override
   int get hashCode => childNodeId.hashCode ^ childNodePosition.hashCode;
+}
+
+class CompositeNodeChildTextContent {
+  final String childNodeId;
+  final String text;
+  CompositeNodeChildTextContent(this.childNodeId, this.text);
 }
 
 extension DocumentPositionCompositeEx on DocumentPosition {

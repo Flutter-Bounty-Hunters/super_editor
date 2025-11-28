@@ -298,40 +298,12 @@ class _BannerNode extends CompositeNode {
 
   @override
   DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
-    // TODO: implement copyWithAddedMetadata
-    throw UnimplementedError();
+    return _BannerNode(id: id, children: children, metadata: {...metadata, ...newProperties});
   }
 
   @override
   DocumentNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
-    // TODO: implement copyAndReplaceMetadata
-    throw UnimplementedError();
-  }
-
-  // DocumentNode? makeReplacementWhenEmpty(String nodeId) {
-  //   return ParagraphNode(id: nodeId, text: AttributedText());
-  // }
-  //
-  // @override
-  // bool get isIsolating => true;
-
-  @override
-  String? copyContent(NodeSelection selection) {
-    final compositeSelection = selection;
-    if (compositeSelection is! CompositeNodeSelection) {
-      throw Exception('Unexpected selection type ${compositeSelection.runtimeType}');
-    }
-    // Maybe this should go to base class, so we only have to override the case when more than one
-    // child node in the selection?
-    if (compositeSelection.extent.childNodeId == compositeSelection.base.childNodeId) {
-      final child = getChildByNodeId(compositeSelection.extent.childNodeId)!;
-      final childSelection = child.computeSelection(
-        base: compositeSelection.base.childNodePosition,
-        extent: compositeSelection.extent.childNodePosition,
-      );
-      return child.copyContent(childSelection);
-    }
-    throw UnimplementedError('Copy more than one child node is not yet implemented');
+    return _BannerNode(id: id, children: children, metadata: newMetadata);
   }
 
   CompositeNode copyWithChildren(List<DocumentNode> newChildren) {

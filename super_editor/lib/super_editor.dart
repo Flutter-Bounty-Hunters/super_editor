@@ -82,6 +82,7 @@ export 'src/infrastructure/content_layers_for_slivers.dart';
 export 'src/infrastructure/documents/document_layers.dart';
 export 'src/infrastructure/documents/document_scroller.dart';
 export 'src/infrastructure/documents/selection_leader_document_layer.dart';
+export 'src/infrastructure/documents/document_selection.dart';
 export 'src/infrastructure/ime_input_owner.dart';
 export 'src/infrastructure/keyboard.dart';
 export 'src/infrastructure/multi_tap_gesture.dart';
