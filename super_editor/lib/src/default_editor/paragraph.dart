@@ -746,15 +746,8 @@ class CombineParagraphsCommand extends EditCommand {
 
     // Check if nodeAbove and nodeBelow belongs to different CompositeNode and one of them is isolated
     // then cancel the operation
-    final nodeAboveParentPath = document.getNodePathById(nodeAbove.id)?.parent;
-    final nodeBelowParentPath = document.getNodePathById(secondNodeId)?.parent;
-    if (nodeAboveParentPath != null && nodeAboveParentPath != nodeBelowParentPath) {
-      final aboveParent = document.getNodeAtPath(nodeAboveParentPath) as CompositeNode;
-      final belowParent = document.getNodeAtPath(nodeAboveParentPath) as CompositeNode;
-
-      if (aboveParent.isIsolating || belowParent.isIsolating) {
-        return null;
-      }
+    if (document.shouldIsolateNodes([nodeAbove.id, secondNodeId])) {
+      return null;
     }
 
     return (nodeAbove, secondNode);

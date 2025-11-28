@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:super_editor/super_editor.dart';
@@ -173,6 +174,13 @@ class _ComponentsInComponentsDemoScreenState extends State<_ComponentsInComponen
     );
   }
 }
+
+bool get isMobilePlatform =>
+    (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+/// In mobile platforms we need a special touch-based UI to do cell-based selection (and somehow hide
+/// existing overlay)
+bool get useCellBasedSelection => !isMobilePlatform;
 
 const demoTableBlockType = NamedAttribution("demoTable");
 const demoTableCellBlockType = NamedAttribution("demoTableCell");
@@ -378,6 +386,9 @@ class _DemoTableNode extends CompositeNode {
     required CompositeNodePosition upstreamPosition,
     CompositeNodePosition? downstreamPosition,
   }) {
+    if (!useCellBasedSelection) {
+      return null;
+    }
     // When both positions within the table, but different cells
     if (downstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
       final selection = getSelectedChildrenBetween(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
@@ -400,6 +411,9 @@ class _DemoTableNode extends CompositeNode {
     required CompositeNodePosition downstreamPosition,
     CompositeNodePosition? upstreamPosition,
   }) {
+    if (!useCellBasedSelection) {
+      return null;
+    }
     // When both positions within the table, but different cells
     if (upstreamPosition != null && downstreamPosition.childNodeId != upstreamPosition.childNodeId) {
       final selection = getSelectedChildrenBetween(upstreamPosition.childNodeId, downstreamPosition.childNodeId);
@@ -617,6 +631,9 @@ class _DemoTableComponentState extends State<_DemoTableComponent> with Composite
   }
 
   void updateSelectionRectAfterLayout() {
+    if (!useCellBasedSelection) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final newSelectionRect = _calcSelectionRect();
       if (_selectionRect != newSelectionRect) {

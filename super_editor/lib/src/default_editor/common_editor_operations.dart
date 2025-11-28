@@ -337,7 +337,7 @@ class CommonEditorOperations {
         return false;
       }
 
-      if (expand && editor.document.hasIsolatingParentForNodes([nextNode.id, node.id])) {
+      if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
         // We should not expand selection through isolated nodes
         return false;
       }
@@ -470,7 +470,7 @@ class CommonEditorOperations {
         return false;
       }
 
-      if (expand && editor.document.hasIsolatingParentForNodes([nextNode.id, node.id])) {
+      if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
         // We should not expand selection through isolated nodes
         return false;
       }
@@ -582,6 +582,10 @@ class CommonEditorOperations {
       );
 
       if (nextNode != null) {
+        if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+          // We should not expand selection through isolated nodes
+          return false;
+        }
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
         if (nextComponent == null) {
@@ -662,6 +666,10 @@ class CommonEditorOperations {
         nearX: offsetToMatch.dx,
       );
       if (nextNode != null) {
+        if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+          // We should not expand selection through isolated nodes
+          return false;
+        }
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
         if (nextComponent == null) {
@@ -1013,7 +1021,7 @@ class CommonEditorOperations {
 
     // Do not go to next node, if current node or next node
     // belongs to isolating composite node
-    if (document.hasIsolatingParentForNodes([nodeAfter.id, node.id])) {
+    if (document.shouldIsolateNodes([nodeAfter.id, node.id])) {
       return false;
     }
 
@@ -1251,7 +1259,7 @@ class CommonEditorOperations {
 
     // Do not go to previous node, if current node or previous node
     // belongs to isolating composite node
-    if (document.hasIsolatingParentForNodes([nodeBefore.id, node.id])) {
+    if (document.shouldIsolateNodes([nodeBefore.id, node.id])) {
       return false;
     }
 

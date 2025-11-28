@@ -1,12 +1,9 @@
-import 'dart:math';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
-import 'package:super_editor/src/infrastructure/flutter/geometry.dart';
 
 /// a [CompositeComponentChild] is an object that holds already built
 /// component, with component key and nodeId.
@@ -117,244 +114,76 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
     return CompositeNodePosition(child.nodeId, child.component.getPositionAtOffset(childOffset)!);
   }
 
+  CompositeComponentChild getChildForOffset(Offset componentOffset);
+
   @override
   NodePosition getEndPositionNearX(double x) {
-    final child = getChildren().last;
-    return CompositeNodePosition(child.nodeId, child.component.getEndPositionNearX(x));
+    throw CompositePositionUsageException();
   }
 
   @override
   Rect getEdgeForPosition(NodePosition nodePosition) {
-    if (nodePosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried get edge near position within a ColumnDocumentComponent with invalid type of node position: $nodePosition");
-    }
-
-    final child = getChildByNodeId(nodePosition.childNodeId)!;
-    final rectInChild = child.component.getEdgeForPosition(nodePosition.childNodePosition);
-
-    final rectInColumn = Rect.fromPoints(
-      _projectOffsetToChildSpace(child, rectInChild.topLeft),
-      _projectOffsetToChildSpace(child, rectInChild.bottomRight),
-    );
-
-    return rectInColumn;
+    throw CompositePositionUsageException();
   }
 
   @override
   Offset getOffsetForPosition(NodePosition nodePosition) {
-    if (nodePosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried get offset for position within a ColumnDocumentComponent with invalid type of node position: $nodePosition");
-    }
-    final child = getChildByNodeId(nodePosition.childNodeId)!;
-    return child.component.getOffsetForPosition(nodePosition.childNodePosition);
+    throw CompositePositionUsageException();
   }
 
   @override
   Rect getRectForPosition(NodePosition nodePosition) {
-    if (nodePosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried get bounding rectangle for position within a ColumnDocumentComponent with invalid type of node position: $nodePosition");
-    }
-
-    final child = getChildByNodeId(nodePosition.childNodeId)!;
-
-    final rectInChild = child.component.getRectForPosition(nodePosition.childNodePosition);
-    final childOffsetInColumn = child.renderBox.localToGlobal(Offset.zero, ancestor: _selfBox);
-
-    final rectInColumn = rectInChild.translateByOffset(childOffsetInColumn);
-
-    return rectInColumn;
+    throw CompositePositionUsageException();
   }
 
-  // TODO: Review if this method (and other that relies on CompositePosition/CompositeSelection) needed at all
   @override
   Rect getRectForSelection(NodePosition baseNodePosition, NodePosition extentNodePosition) {
-    if (baseNodePosition is! CompositeNodePosition || extentNodePosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried to select within a ColumnDocumentComponent with invalid position types - base: $baseNodePosition, extent: $extentNodePosition");
-    }
-    print('getRectForSelection called!');
-
-    final children = getChildren();
-    final baseIndex = children.indexWhere((c) => c.nodeId == baseNodePosition.childNodeId);
-    final extentIndex = children.indexWhere((c) => c.nodeId == extentNodePosition.childNodeId);
-    assert(baseIndex != -1, 'Unable to find base child node with id "${baseNodePosition.childNodeId}"');
-    assert(extentIndex != -1, 'Unable to find extent child node with id "${extentNodePosition.childNodeId}"');
-
-    final componentBoundingBoxes = <Rect>[];
-
-    // Collect bounding boxes for all selected components.
-    final columnComponentBox = context.findRenderObject() as RenderBox;
-    if (baseNodePosition.childNodeId == extentNodePosition.childNodeId) {
-      // Selection within a single node.
-      final selectedChild = getChildByNodeId(baseNodePosition.childNodeId)!;
-      final childOffset = selectedChild.renderBox.localToGlobal(Offset.zero, ancestor: _selfBox);
-
-      final componentBoundingBox = selectedChild.component
-          .getRectForSelection(
-            baseNodePosition.childNodePosition,
-            extentNodePosition.childNodePosition,
-          )
-          .translateByOffset(childOffset);
-
-      componentBoundingBoxes.add(componentBoundingBox);
-    } else {
-      // Selection across nodes.
-      final topNodeIndex = min(baseIndex, extentIndex);
-      final topColumnPosition = baseIndex < extentIndex ? baseNodePosition : extentNodePosition;
-
-      final bottomNodeIndex = max(baseIndex, extentIndex);
-      final bottomColumnPosition = baseIndex < extentIndex ? extentNodePosition : baseNodePosition;
-
-      for (int i = topNodeIndex; i <= bottomNodeIndex; ++i) {
-        final child = children[i];
-
-        // final component = widget.childComponentKeys[i].currentState!;
-        final childOffset = child.renderBox.localToGlobal(Offset.zero, ancestor: columnComponentBox);
-
-        if (i == topNodeIndex) {
-          // This is the first node. The selection goes from
-          // startPosition to the end of the node.
-          final firstNodeEndPosition = child.component.getEndPosition();
-          final componentRectInColumnLayout = child.component
-              .getRectForSelection(
-                topColumnPosition.childNodePosition,
-                firstNodeEndPosition,
-              )
-              .translateByOffset(childOffset);
-
-          componentBoundingBoxes.add(componentRectInColumnLayout);
-        } else if (i == bottomNodeIndex) {
-          // This is the last node. The selection goes from
-          // the beginning of the node to endPosition.
-          final lastNodeStartPosition = child.component.getBeginningPosition();
-          final componentRectInColumnLayout = child.component
-              .getRectForSelection(
-                lastNodeStartPosition,
-                bottomColumnPosition.childNodePosition,
-              )
-              .translateByOffset(childOffset);
-
-          componentBoundingBoxes.add(componentRectInColumnLayout);
-        } else {
-          // This node sits between start and end. All content
-          // is selected.
-          final componentRectInColumnLayout = child.component
-              .getRectForSelection(
-                child.component.getBeginningPosition(),
-                child.component.getEndPosition(),
-              )
-              .translateByOffset(childOffset);
-
-          componentBoundingBoxes.add(componentRectInColumnLayout);
-        }
-      }
-    }
-
-    // Combine all component boxes into one big bounding box.
-    Rect boundingBox = componentBoundingBoxes.first;
-    for (int i = 1; i < componentBoundingBoxes.length; ++i) {
-      boundingBox = boundingBox.expandToInclude(componentBoundingBoxes[i]);
-    }
-
-    return boundingBox;
+    throw CompositePositionUsageException();
   }
 
   @override
   NodeSelection getCollapsedSelectionAt(NodePosition nodePosition) {
-    if (nodePosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried get position within a ColumnDocumentComponent with invalid type of node position: $nodePosition");
-    }
-
-    // TODO: implement getCollapsedSelectionAt
-    throw UnimplementedError();
+    throw CompositePositionUsageException();
   }
 
   @override
   NodeSelection getSelectionBetween({required NodePosition basePosition, required NodePosition extentPosition}) {
-    if (basePosition is! CompositeNodePosition || extentPosition is! CompositeNodePosition) {
-      throw Exception(
-          "Tried to select within a ColumnDocumentComponent with invalid position types - base: $basePosition, extent: $extentPosition");
-    }
-
-    // TODO: implement getSelectionBetween
-    throw UnimplementedError();
+    throw CompositePositionUsageException();
   }
 
   @override
   NodeSelection? getSelectionInRange(Offset localBaseOffset, Offset localExtentOffset) {
-    // TODO: implement getSelectionInRange
-    throw UnimplementedError();
+    throw CompositePositionUsageException();
   }
 
   @override
   NodeSelection getSelectionOfEverything() {
-    // TODO: implement getSelectionOfEverything
-    throw UnimplementedError();
+    throw CompositePositionUsageException();
   }
 
   @override
   NodePosition? movePositionUp(NodePosition currentPosition) {
-    throw Exception('This method should not be called for CompositeNode');
+    throw CompositePositionUsageException();
   }
 
   @override
   NodePosition? movePositionDown(NodePosition currentPosition) {
-    throw Exception('This method should not be called for CompositeNode');
+    throw CompositePositionUsageException();
   }
 
   @override
   NodePosition? movePositionLeft(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    throw Exception('This method should not be called for CompositeNode');
+    throw CompositePositionUsageException();
   }
 
   @override
   NodePosition? movePositionRight(NodePosition currentPosition, [MovementModifier? movementModifier]) {
-    throw Exception('This method should not be called for CompositeNode');
+    throw CompositePositionUsageException();
   }
 
   @override
   bool isVisualSelectionSupported() {
     return true;
-  }
-
-  // FIXME: Delete default implementation - let other classes implement it efficiently
-  CompositeComponentChild getChildForOffset(Offset componentOffset) {
-    if (componentOffset.dy < 0) {
-      // Offset is above this component. Return the first item
-      return getChildren().first;
-    }
-
-    final rect = context.findRenderObject() as RenderBox;
-
-    final componentHeight = rect.size.height;
-    if (componentOffset.dy > componentHeight) {
-      // The offset is below this component. Return the last item in the column.
-      return getChildren().last;
-    }
-
-    CompositeComponentChild? closestChild;
-    double? minDistance;
-    for (final child in getChildren()) {
-      final childBox = child.renderBox;
-      final childOrigin = childBox.localToGlobal(Offset.zero, ancestor: rect);
-      final childRect = Rect.fromLTWH(childOrigin.dx, childOrigin.dy, childBox.size.width, childBox.size.height);
-
-      final distance = _distance(childRect, componentOffset);
-
-      if (distance == 0) {
-        return child;
-      }
-      if (minDistance == null || distance < minDistance) {
-        minDistance = distance;
-        closestChild = child;
-      }
-    }
-
-    return closestChild!;
   }
 
   Offset _projectOffsetToChildSpace(CompositeComponentChild child, Offset offset) {
@@ -364,30 +193,22 @@ mixin CompositeComponent<T extends StatefulWidget> on State<T> implements Docume
   RenderBox get _selfBox => context.findRenderObject() as RenderBox;
 }
 
-/// Returns the shortest distance from [point] to the nearest edge of [rect].
-///
-/// If the [point] is inside or on the boundary of the [rect], returns 0.0.
-double _distance(Rect rect, Offset point) {
-  // inside or on an edge
-  if (point.dx >= rect.left && point.dx <= rect.right && point.dy >= rect.top && point.dy <= rect.bottom) {
-    return 0.0;
+/// This exception thrown when NodePosition-based method was called on CompositeNode.
+/// That's unexpected behavior, as CompositeNodePosition should only be used once, to find a
+/// leaf node at given Offset. After CompositeNodePosition received, it should be converted to leaf node position
+/// immediately, so all subsequent NodePosition-based method must be called on leaf node component.
+class CompositePositionUsageException implements Exception {
+  late String? methodName;
+  CompositePositionUsageException() {
+    final match = RegExp(r'^\#\d+\s+([.\w\W]*?)\s+\(package').firstMatch(StackTrace.current.toString().split('\n')[1]);
+    methodName = match?.group(1);
   }
 
-  double nearestX, nearestY;
-  if (point.dx < rect.left) {
-    nearestX = rect.left;
-  } else if (point.dx > rect.right) {
-    nearestX = rect.right;
-  } else {
-    nearestX = point.dx;
+  @override
+  String toString() {
+    if (methodName != null) {
+      return 'Exception: Invalid call "$methodName" on CompositeNodes. Use leaf node positions';
+    }
+    return 'Exception: Invalid call on CompositeNodes. Use leaf node positions';
   }
-  if (point.dy < rect.top) {
-    nearestY = rect.top;
-  } else if (point.dy > rect.bottom) {
-    nearestY = rect.bottom;
-  } else {
-    nearestY = point.dy;
-  }
-
-  return sqrt(pow(point.dx - nearestX, 2) + pow(point.dy - nearestY, 2));
 }

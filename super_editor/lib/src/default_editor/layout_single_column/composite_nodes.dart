@@ -1,14 +1,8 @@
-import 'dart:math';
-import 'dart:ui';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show EdgeInsets;
 import 'package:super_editor/src/core/document.dart';
-import 'package:super_editor/src/core/document_layout.dart';
-import 'package:super_editor/src/core/document_selection.dart';
-import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 
 /// A view model for a [CompositeNode], which is a node that contains other nodes.
@@ -79,6 +73,11 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel {
     return listEquals(children, other.children);
   }
 
+  /// Controls whether selection is automatically applied to selectable child viewModels.
+  ///
+  /// Return `true` to enable the default behavior (children show their own selection visuals).
+  /// Return `false` to suppress child selection and implement custom selection logic
+  /// (e.g., selecting a whole table cell without highlighting its inner text).
   bool shouldApplySelectionToChildren() {
     return true;
   }
@@ -94,7 +93,7 @@ class CompositeNodeViewModel extends SingleColumnLayoutComponentViewModel {
 ///
 /// This node includes sane default implementations for reporting beginning, ending, upstream,
 /// and downstream positions within the [CompositeNode].
-abstract class CompositeNode extends DocumentNode implements ImeNodeSerialization {
+abstract class CompositeNode extends DocumentNode {
   CompositeNode({
     required this.id,
     super.metadata,
@@ -252,71 +251,6 @@ abstract class CompositeNode extends DocumentNode implements ImeNodeSerializatio
       base: base as CompositeNodePosition,
       extent: extent as CompositeNodePosition,
     );
-  }
-
-  static const _imeChildrenSeparator = '\n';
-  static const _imeNonSerializableChildChar = '~';
-
-  @override
-  int imeOffsetFromNodePosition(CompositeNodePosition position) {
-    assert(position is CompositeNodePosition,
-        'Expected a _CompositeNodePosition for imeOffsetFromPosition but received a ${position.runtimeType}');
-
-    var offsetBeforeChild = 0;
-    for (final child in children) {
-      if (position.childNodeId == child.id) {
-        if (child is ImeNodeSerialization) {
-          return offsetBeforeChild +
-              (child as ImeNodeSerialization).imeOffsetFromNodePosition(position.childNodePosition);
-        } else if (position.childNodePosition == child.beginningPosition) {
-          return offsetBeforeChild;
-        } else {
-          return offsetBeforeChild + _imeNonSerializableChildChar.length;
-        }
-      }
-      offsetBeforeChild += _imeTextFromNode(child).length + _imeChildrenSeparator.length;
-    }
-
-    throw Exception(
-      'Failed to convert position ${position.childNodePosition} into IME-compatible offset. '
-      'CompositeNode could not find a child by id "${position.childNodeId}". '
-      'Available ids:\n${children.map((c) => '- "${c.id}"').join(',\n')}',
-    );
-  }
-
-  @override
-  NodePosition nodePositionFromImeOffset(int imeOffset) {
-    // TODO: Check if there is a more efficient way to calculate offsets
-    // (as Nodes are immutable, we might cache imeText length per node here
-    var offsetBeforeChild = 0;
-    for (final child in children) {
-      final childImeTextLength = _imeTextFromNode(child).length;
-      // Looking for a child where imeOffset position is
-      if (imeOffset >= offsetBeforeChild && imeOffset <= offsetBeforeChild + childImeTextLength) {
-        final offsetInsideChild = imeOffset - offsetBeforeChild;
-        NodePosition childPosition;
-        if (child is ImeNodeSerialization) {
-          childPosition = (child as ImeNodeSerialization).nodePositionFromImeOffset(offsetInsideChild);
-        } else if (offsetInsideChild == 0) {
-          childPosition = child.beginningPosition;
-        } else {
-          childPosition = child.endPosition;
-        }
-        return CompositeNodePosition(child.id, childPosition);
-      }
-      offsetBeforeChild += childImeTextLength + _imeChildrenSeparator.length;
-    }
-    throw Exception(
-        "Unable to find a child of CompositeNode where IME offset is. ImeOffset: $imeOffset. Composite Node range: 0..${toImeText().length}");
-  }
-
-  @override
-  String toImeText() {
-    return children.map((c) => _imeTextFromNode(c)).join(_imeChildrenSeparator);
-  }
-
-  String _imeTextFromNode(DocumentNode node) {
-    return node is ImeNodeSerialization ? (node as ImeNodeSerialization).toImeText() : _imeNonSerializableChildChar;
   }
 
   /// If true — this node is "isolating":

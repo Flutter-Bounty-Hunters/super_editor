@@ -1,12 +1,6 @@
-import 'dart:math';
-
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/composite_component.dart';
-import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
-import 'package:super_editor/src/infrastructure/flutter/geometry.dart';
 
 /// A [DocumentComponent] that presents other components, within a column.
 class ColumnDocumentComponent extends StatefulWidget {
@@ -29,14 +23,6 @@ class ColumnDocumentComponent extends StatefulWidget {
 class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
     with CompositeComponent<ColumnDocumentComponent> {
   @override
-  CompositeComponentChild? getChildByNodeId(String nodeId) {
-    return widget.children.firstWhereOrNull((c) => c.nodeId == nodeId);
-  }
-
-  @override
-  List<CompositeComponentChild> getChildren() => widget.children;
-
-  @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: Column(
@@ -44,6 +30,9 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
       ),
     );
   }
+
+  @override
+  List<CompositeComponentChild> getChildren() => widget.children;
 
   @override
   CompositeComponentChild getChildForOffset(Offset componentOffset) {
@@ -73,10 +62,5 @@ class _ColumnDocumentComponentState extends State<ColumnDocumentComponent>
     }
 
     throw Exception("Tried to find the child nearest to component offset ($componentOffset) but couldn't find one.");
-  }
-
-  @override
-  bool isVisualSelectionSupported() {
-    return true;
   }
 }

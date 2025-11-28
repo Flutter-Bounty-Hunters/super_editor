@@ -868,7 +868,7 @@ class DeleteContentCommand extends EditCommand {
     // empty.
     final mergeStartAndEndNodes = startNodeAfterDeletion is TextNode &&
         endNodeAfterDeletion is TextNode &&
-        !document.hasIsolatingParentForNodes([startNodeAfterDeletion.id, endNodeAfterDeletion.id]);
+        !document.shouldIsolateNodes([startNodeAfterDeletion.id, endNodeAfterDeletion.id]);
 
     if (mergeStartAndEndNodes) {
       _log.log('DeleteSelectionCommand', ' - combining last node text with first node text');

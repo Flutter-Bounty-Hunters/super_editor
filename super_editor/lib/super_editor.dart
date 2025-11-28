@@ -36,7 +36,6 @@ export 'src/infrastructure/document_gestures_interaction_overrides.dart';
 export 'src/default_editor/document_gestures_touch_ios.dart';
 export 'src/default_editor/document_gestures_touch_android.dart';
 export 'src/default_editor/document_ime/document_input_ime.dart';
-export 'src/default_editor/document_ime/ime_node_serialization.dart';
 export 'src/default_editor/document_layers/attributed_text_bounds_overlay.dart';
 export 'src/default_editor/document_hardware_keyboard/document_input_keyboard.dart';
 export 'src/default_editor/horizontal_rule.dart';

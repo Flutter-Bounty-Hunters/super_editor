@@ -507,18 +507,21 @@ extension ExpandDocumentSelection on Document {
     }
   }
 
-  bool hasIsolatingParentForNodes(List<String> nodeIds) {
+  bool shouldIsolateNodes(List<String> nodeIds) {
+    final parents = <String?>{};
+    var hasIsolatingParent = false;
     for (final nodeId in nodeIds) {
       final parentId = getNodePathById(nodeId)?.parent?.nodeId;
+      parents.add(parentId);
       if (parentId == null) {
         continue;
       }
       final parent = getNodeById(parentId) as CompositeNode;
       if (parent.isIsolating) {
-        return true;
+        hasIsolatingParent = true;
       }
     }
-    return false;
+    return hasIsolatingParent && parents.length > 1;
   }
 
   /// Bottom-up lift + adjustment of both positions across shared ancestor levels.

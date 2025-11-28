@@ -15,7 +15,6 @@ import 'package:super_editor/src/core/edit_context.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
-import 'package:super_editor/src/default_editor/document_ime/ime_node_serialization.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -34,7 +33,7 @@ import 'selection_upstream_downstream.dart';
 import 'text_tools.dart';
 
 @immutable
-class TextNode extends DocumentNode implements ImeNodeSerialization {
+class TextNode extends DocumentNode {
   TextNode({
     required this.id,
     required this.text,
@@ -201,21 +200,6 @@ class TextNode extends DocumentNode implements ImeNodeSerialization {
 
   @override
   int get hashCode => super.hashCode ^ id.hashCode ^ text.hashCode;
-
-  @override
-  int imeOffsetFromNodePosition(TextNodePosition position) {
-    return position.offset;
-  }
-
-  @override
-  NodePosition nodePositionFromImeOffset(int imeOffset) {
-    return TextNodePosition(offset: imeOffset);
-  }
-
-  @override
-  String toImeText() {
-    return text.toPlainText();
-  }
 }
 
 extension TextNodeExtensions on DocumentNode {
