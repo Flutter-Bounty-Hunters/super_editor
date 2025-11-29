@@ -569,3 +569,29 @@ SuperReaderKeyboardAction createSuperReaderShortcut(
     return action(documentContext: documentContext, keyEvent: keyEvent);
   };
 }
+
+@Deprecated("Use createReadOnlyShortcut instead")
+ReadOnlyDocumentKeyboardAction createShortcut(
+  ReadOnlyDocumentKeyboardAction action, {
+  LogicalKeyboardKey? keyPressedOrReleased,
+  Set<LogicalKeyboardKey>? triggers,
+  bool? isShiftPressed,
+  bool? isCmdPressed,
+  bool? isCtlPressed,
+  bool? isAltPressed,
+  bool onKeyUp = false,
+  bool onKeyDown = true,
+  Set<TargetPlatform>? platforms,
+}) =>
+    createReadOnlyShortcut(
+      action,
+      keyPressedOrReleased: keyPressedOrReleased,
+      triggers: triggers,
+      isShiftPressed: isShiftPressed,
+      isCmdPressed: isCmdPressed,
+      isCtlPressed: isCtlPressed,
+      isAltPressed: isAltPressed,
+      onKeyUp: onKeyUp,
+      onKeyDown: onKeyDown,
+      platforms: platforms,
+    );
