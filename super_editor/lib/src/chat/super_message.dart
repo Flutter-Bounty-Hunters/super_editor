@@ -380,7 +380,9 @@ class _SuperMessageState extends State<SuperMessage> {
             showDebugPaint: widget.debugPaint.gestures,
             child: SuperMessageIosToolbarOverlayManager(
               tapRegionGroupId: widget.tapRegionGroupId,
-              child: const SuperMessageIosMagnifierOverlayManager(),
+              child: SuperMessageIosMagnifierOverlayManager(
+                child: child,
+              ),
             ),
           ),
         );
