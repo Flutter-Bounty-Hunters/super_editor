@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/super_message_android_touch_interactor.dart';
+import 'package:super_editor/src/chat/super_message_ios_overlays.dart';
 import 'package:super_editor/src/chat/super_message_ios_touch_interactor.dart';
 import 'package:super_editor/src/chat/super_message_keyboard_interactor.dart';
 import 'package:super_editor/src/chat/super_message_mouse_interactor.dart';
@@ -304,42 +305,39 @@ class _SuperMessageState extends State<SuperMessage> {
       focusNode: _focusNode,
       messageContext: _messageContext,
       keyboardActions: widget.keyboardActions,
-      child: SuperReaderIosControlsScope(
-        controller: _iOSControlsController,
-        child: Builder(builder: (context) {
-          return _buildGestureInteractor(
-            context,
-            child: BoxContentLayers(
-              content: (onBuildScheduled) => IntrinsicWidth(
-                child: SingleColumnDocumentLayout(
-                  key: _documentLayoutKey,
-                  presenter: _presenter!,
-                  componentBuilders: widget.componentBuilders,
-                  onBuildScheduled: onBuildScheduled,
-                  wrapWithSliverAdapter: false,
-                  showDebugPaint: widget.debugPaint.layout,
-                ),
+      child: Builder(builder: (context) {
+        return _buildGestureInteractor(
+          context,
+          child: BoxContentLayers(
+            content: (onBuildScheduled) => IntrinsicWidth(
+              child: SingleColumnDocumentLayout(
+                key: _documentLayoutKey,
+                presenter: _presenter!,
+                componentBuilders: widget.componentBuilders,
+                onBuildScheduled: onBuildScheduled,
+                wrapWithSliverAdapter: false,
+                showDebugPaint: widget.debugPaint.layout,
               ),
-              underlays: [
-                // Add any underlays that were provided by the client.
-                for (final underlayBuilder in widget.documentUnderlayBuilders) //
-                  (context) => underlayBuilder.build(context, _messageContext),
-              ],
-              overlays: [
-                // Layer that positions and sizes leader widgets at the bounds
-                // of the users selection so that carets, handles, toolbars, and
-                // other things can follow the selection.
-                (context) => _SelectionLeadersDocumentLayerBuilder(
-                      links: _selectionLinks,
-                    ).build(context, _messageContext),
-                // Add any overlays that were provided by the client.
-                for (final overlayBuilder in widget.documentOverlayBuilders) //
-                  (context) => overlayBuilder.build(context, _messageContext),
-              ],
             ),
-          );
-        }),
-      ),
+            underlays: [
+              // Add any underlays that were provided by the client.
+              for (final underlayBuilder in widget.documentUnderlayBuilders) //
+                (context) => underlayBuilder.build(context, _messageContext),
+            ],
+            overlays: [
+              // Layer that positions and sizes leader widgets at the bounds
+              // of the users selection so that carets, handles, toolbars, and
+              // other things can follow the selection.
+              (context) => _SelectionLeadersDocumentLayerBuilder(
+                    links: _selectionLinks,
+                  ).build(context, _messageContext),
+              // Add any overlays that were provided by the client.
+              for (final overlayBuilder in widget.documentOverlayBuilders) //
+                (context) => overlayBuilder.build(context, _messageContext),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -371,14 +369,20 @@ class _SuperMessageState extends State<SuperMessage> {
           child: child,
         );
       case DocumentGestureMode.iOS:
-        return SuperMessageIosTouchInteractor(
-          focusNode: _focusNode,
-          messageContext: _messageContext,
-          documentKey: _documentLayoutKey,
-          getDocumentLayout: () => _messageContext.documentLayout,
-          contentTapHandler: _contentTapDelegate,
-          showDebugPaint: widget.debugPaint.gestures,
-          child: child,
+        return SuperReaderIosControlsScope(
+          controller: _iOSControlsController,
+          child: SuperMessageIosTouchInteractor(
+            focusNode: _focusNode,
+            messageContext: _messageContext,
+            documentKey: _documentLayoutKey,
+            getDocumentLayout: () => _messageContext.documentLayout,
+            contentTapHandler: _contentTapDelegate,
+            showDebugPaint: widget.debugPaint.gestures,
+            child: SuperMessageIosToolbarOverlayManager(
+              tapRegionGroupId: widget.tapRegionGroupId,
+              child: const SuperMessageIosMagnifierOverlayManager(),
+            ),
+          ),
         );
     }
   }
