@@ -570,9 +570,9 @@ SuperReaderKeyboardAction createSuperReaderShortcut(
   };
 }
 
-@Deprecated("Use createReadOnlyShortcut instead")
-ReadOnlyDocumentKeyboardAction createShortcut(
-  ReadOnlyDocumentKeyboardAction action, {
+@Deprecated("Use createReadOnlyShortcut or createSuperReaderShortcut instead")
+SuperReaderKeyboardAction createShortcut(
+  SuperReaderKeyboardAction action, {
   LogicalKeyboardKey? keyPressedOrReleased,
   Set<LogicalKeyboardKey>? triggers,
   bool? isShiftPressed,
@@ -583,7 +583,7 @@ ReadOnlyDocumentKeyboardAction createShortcut(
   bool onKeyDown = true,
   Set<TargetPlatform>? platforms,
 }) =>
-    createReadOnlyShortcut(
+    createSuperReaderShortcut(
       action,
       keyPressedOrReleased: keyPressedOrReleased,
       triggers: triggers,
