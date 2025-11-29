@@ -501,7 +501,11 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     }
   }
 
-  void _onPanEnd(DragEndDetails details) {}
+  void _onPanEnd(DragEndDetails details) {
+    if (_dragMode != null) {
+      _onDragSelectionEnd();
+    }
+  }
 
   void _onPanCancel() {
     if (_dragMode != null) {
@@ -510,6 +514,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onDragSelectionEnd() {
+    print("iOS: _onDragSelectionEnd()");
     if (_dragMode == DragMode.longPress) {
       _onLongPressEnd();
     } else {
@@ -518,6 +523,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onLongPressEnd() {
+    print("iOS: _onLongPressEnd()");
     _longPressStrategy!.onLongPressEnd();
     _longPressStrategy = null;
     _dragMode = null;
