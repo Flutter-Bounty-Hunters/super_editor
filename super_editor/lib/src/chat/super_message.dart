@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/super_message_android_touch_interactor.dart';
 import 'package:super_editor/src/chat/super_message_ios_touch_interactor.dart';
+import 'package:super_editor/src/chat/super_message_keyboard_interactor.dart';
 import 'package:super_editor/src/chat/super_message_mouse_interactor.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_debug_paint.dart';
@@ -22,13 +23,12 @@ import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/content_layers_for_boxes.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/documents/selection_leader_document_layer.dart';
-import 'package:super_editor/src/infrastructure/flutter/build_context.dart';
+import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
-import 'package:super_editor/src/super_reader/read_only_document_android_touch_interactor.dart';
 import 'package:super_editor/src/super_reader/read_only_document_ios_touch_interactor.dart';
-import 'package:super_editor/src/super_reader/read_only_document_mouse_interactor.dart';
+import 'package:super_editor/src/super_reader/read_only_document_keyboard_interactor.dart';
 
 /// A chat message widget.
 ///
@@ -57,10 +57,12 @@ class SuperMessage extends StatefulWidget {
     this.overlayController,
     this.androidHandleColor,
     this.androidToolbarBuilder,
+    List<ReadOnlyDocumentKeyboardAction>? keyboardActions,
     this.createOverlayControlsClipper,
     this.componentBuilders = defaultComponentBuilders,
     this.debugPaint = const DebugPaintConfig(),
-  }) : styles = styles ?? SuperMessageStyles();
+  })  : styles = styles ?? SuperMessageStyles(),
+        keyboardActions = keyboardActions ?? superMessageDefaultKeyboardActions;
 
   final FocusNode? focusNode;
 
@@ -130,6 +132,14 @@ class SuperMessage extends StatefulWidget {
 
   /// Builder that creates a floating toolbar when running on Android.
   final WidgetBuilder? androidToolbarBuilder;
+
+  /// All actions that this editor takes in response to key
+  /// events, e.g., text entry, newlines, character deletion,
+  /// copy, paste, etc.
+  ///
+  /// These actions are only used when in [TextInputSource.keyboard]
+  /// mode.
+  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
 
   /// Creates a clipper that applies to overlay controls, like drag
   /// handles, magnifiers, and popover toolbars, preventing the overlay
@@ -296,33 +306,38 @@ class _SuperMessageState extends State<SuperMessage> {
         child: Builder(builder: (context) {
           return _buildGestureInteractor(
             context,
-            child: BoxContentLayers(
-              content: (onBuildScheduled) => IntrinsicWidth(
-                child: SingleColumnDocumentLayout(
-                  key: _documentLayoutKey,
-                  presenter: _presenter!,
-                  componentBuilders: widget.componentBuilders,
-                  onBuildScheduled: onBuildScheduled,
-                  wrapWithSliverAdapter: false,
-                  showDebugPaint: widget.debugPaint.layout,
+            child: SuperMessageKeyboardInteractor(
+              focusNode: _focusNode,
+              messageContext: _messageContext,
+              keyboardActions: widget.keyboardActions,
+              child: BoxContentLayers(
+                content: (onBuildScheduled) => IntrinsicWidth(
+                  child: SingleColumnDocumentLayout(
+                    key: _documentLayoutKey,
+                    presenter: _presenter!,
+                    componentBuilders: widget.componentBuilders,
+                    onBuildScheduled: onBuildScheduled,
+                    wrapWithSliverAdapter: false,
+                    showDebugPaint: widget.debugPaint.layout,
+                  ),
                 ),
+                underlays: [
+                  // Add any underlays that were provided by the client.
+                  for (final underlayBuilder in widget.documentUnderlayBuilders) //
+                    (context) => underlayBuilder.build(context, _messageContext),
+                ],
+                overlays: [
+                  // Layer that positions and sizes leader widgets at the bounds
+                  // of the users selection so that carets, handles, toolbars, and
+                  // other things can follow the selection.
+                  (context) => _SelectionLeadersDocumentLayerBuilder(
+                        links: _selectionLinks,
+                      ).build(context, _messageContext),
+                  // Add any overlays that were provided by the client.
+                  for (final overlayBuilder in widget.documentOverlayBuilders) //
+                    (context) => overlayBuilder.build(context, _messageContext),
+                ],
               ),
-              underlays: [
-                // Add any underlays that were provided by the client.
-                for (final underlayBuilder in widget.documentUnderlayBuilders) //
-                  (context) => underlayBuilder.build(context, _messageContext),
-              ],
-              overlays: [
-                // Layer that positions and sizes leader widgets at the bounds
-                // of the users selection so that carets, handles, toolbars, and
-                // other things can follow the selection.
-                (context) => _SelectionLeadersDocumentLayerBuilder(
-                      links: _selectionLinks,
-                    ).build(context, _messageContext),
-                // Add any overlays that were provided by the client.
-                for (final overlayBuilder in widget.documentOverlayBuilders) //
-                  (context) => overlayBuilder.build(context, _messageContext),
-              ],
             ),
           );
         }),
@@ -602,3 +617,34 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
 }
 
 typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(ReadOnlyContext editContext);
+
+/// Keyboard actions for the standard [SuperReader].
+final superMessageDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[
+  removeCollapsedSelectionWhenShiftIsReleased,
+  expandSelectionWithLeftArrow,
+  expandSelectionWithRightArrow,
+  expandSelectionWithUpArrow,
+  expandSelectionWithDownArrow,
+  expandSelectionToLineStartWithHomeOnWindowsAndLinux,
+  expandSelectionToLineEndWithEndOnWindowsAndLinux,
+  expandSelectionToLineStartWithCtrlAOnWindowsAndLinux,
+  expandSelectionToLineEndWithCtrlEOnWindowsAndLinux,
+  selectAllWhenCmdAIsPressedOnMac,
+  selectAllWhenCtlAIsPressedOnWindowsAndLinux,
+  copyWhenCmdCIsPressedOnMac,
+  copyWhenCtlCIsPressedOnWindowsAndLinux,
+];
+
+/// Executes this action, if the action wants to run, and returns
+/// a desired [ExecutionInstruction] to either continue or halt
+/// execution of actions.
+///
+/// It is possible that an action makes changes and then returns
+/// [ExecutionInstruction.continueExecution] to continue execution.
+///
+/// It is possible that an action does nothing and then returns
+/// [ExecutionInstruction.haltExecution] to prevent further execution.
+typedef SuperMessageKeyboardAction = ExecutionInstruction Function({
+  required ReadOnlyContext documentContext,
+  required KeyEvent keyEvent,
+});
