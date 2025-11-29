@@ -344,6 +344,7 @@ class _SuperMessageState extends State<SuperMessage> {
   }
 
   Widget _buildGestureInteractor(BuildContext context, {required Widget child}) {
+    print("Building SuperMessage gesture interactor for: $_gestureMode");
     switch (_gestureMode) {
       case DocumentGestureMode.mouse:
         return SuperMessageMouseInteractor(
