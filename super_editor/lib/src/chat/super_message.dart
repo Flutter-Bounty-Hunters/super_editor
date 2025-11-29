@@ -1,8 +1,12 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:super_editor/src/chat/super_message_android_touch_interactor.dart';
+import 'package:super_editor/src/chat/super_message_ios_touch_interactor.dart';
+import 'package:super_editor/src/chat/super_message_mouse_interactor.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_debug_paint.dart';
+import 'package:super_editor/src/core/document_interaction.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
@@ -16,9 +20,15 @@ import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/content_layers_for_boxes.dart';
+import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/documents/selection_leader_document_layer.dart';
+import 'package:super_editor/src/infrastructure/flutter/build_context.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
+import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
+import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/super_reader/read_only_document_android_touch_interactor.dart';
 import 'package:super_editor/src/super_reader/read_only_document_ios_touch_interactor.dart';
+import 'package:super_editor/src/super_reader/read_only_document_mouse_interactor.dart';
 
 /// A chat message widget.
 ///
@@ -35,17 +45,34 @@ class SuperMessage extends StatefulWidget {
   SuperMessage({
     super.key,
     this.focusNode,
+    this.tapRegionGroupId,
     required this.editor,
     SuperMessageStyles? styles,
     this.customStylePhases = const [],
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperMessageDocumentOverlayBuilders,
     this.selectionLayerLinks,
+    this.contentTapDelegateFactory,
+    this.gestureMode,
+    this.overlayController,
+    this.androidHandleColor,
+    this.androidToolbarBuilder,
+    this.createOverlayControlsClipper,
     this.componentBuilders = defaultComponentBuilders,
     this.debugPaint = const DebugPaintConfig(),
   }) : styles = styles ?? SuperMessageStyles();
 
   final FocusNode? focusNode;
+
+  /// {@template super_message_tap_region_group_id}
+  /// A group ID for a tap region that surrounds the message and also surrounds any
+  /// related widgets, such as drag handles and a toolbar.
+  ///
+  /// When the message is inside a [TapRegion], tapping at a drag handle causes
+  /// [TapRegion.onTapOutside] to be called. To prevent that, provide a
+  /// [tapRegionGroupId] with the same value as the ancestor [TapRegion] groupId.
+  /// {@endtemplate}
+  final String? tapRegionGroupId;
 
   final Editor editor;
 
@@ -85,6 +112,34 @@ class SuperMessage extends StatefulWidget {
   /// user's selection.
   final SelectionLayerLinks? selectionLayerLinks;
 
+  /// Factory that creates a [ContentTapDelegate], which is given an
+  /// opportunity to respond to taps on content before the editor, itself.
+  ///
+  /// A [ContentTapDelegate] might be used, for example, to launch a URL
+  /// when a user taps on a link.
+  final SuperMessageContentTapDelegateFactory? contentTapDelegateFactory;
+
+  /// The gesture mode, e.g., mouse or touch.
+  final DocumentGestureMode? gestureMode;
+
+  /// Shows, hides, and positions a floating toolbar and magnifier.
+  final MagnifierAndToolbarController? overlayController;
+
+  /// Color of the text selection drag handles on Android.
+  final Color? androidHandleColor;
+
+  /// Builder that creates a floating toolbar when running on Android.
+  final WidgetBuilder? androidToolbarBuilder;
+
+  /// Creates a clipper that applies to overlay controls, like drag
+  /// handles, magnifiers, and popover toolbars, preventing the overlay
+  /// controls from appearing outside the given clipping region.
+  ///
+  /// If no clipper factory method is provided, then the overlay controls
+  /// will be allowed to appear anywhere in the overlay in which they sit
+  /// (probably the entire screen).
+  final CustomClipper<Rect> Function(BuildContext overlayContext)? createOverlayControlsClipper;
+
   final List<ComponentBuilder> componentBuilders;
 
   final DebugPaintConfig debugPaint;
@@ -94,7 +149,9 @@ class SuperMessage extends StatefulWidget {
 }
 
 class _SuperMessageState extends State<SuperMessage> {
-  late SuperMessageContext _messageContext;
+  late FocusNode _focusNode;
+
+  late ReadOnlyContext _messageContext;
 
   final _documentLayoutKey = GlobalKey(debugLabel: 'SuperMessage-DocumentLayout');
 
@@ -105,6 +162,8 @@ class _SuperMessageState extends State<SuperMessage> {
   late SingleColumnLayoutCustomComponentStyler _docLayoutPerComponentBlockStyler;
   late SingleColumnLayoutSelectionStyler _docLayoutSelectionStyler;
 
+  ContentTapDelegate? _contentTapDelegate;
+
   // Leader links that connect leader widgets near the user's selection
   // to carets, handles, and other things that want to follow the selection.
   late SelectionLayerLinks _selectionLinks;
@@ -114,6 +173,8 @@ class _SuperMessageState extends State<SuperMessage> {
   @override
   void initState() {
     super.initState();
+
+    _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'SuperMessage');
 
     _selectionLinks = widget.selectionLayerLinks ?? SelectionLayerLinks();
   }
@@ -133,6 +194,14 @@ class _SuperMessageState extends State<SuperMessage> {
   void didUpdateWidget(covariant SuperMessage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (widget.focusNode != oldWidget.focusNode) {
+      if (oldWidget.focusNode == null) {
+        _focusNode.dispose();
+      }
+
+      _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'SuperMessage');
+    }
+
     if (widget.editor != oldWidget.editor ||
         !const DeepCollectionEquality().equals(widget.customStylePhases, oldWidget.customStylePhases) ||
         !const DeepCollectionEquality().equals(widget.componentBuilders, oldWidget.componentBuilders)) {
@@ -146,6 +215,12 @@ class _SuperMessageState extends State<SuperMessage> {
 
   @override
   void dispose() {
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
+
+    _contentTapDelegate?.dispose();
+
     _iOSControlsController.dispose();
 
     super.dispose();
@@ -189,47 +264,109 @@ class _SuperMessageState extends State<SuperMessage> {
       ],
     );
 
-    _messageContext = SuperMessageContext(widget.editor, () => _documentLayoutKey.currentState as DocumentLayout);
+    _messageContext = ReadOnlyContext(
+      editor: widget.editor,
+      getDocumentLayout: () => _documentLayoutKey.currentState as DocumentLayout,
+    );
+
+    _contentTapDelegate?.dispose();
+    _contentTapDelegate = widget.contentTapDelegateFactory?.call(_messageContext);
+  }
+
+  DocumentGestureMode get _gestureMode {
+    if (widget.gestureMode != null) {
+      return widget.gestureMode!;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return DocumentGestureMode.android;
+      case TargetPlatform.iOS:
+        return DocumentGestureMode.iOS;
+      default:
+        return DocumentGestureMode.mouse;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Focus(
-      focusNode: widget.focusNode,
+      focusNode: _focusNode,
       child: SuperReaderIosControlsScope(
         controller: _iOSControlsController,
         child: Builder(builder: (context) {
-          return BoxContentLayers(
-            content: (onBuildScheduled) => IntrinsicWidth(
-              child: SingleColumnDocumentLayout(
-                key: _documentLayoutKey,
-                presenter: _presenter!,
-                componentBuilders: widget.componentBuilders,
-                onBuildScheduled: onBuildScheduled,
-                wrapWithSliverAdapter: false,
-                showDebugPaint: widget.debugPaint.layout,
+          return _buildGestureInteractor(
+            context,
+            child: BoxContentLayers(
+              content: (onBuildScheduled) => IntrinsicWidth(
+                child: SingleColumnDocumentLayout(
+                  key: _documentLayoutKey,
+                  presenter: _presenter!,
+                  componentBuilders: widget.componentBuilders,
+                  onBuildScheduled: onBuildScheduled,
+                  wrapWithSliverAdapter: false,
+                  showDebugPaint: widget.debugPaint.layout,
+                ),
               ),
+              underlays: [
+                // Add any underlays that were provided by the client.
+                for (final underlayBuilder in widget.documentUnderlayBuilders) //
+                  (context) => underlayBuilder.build(context, _messageContext),
+              ],
+              overlays: [
+                // Layer that positions and sizes leader widgets at the bounds
+                // of the users selection so that carets, handles, toolbars, and
+                // other things can follow the selection.
+                (context) => _SelectionLeadersDocumentLayerBuilder(
+                      links: _selectionLinks,
+                    ).build(context, _messageContext),
+                // Add any overlays that were provided by the client.
+                for (final overlayBuilder in widget.documentOverlayBuilders) //
+                  (context) => overlayBuilder.build(context, _messageContext),
+              ],
             ),
-            underlays: [
-              // Add any underlays that were provided by the client.
-              for (final underlayBuilder in widget.documentUnderlayBuilders) //
-                (context) => underlayBuilder.build(context, _messageContext),
-            ],
-            overlays: [
-              // Layer that positions and sizes leader widgets at the bounds
-              // of the users selection so that carets, handles, toolbars, and
-              // other things can follow the selection.
-              (context) => _SelectionLeadersDocumentLayerBuilder(
-                    links: _selectionLinks,
-                  ).build(context, _messageContext),
-              // Add any overlays that were provided by the client.
-              for (final overlayBuilder in widget.documentOverlayBuilders) //
-                (context) => overlayBuilder.build(context, _messageContext),
-            ],
           );
         }),
       ),
     );
+  }
+
+  Widget _buildGestureInteractor(BuildContext context, {required Widget child}) {
+    switch (_gestureMode) {
+      case DocumentGestureMode.mouse:
+        return SuperMessageMouseInteractor(
+          focusNode: _focusNode,
+          messageContext: _messageContext,
+          contentTapHandler: _contentTapDelegate,
+          showDebugPaint: widget.debugPaint.gestures,
+          child: child,
+        );
+      case DocumentGestureMode.android:
+        return SuperMessageAndroidTouchInteractor(
+          focusNode: _focusNode,
+          tapRegionGroupId: widget.tapRegionGroupId,
+          messageContext: _messageContext,
+          documentKey: _documentLayoutKey,
+          getDocumentLayout: () => _messageContext.documentLayout,
+          selectionLinks: _selectionLinks,
+          contentTapHandler: _contentTapDelegate,
+          handleColor: widget.androidHandleColor ?? Theme.of(context).primaryColor,
+          popoverToolbarBuilder: widget.androidToolbarBuilder ?? (_) => const SizedBox(),
+          createOverlayControlsClipper: widget.createOverlayControlsClipper,
+          showDebugPaint: widget.debugPaint.gestures,
+          overlayController: widget.overlayController,
+          child: child,
+        );
+      case DocumentGestureMode.iOS:
+        return SuperMessageIosTouchInteractor(
+          focusNode: _focusNode,
+          messageContext: _messageContext,
+          documentKey: _documentLayoutKey,
+          getDocumentLayout: () => _messageContext.documentLayout,
+          contentTapHandler: _contentTapDelegate,
+          showDebugPaint: widget.debugPaint.gestures,
+          child: child,
+        );
+    }
   }
 }
 
@@ -374,23 +511,6 @@ class SuperMessageStyles {
   late final SelectionStyles darkSelectionStyles;
 }
 
-/// A collection of artifacts that are available within every [SuperMessage].
-///
-/// The primary purpose of [SuperMessageContext] is to pass these artifacts to
-/// document overlay layers and underlay layers, such as a layer that paints
-/// selection boxes or the caret.
-class SuperMessageContext {
-  const SuperMessageContext(this.editor, this._getDocumentLayout);
-
-  final Editor editor;
-
-  /// The document layout that is a visual representation of the document.
-  ///
-  /// This member might change over time.
-  DocumentLayout get documentLayout => _getDocumentLayout();
-  final DocumentLayout Function() _getDocumentLayout;
-}
-
 /// A [SuperMessageDocumentLayerBuilder] that builds a [SelectionLeadersDocumentLayer], which positions
 /// leader widgets at the base and extent of the user's selection, so that other widgets
 /// can position themselves relative to the user's selection.
@@ -409,7 +529,7 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayer
   final bool showDebugLeaderBounds;
 
   @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
     return SelectionLeadersDocumentLayer(
       document: messageContext.editor.document,
       selection: messageContext.editor.composer.selectionNotifier,
@@ -422,7 +542,7 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayer
 /// Builds widgets that are displayed at the same position and size as
 /// the document layout within a [SuperMessage].
 abstract class SuperMessageDocumentLayerBuilder {
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext);
+  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext);
 }
 
 /// A [SuperMessageDocumentLayerBuilder] that builds a [IosToolbarFocalPointDocumentLayer], which
@@ -437,7 +557,7 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
   final bool showDebugLeaderBounds;
 
   @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
     return IosToolbarFocalPointDocumentLayer(
       document: messageContext.editor.document,
       selection: messageContext.editor.composer.selectionNotifier,
@@ -457,7 +577,7 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
   final Color? handleColor;
 
   @override
-  ContentLayerWidget build(BuildContext context, SuperMessageContext messageContext) {
+  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
     if (defaultTargetPlatform != TargetPlatform.iOS) {
       return const ContentLayerProxyWidget(child: SizedBox());
     }
@@ -480,3 +600,5 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
     );
   }
 }
+
+typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(ReadOnlyContext editContext);
