@@ -308,9 +308,9 @@ class _SuperMessageState extends State<SuperMessage> {
       child: Builder(builder: (context) {
         return _buildGestureInteractor(
           context,
-          child: BoxContentLayers(
-            content: (onBuildScheduled) => IntrinsicWidth(
-              child: SingleColumnDocumentLayout(
+          child: IntrinsicWidth(
+            child: BoxContentLayers(
+              content: (onBuildScheduled) => SingleColumnDocumentLayout(
                 key: _documentLayoutKey,
                 presenter: _presenter!,
                 componentBuilders: widget.componentBuilders,
@@ -318,23 +318,23 @@ class _SuperMessageState extends State<SuperMessage> {
                 wrapWithSliverAdapter: false,
                 showDebugPaint: widget.debugPaint.layout,
               ),
+              underlays: [
+                // Add any underlays that were provided by the client.
+                for (final underlayBuilder in widget.documentUnderlayBuilders) //
+                  (context) => underlayBuilder.build(context, _messageContext),
+              ],
+              overlays: [
+                // Layer that positions and sizes leader widgets at the bounds
+                // of the users selection so that carets, handles, toolbars, and
+                // other things can follow the selection.
+                (context) => _SelectionLeadersDocumentLayerBuilder(
+                      links: _selectionLinks,
+                    ).build(context, _messageContext),
+                // Add any overlays that were provided by the client.
+                for (final overlayBuilder in widget.documentOverlayBuilders) //
+                  (context) => overlayBuilder.build(context, _messageContext),
+              ],
             ),
-            underlays: [
-              // Add any underlays that were provided by the client.
-              for (final underlayBuilder in widget.documentUnderlayBuilders) //
-                (context) => underlayBuilder.build(context, _messageContext),
-            ],
-            overlays: [
-              // Layer that positions and sizes leader widgets at the bounds
-              // of the users selection so that carets, handles, toolbars, and
-              // other things can follow the selection.
-              (context) => _SelectionLeadersDocumentLayerBuilder(
-                    links: _selectionLinks,
-                  ).build(context, _messageContext),
-              // Add any overlays that were provided by the client.
-              for (final overlayBuilder in widget.documentOverlayBuilders) //
-                (context) => overlayBuilder.build(context, _messageContext),
-            ],
           ),
         );
       }),
@@ -598,7 +598,9 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
 
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
+    print("Building SuperMessageIosHandlesDocumentLayerBuilder");
     if (defaultTargetPlatform != TargetPlatform.iOS) {
+      print(" - this platform isn't iOS. Fizzling.");
       return const ContentLayerProxyWidget(child: SizedBox());
     }
 

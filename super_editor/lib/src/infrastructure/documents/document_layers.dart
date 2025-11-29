@@ -43,7 +43,9 @@ abstract class DocumentLayoutLayerState<WidgetType extends ContentLayerStatefulW
     extends ContentLayerState<WidgetType, LayoutDataType> {
   @override
   LayoutDataType? computeLayoutData(Element? contentElement, RenderObject? contentLayout) {
+    print("DocumentLayoutLayerState - computeLayoutData()");
     if (contentElement == null || contentElement is! StatefulElement || contentElement.state is! DocumentLayout) {
+      print(" - bailing, content element: $contentElement");
       return null;
     }
 
