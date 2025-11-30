@@ -61,7 +61,7 @@ class SuperReader extends StatefulWidget {
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperReaderDocumentOverlayBuilders,
     List<ComponentBuilder>? componentBuilders,
-    List<ReadOnlyDocumentKeyboardAction>? keyboardActions,
+    List<SuperReaderKeyboardAction>? keyboardActions,
     SelectionStyles? selectionStyle,
     this.gestureMode,
     this.contentTapDelegateFactory = superReaderLaunchLinkTapHandlerFactory,
@@ -75,7 +75,7 @@ class SuperReader extends StatefulWidget {
     this.shrinkWrap = false,
   })  : stylesheet = stylesheet ?? readOnlyDefaultStylesheet,
         selectionStyles = selectionStyle ?? readOnlyDefaultSelectionStyle,
-        keyboardActions = keyboardActions ?? readOnlyDefaultKeyboardActions,
+        keyboardActions = keyboardActions ?? superReaderDefaultKeyboardActions,
         componentBuilders = componentBuilders != null
             ? [...componentBuilders, const UnknownComponentBuilder()]
             : [...readOnlyDefaultComponentBuilders, const UnknownComponentBuilder()],
@@ -168,7 +168,7 @@ class SuperReader extends StatefulWidget {
   ///
   /// These actions are only used when in [TextInputSource.keyboard]
   /// mode.
-  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
+  final List<SuperReaderKeyboardAction> keyboardActions;
 
   /// The [SuperReader] gesture mode, e.g., mouse or touch.
   final DocumentGestureMode? gestureMode;
