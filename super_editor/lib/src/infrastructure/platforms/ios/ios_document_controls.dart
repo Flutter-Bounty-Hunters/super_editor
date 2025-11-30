@@ -739,7 +739,6 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
   DocumentSelectionLayout? computeLayoutDataWithDocumentLayout(
       BuildContext contentLayersContext, BuildContext documentContext, DocumentLayout documentLayout) {
     final selection = widget.selection.value;
-    print("computeLayoutDataWithDocumentLayout - selection: $selection");
     if (selection == null) {
       return null;
     }
@@ -812,7 +811,6 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
 
   @override
   Widget doBuild(BuildContext context, DocumentSelectionLayout? layoutData) {
-    print("doBuild()");
     return IgnorePointer(
       child: SizedBox.expand(
         child: layoutData != null //
@@ -886,6 +884,7 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
     required Rect upstream,
     required Color debugColor,
   }) {
+    print("Building upstream handle with color: ${widget.handleColor}");
     final shouldShowBall = widget.handleBeingDragged?.value != HandleType.upstream;
     final ballRadius = shouldShowBall ? widget.handleBallDiameter / 2 : 0.0;
     return Positioned(
