@@ -210,7 +210,9 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
           ),
         ]);
       },
-      handleColor: handleColor ?? Theme.of(context).primaryColor,
+      handleColor: handleColor ??
+          SuperReaderIosControlsScope.maybeRootOf(context)?.handleColor ??
+          Theme.of(context).primaryColor,
       shouldCaretBlink: ValueNotifier<bool>(false),
     );
   }
