@@ -238,6 +238,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     _controlsController!.hideMagnifier();
 
     final selection = widget.messageContext.composer.selection;
+    print(" - selection on tap up: $selection");
     if (selection != null &&
         !selection.isCollapsed &&
         (_isOverBaseHandle(details.localPosition) || _isOverExtentHandle(details.localPosition))) {
@@ -275,6 +276,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       return;
     }
 
+    print(" - clearing selection");
     _clearSelection();
     _controlsController!.hideToolbar();
 
