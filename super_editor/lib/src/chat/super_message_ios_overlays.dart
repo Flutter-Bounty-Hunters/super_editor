@@ -197,6 +197,11 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
       return const ContentLayerProxyWidget(child: SizedBox());
     }
 
+    print("Building iOS controls");
+    print(" - explicit handle color: $handleColor");
+    print(" - ancestor controller handle color: ${SuperReaderIosControlsScope.maybeRootOf(context)?.handleColor}");
+    print(" - theme color: ${Theme.of(context).primaryColor}");
+
     return IosHandlesDocumentLayer(
       document: readerContext.document,
       documentLayout: readerContext.documentLayout,
