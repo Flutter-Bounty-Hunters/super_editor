@@ -508,7 +508,9 @@ const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBui
   // iOS floating toolbar.
   SuperMessageIosToolbarFocalPointDocumentLayerBuilder(),
   // Displays caret and drag handles, specifically for iOS.
-  SuperMessageIosHandlesDocumentLayerBuilder(),
+  SuperMessageIosHandlesDocumentLayerBuilder(
+    handleColor: Colors.red,
+  ),
 ];
 
 /// Styles that apply to a given [SuperMessage], including a document stylesheet,
