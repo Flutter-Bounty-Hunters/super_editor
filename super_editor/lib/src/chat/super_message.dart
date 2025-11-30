@@ -508,9 +508,7 @@ const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBui
   // iOS floating toolbar.
   SuperMessageIosToolbarFocalPointDocumentLayerBuilder(),
   // Displays caret and drag handles, specifically for iOS.
-  SuperMessageIosHandlesDocumentLayerBuilder(
-    handleColor: Colors.red,
-  ),
+  SuperMessageIosHandlesDocumentLayerBuilder(),
 ];
 
 /// Styles that apply to a given [SuperMessage], including a document stylesheet,
@@ -585,42 +583,6 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
       selection: messageContext.editor.composer.selectionNotifier,
       toolbarFocalPointLink: SuperReaderIosControlsScope.rootOf(context).toolbarFocalPoint,
       showDebugLeaderBounds: showDebugLeaderBounds,
-    );
-  }
-}
-
-/// A [SuperMessageLayerBuilder], which builds a [IosHandlesDocumentLayer],
-/// which displays iOS-style handles.
-class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
-  const SuperMessageIosHandlesDocumentLayerBuilder({
-    this.handleColor,
-  });
-
-  final Color? handleColor;
-
-  @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
-    print("Building SuperMessageIosHandlesDocumentLayerBuilder");
-    if (defaultTargetPlatform != TargetPlatform.iOS) {
-      print(" - this platform isn't iOS. Fizzling.");
-      return const ContentLayerProxyWidget(child: SizedBox());
-    }
-
-    return IosHandlesDocumentLayer(
-      document: messageContext.editor.document,
-      documentLayout: messageContext.documentLayout,
-      selection: messageContext.editor.composer.selectionNotifier,
-      changeSelection: (newSelection, changeType, reason) {
-        messageContext.editor.execute([
-          ChangeSelectionRequest(
-            newSelection,
-            changeType,
-            reason,
-          ),
-        ]);
-      },
-      handleColor: handleColor ?? Theme.of(context).primaryColor,
-      shouldCaretBlink: ValueNotifier<bool>(false),
     );
   }
 }
