@@ -98,6 +98,7 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
@@ -105,6 +106,10 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   }
 
   void _onFocusChange() {
+    if (!mounted) {
+      return;
+    }
+
     if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
       // We have focus but we don't own the IME. Take it over.
       SuperIme.instance.takeOwnership(widget.inputId);
@@ -416,7 +421,6 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
     if (!_wasAttached || SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
       // We didn't go from closed to open. Our policy doesn't apply.
-
       return;
     }
 
