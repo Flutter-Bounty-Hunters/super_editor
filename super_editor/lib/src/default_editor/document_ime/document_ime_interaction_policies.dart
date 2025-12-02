@@ -98,6 +98,7 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
@@ -105,6 +106,9 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
   }
 
   void _onFocusChange() {
+    print("_onFocusChange() (${widget.inputId}) ($this)");
+    print(" - has focus? ${_focusNode.hasFocus}");
+    print(" - has primary focus? ${_focusNode.hasPrimaryFocus}");
     if (!mounted) {
       return;
     }
