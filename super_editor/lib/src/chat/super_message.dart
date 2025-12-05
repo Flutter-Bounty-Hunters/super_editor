@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:super_editor/src/chat/super_message_android_overlays.dart';
 import 'package:super_editor/src/chat/super_message_android_touch_interactor.dart';
 import 'package:super_editor/src/chat/super_message_ios_overlays.dart';
 import 'package:super_editor/src/chat/super_message_ios_touch_interactor.dart';
@@ -12,6 +13,7 @@ import 'package:super_editor/src/core/document_interaction.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
+import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_per_component.dart';
@@ -24,6 +26,7 @@ import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/content_layers_for_boxes.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/documents/selection_leader_document_layer.dart';
+import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
@@ -180,12 +183,14 @@ class _SuperMessageState extends State<SuperMessage> {
   late SelectionLayerLinks _selectionLinks;
 
   final _iOSControlsController = SuperReaderIosControlsController();
+  final _androidControlsController = SuperEditorAndroidControlsController();
 
   @override
   void initState() {
     super.initState();
 
     _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'SuperMessage');
+    _focusNode.addListener(_onFocusChange);
 
     _selectionLinks = widget.selectionLayerLinks ?? SelectionLayerLinks();
   }
@@ -206,11 +211,13 @@ class _SuperMessageState extends State<SuperMessage> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.focusNode != oldWidget.focusNode) {
+      _focusNode.removeListener(_onFocusChange);
       if (oldWidget.focusNode == null) {
         _focusNode.dispose();
       }
 
       _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'SuperMessage');
+      _focusNode.addListener(_onFocusChange);
     }
 
     if (widget.editor != oldWidget.editor ||
@@ -226,6 +233,7 @@ class _SuperMessageState extends State<SuperMessage> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
@@ -282,6 +290,15 @@ class _SuperMessageState extends State<SuperMessage> {
 
     _contentTapDelegate?.dispose();
     _contentTapDelegate = widget.contentTapDelegateFactory?.call(_messageContext);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && widget.editor.composer.selection != null) {
+      // This message doesn't have focus. Clear the selection.
+      widget.editor.execute([
+        const ClearSelectionRequest(),
+      ]);
+    }
   }
 
   DocumentGestureMode get _gestureMode {
@@ -342,7 +359,6 @@ class _SuperMessageState extends State<SuperMessage> {
   }
 
   Widget _buildGestureInteractor(BuildContext context, {required Widget child}) {
-    print("Building SuperMessage gesture interactor for: $_gestureMode");
     switch (_gestureMode) {
       case DocumentGestureMode.mouse:
         return SuperMessageMouseInteractor(
@@ -353,38 +369,59 @@ class _SuperMessageState extends State<SuperMessage> {
           child: child,
         );
       case DocumentGestureMode.android:
-        return SuperMessageAndroidTouchInteractor(
-          focusNode: _focusNode,
-          tapRegionGroupId: widget.tapRegionGroupId,
-          messageContext: _messageContext,
-          documentKey: _documentLayoutKey,
-          getDocumentLayout: () => _messageContext.documentLayout,
-          selectionLinks: _selectionLinks,
-          contentTapHandler: _contentTapDelegate,
-          handleColor: widget.androidHandleColor ?? Theme.of(context).primaryColor,
-          popoverToolbarBuilder: widget.androidToolbarBuilder ?? (_) => const SizedBox(),
-          createOverlayControlsClipper: widget.createOverlayControlsClipper,
-          showDebugPaint: widget.debugPaint.gestures,
-          overlayController: widget.overlayController,
-          child: child,
+        return SuperEditorAndroidControlsScope(
+          controller: _androidControlsController,
+          child: Builder(
+            // ^ Builder to provide widgets below with access to controller.
+            builder: (context) {
+              return SuperMessageAndroidTouchInteractor(
+                focusNode: _focusNode,
+                editor: widget.editor,
+                getDocumentLayout: () => _messageContext.documentLayout,
+                showDebugPaint: widget.debugPaint.gestures,
+                child: SuperMessageAndroidControlsOverlayManager(
+                  editor: widget.editor,
+                  getDocumentLayout: () => _messageContext.documentLayout,
+                  defaultToolbarBuilder: (overlayContext, mobileToolbarKey, focalPoint) =>
+                      DefaultAndroidSuperMessageToolbar(
+                    floatingToolbarKey: mobileToolbarKey,
+                    editor: widget.editor,
+                    editorControlsController: SuperEditorAndroidControlsScope.rootOf(context),
+                    focalPoint: focalPoint,
+                  ),
+                  child: child,
+                ),
+              );
+            },
+          ),
         );
       case DocumentGestureMode.iOS:
         return SuperReaderIosControlsScope(
           controller: _iOSControlsController,
-          child: SuperMessageIosTouchInteractor(
-            focusNode: _focusNode,
-            messageContext: _messageContext,
-            documentKey: _documentLayoutKey,
-            getDocumentLayout: () => _messageContext.documentLayout,
-            contentTapHandler: _contentTapDelegate,
-            showDebugPaint: widget.debugPaint.gestures,
-            child: SuperMessageIosToolbarOverlayManager(
-              tapRegionGroupId: widget.tapRegionGroupId,
-              child: SuperMessageIosMagnifierOverlayManager(
-                child: child,
+          child: Builder(
+              // ^ Builder to provide widgets below with access to controller.
+              builder: (context) {
+            return SuperMessageIosTouchInteractor(
+              focusNode: _focusNode,
+              messageContext: _messageContext,
+              documentKey: _documentLayoutKey,
+              getDocumentLayout: () => _messageContext.documentLayout,
+              contentTapHandler: _contentTapDelegate,
+              showDebugPaint: widget.debugPaint.gestures,
+              child: SuperMessageIosToolbarOverlayManager(
+                tapRegionGroupId: widget.tapRegionGroupId,
+                defaultToolbarBuilder: (overlayContext, mobileToolbarKey, focalPoint) => DefaultIOSSuperMessageToolbar(
+                  floatingToolbarKey: mobileToolbarKey,
+                  editor: widget.editor,
+                  readerControlsController: SuperReaderIosControlsScope.rootOf(context),
+                  focalPoint: focalPoint,
+                ),
+                child: SuperMessageIosMagnifierOverlayManager(
+                  child: child,
+                ),
               ),
-            ),
-          ),
+            );
+          }),
         );
     }
   }
@@ -504,11 +541,15 @@ const defaultDarkChatSelectionStyles = SelectionStyles(
 /// Default list of document overlays that are displayed on top of the document
 /// layout in a [SuperMessage].
 const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBuilder>[
-  // Adds a Leader around the document selection at a focal point for the
-  // iOS floating toolbar.
+  // Adds a Leader around the document selection at a focal point for the iOS floating toolbar.
   SuperMessageIosToolbarFocalPointDocumentLayerBuilder(),
-  // Displays caret and drag handles, specifically for iOS.
+  // Displays drag handles, specifically for iOS.
   SuperMessageIosHandlesDocumentLayerBuilder(),
+
+  // Adds a Leader around the document selection at a focal point for the Android floating toolbar.
+  SuperMessageAndroidToolbarFocalPointDocumentLayerBuilder(),
+  // Displays drag handles, specifically for Android.
+  SuperMessageAndroidHandlesDocumentLayerBuilder(),
 ];
 
 /// Styles that apply to a given [SuperMessage], including a document stylesheet,
@@ -578,6 +619,12 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
 
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
+    if (defaultTargetPlatform != TargetPlatform.iOS || SuperReaderIosControlsScope.maybeNearestOf(context) == null) {
+      // There's no controls scope. This probably means SuperEditor is configured with
+      // a non-iOS gesture mode. Build nothing.
+      return const ContentLayerProxyWidget(child: EmptyBox());
+    }
+
     return IosToolbarFocalPointDocumentLayer(
       document: messageContext.editor.document,
       selection: messageContext.editor.composer.selectionNotifier,

@@ -176,33 +176,28 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onTapDown(TapDownDetails details) {
-    print("iOS gesture: tap down");
     _globalTapDownOffset = details.globalPosition;
     _tapDownLongPressTimer?.cancel();
     _tapDownLongPressTimer = Timer(kLongPressTimeout, _onLongPressDown);
   }
 
   void _onTapCancel() {
-    print("iOS gesture: long press cancelled");
     _tapDownLongPressTimer?.cancel();
     _tapDownLongPressTimer = null;
   }
 
   // Runs when a tap down has lasted long enough to signify a long-press.
   void _onLongPressDown() {
-    print("iOS gesture: long press down");
     final interactorOffset = interactorBox.globalToLocal(_globalTapDownOffset!);
     final tapDownDocumentOffset = _interactorOffsetToDocumentOffset(interactorOffset);
     final tapDownDocumentPosition = _docLayout.getDocumentPositionNearestToOffset(tapDownDocumentOffset);
     if (tapDownDocumentPosition == null) {
-      print(" - couldn't map tap location to a document position");
       return;
     }
 
     if (_isOverBaseHandle(interactorOffset) || _isOverExtentHandle(interactorOffset)) {
       // Don't do anything for long presses over the handles, because we want the user
       // to be able to drag them without worrying about how long they've pressed.
-      print(" - tap is over a handle, ignoring");
       return;
     }
 
@@ -216,12 +211,10 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       tapDownDocumentOffset: tapDownDocumentOffset,
     );
     if (!didLongPressSelectionStart) {
-      print(" - bailing because we got a long press down without a long press start");
       _longPressStrategy = null;
       return;
     }
 
-    print(" - hiding toolbar and showing magnifier");
     _placeFocalPointNearTouchOffset();
     _controlsController!
       ..hideToolbar()
@@ -231,14 +224,12 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onTapUp(TapUpDetails details) {
-    print("iOS gesture: on tap up");
     // Stop waiting for a long-press to start.
     _globalTapDownOffset = null;
     _tapDownLongPressTimer?.cancel();
     _controlsController!.hideMagnifier();
 
     final selection = widget.messageContext.composer.selection;
-    print(" - selection on tap up: $selection");
     if (selection != null &&
         !selection.isCollapsed &&
         (_isOverBaseHandle(details.localPosition) || _isOverExtentHandle(details.localPosition))) {
@@ -276,7 +267,6 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       return;
     }
 
-    print(" - clearing selection");
     _clearSelection();
     _controlsController!.hideToolbar();
 
@@ -284,7 +274,6 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onDoubleTapUp(TapUpDetails details) {
-    print("iOS gesture: on double tap up");
     final selection = widget.messageContext.composer.selection;
     if (selection != null &&
         !selection.isCollapsed &&
@@ -516,7 +505,6 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onDragSelectionEnd() {
-    print("iOS: _onDragSelectionEnd()");
     if (_dragMode == DragMode.longPress) {
       _onLongPressEnd();
     } else {
@@ -525,7 +513,6 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onLongPressEnd() {
-    print("iOS: _onLongPressEnd()");
     _longPressStrategy!.onLongPressEnd();
     _longPressStrategy = null;
     _dragMode = null;
@@ -559,7 +546,8 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
 
     if (_globalTapDownOffset != null) {
       // A drag isn't happening. Magnify the position that the user tapped.
-      docPositionToMagnify = _docLayout.getDocumentPositionNearestToOffset(_globalTapDownOffset!);
+      final documentOffset = _docLayout.getDocumentOffsetFromAncestorOffset(_globalTapDownOffset!);
+      docPositionToMagnify = _docLayout.getDocumentPositionNearestToOffset(documentOffset);
     } else {
       final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
       docPositionToMagnify = _docLayout.getDocumentPositionNearestToOffset(_startDragPositionOffset! + docDragDelta);

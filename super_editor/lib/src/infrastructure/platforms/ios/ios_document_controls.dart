@@ -884,7 +884,6 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
     required Rect upstream,
     required Color debugColor,
   }) {
-    print("Building upstream handle with color: ${widget.handleColor}");
     final shouldShowBall = widget.handleBeingDragged?.value != HandleType.upstream;
     final ballRadius = shouldShowBall ? widget.handleBallDiameter / 2 : 0.0;
     return Positioned(

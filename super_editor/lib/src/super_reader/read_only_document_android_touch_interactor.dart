@@ -1460,12 +1460,17 @@ class _AndroidDocumentTouchEditingControlsState extends State<AndroidDocumentTou
     required Color debugColor,
     required void Function(DragStartDetails) onPanStart,
   }) {
+    // Use the offset to account for the invisible expanded touch region around the handle.
+    final expandedTapRegionOffset = AndroidSelectionHandle.defaultTouchRegionExpansion.topRight *
+        MediaQuery.devicePixelRatioOf(context) *
+        (handleType == HandleType.upstream ? -1 : 1);
+
     return Follower.withOffset(
       key: handleKey,
       link: handleLink,
       leaderAnchor: leaderAnchor,
       followerAnchor: followerAnchor,
-      offset: handleOffset ?? Offset.zero,
+      offset: (handleOffset ?? Offset.zero) + expandedTapRegionOffset,
       showWhenUnlinked: false,
       child: FractionalTranslation(
         translation: handleFractionalTranslation,
