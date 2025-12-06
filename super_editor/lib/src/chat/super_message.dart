@@ -13,7 +13,6 @@ import 'package:super_editor/src/core/document_interaction.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
-import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_layout.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_presenter.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_per_component.dart';
@@ -378,7 +377,7 @@ class _SuperMessageState extends State<SuperMessage> {
                       DefaultAndroidSuperMessageToolbar(
                     floatingToolbarKey: mobileToolbarKey,
                     editor: widget.editor,
-                    editorControlsController: SuperEditorAndroidControlsScope.rootOf(context),
+                    messageControlsController: SuperMessageAndroidControlsScope.rootOf(context),
                     focalPoint: focalPoint,
                   ),
                   // Show controls above `child`, not in app overlay.

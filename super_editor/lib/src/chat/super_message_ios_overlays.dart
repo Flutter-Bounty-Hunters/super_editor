@@ -22,10 +22,9 @@ import 'package:super_editor/src/infrastructure/platforms/ios/magnifier.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
-import 'package:super_editor/src/super_reader/read_only_document_ios_touch_interactor.dart';
 
 /// Adds and removes an iOS-style editor toolbar, as dictated by an ancestor
-/// [SuperReaderIosControlsScope].
+/// [SuperMessageIosControlsScope].
 class SuperMessageIosToolbarOverlayManager extends StatefulWidget {
   const SuperMessageIosToolbarOverlayManager({
     super.key,
@@ -48,16 +47,16 @@ class SuperMessageIosToolbarOverlayManager extends StatefulWidget {
 @visibleForTesting
 class SuperMessageIosToolbarOverlayManagerState extends State<SuperMessageIosToolbarOverlayManager> {
   final OverlayPortalController _overlayPortalController = OverlayPortalController();
-  SuperReaderIosControlsController? _controlsContext;
+  SuperMessageIosControlsController? _controlsController;
 
   @visibleForTesting
-  bool get wantsToDisplayToolbar => _controlsContext!.shouldShowToolbar.value;
+  bool get wantsToDisplayToolbar => _controlsController!.shouldShowToolbar.value;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _controlsContext = SuperReaderIosControlsScope.rootOf(context);
+    _controlsController = SuperMessageIosControlsScope.rootOf(context);
 
     // It's possible that `didChangeDependencies` is called during build when pushing a route
     // that has a delegated transition. We need to wait until the next frame to show the overlay,
@@ -85,11 +84,11 @@ class SuperMessageIosToolbarOverlayManagerState extends State<SuperMessageIosToo
     return TapRegion(
       groupId: widget.tapRegionGroupId,
       child: IosFloatingToolbarOverlay(
-        shouldShowToolbar: _controlsContext!.shouldShowToolbar,
-        toolbarFocalPoint: _controlsContext!.toolbarFocalPoint,
+        shouldShowToolbar: _controlsController!.shouldShowToolbar,
+        toolbarFocalPoint: _controlsController!.toolbarFocalPoint,
         floatingToolbarBuilder:
-            _controlsContext!.toolbarBuilder ?? widget.defaultToolbarBuilder ?? (_, __, ___) => const SizedBox(),
-        createOverlayControlsClipper: _controlsContext!.createOverlayControlsClipper,
+            _controlsController!.toolbarBuilder ?? widget.defaultToolbarBuilder ?? (_, __, ___) => const SizedBox(),
+        createOverlayControlsClipper: _controlsController!.createOverlayControlsClipper,
         showDebugPaint: false,
       ),
     );
@@ -97,7 +96,7 @@ class SuperMessageIosToolbarOverlayManagerState extends State<SuperMessageIosToo
 }
 
 /// Adds and removes an iOS-style editor magnifier, as dictated by an ancestor
-/// [SuperReaderIosControlsScope].
+/// [SuperMessageIosControlsScope].
 class SuperMessageIosMagnifierOverlayManager extends StatefulWidget {
   const SuperMessageIosMagnifierOverlayManager({
     super.key,
@@ -114,16 +113,16 @@ class SuperMessageIosMagnifierOverlayManager extends StatefulWidget {
 class SuperMessageIosMagnifierOverlayManagerState extends State<SuperMessageIosMagnifierOverlayManager>
     with SingleTickerProviderStateMixin {
   final OverlayPortalController _overlayPortalController = OverlayPortalController();
-  SuperReaderIosControlsController? _controlsContext;
+  SuperMessageIosControlsController? _controlsController;
 
   @visibleForTesting
-  bool get wantsToDisplayMagnifier => _controlsContext!.shouldShowMagnifier.value;
+  bool get wantsToDisplayMagnifier => _controlsController!.shouldShowMagnifier.value;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _controlsContext = SuperReaderIosControlsScope.rootOf(context);
+    _controlsController = SuperMessageIosControlsScope.rootOf(context);
 
     // It's possible that `didChangeDependencies` is called during build when pushing a route
     // that has a delegated transition. We need to wait until the next frame to show the overlay,
@@ -154,19 +153,19 @@ class SuperMessageIosMagnifierOverlayManagerState extends State<SuperMessageIosM
     // position a Leader with a LeaderLink. This magnifier follows that Leader
     // via the LeaderLink.
     return ValueListenableBuilder(
-      valueListenable: _controlsContext!.shouldShowMagnifier,
+      valueListenable: _controlsController!.shouldShowMagnifier,
       builder: (context, shouldShowMagnifier, child) {
-        return _controlsContext!.magnifierBuilder != null //
-            ? _controlsContext!.magnifierBuilder!(
+        return _controlsController!.magnifierBuilder != null //
+            ? _controlsController!.magnifierBuilder!(
                 context,
                 DocumentKeys.magnifier,
-                _controlsContext!.magnifierFocalPoint,
+                _controlsController!.magnifierFocalPoint,
                 shouldShowMagnifier,
               )
             : _buildDefaultMagnifier(
                 context,
                 DocumentKeys.magnifier,
-                _controlsContext!.magnifierFocalPoint,
+                _controlsController!.magnifierFocalPoint,
                 shouldShowMagnifier,
               );
       },
@@ -187,12 +186,12 @@ class SuperMessageIosMagnifierOverlayManagerState extends State<SuperMessageIosM
       // above the focal point and leave a few pixels between the bottom of the magnifier
       // and the focal point. This value was chosen empirically.
       offsetFromFocalPoint: Offset(0, (-defaultIosMagnifierSize.height / 2) - 20),
-      handleColor: _controlsContext!.handleColor,
+      handleColor: _controlsController!.handleColor,
     );
   }
 }
 
-/// A [SuperReaderLayerBuilder], which builds a [IosHandlesDocumentLayer],
+/// A [SuperMessageDocumentLayerBuilder], which builds a [IosHandlesDocumentLayer],
 /// which displays iOS-style handles.
 class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
   const SuperMessageIosHandlesDocumentLayerBuilder({
@@ -203,7 +202,7 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
 
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext readerContext) {
-    if (defaultTargetPlatform != TargetPlatform.iOS || SuperReaderIosControlsScope.maybeNearestOf(context) == null) {
+    if (defaultTargetPlatform != TargetPlatform.iOS || SuperMessageIosControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperEditor is configured with
       // a non-iOS gesture mode. Build nothing.
       return const ContentLayerProxyWidget(child: EmptyBox());
@@ -223,7 +222,7 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
         ]);
       },
       handleColor: handleColor ??
-          SuperReaderIosControlsScope.maybeRootOf(context)?.handleColor ??
+          SuperMessageIosControlsScope.maybeRootOf(context)?.handleColor ??
           Theme.of(context).primaryColor,
       shouldCaretBlink: ValueNotifier<bool>(false),
     );

@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' show Colors, Theme;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:overlord/follow_the_leader.dart';
 import 'package:super_editor/src/chat/super_message.dart';
+import 'package:super_editor/src/chat/super_message_android_touch_interactor.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_layout.dart';
@@ -13,6 +15,8 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
+import 'package:super_editor/src/infrastructure/documents/document_layers.dart';
+import 'package:super_editor/src/infrastructure/documents/selection_leader_document_layer.dart';
 import 'package:super_editor/src/infrastructure/flutter/eager_pan_gesture_recognizer.dart';
 import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
@@ -23,10 +27,11 @@ import 'package:super_editor/src/infrastructure/platforms/android/selection_hand
 import 'package:super_editor/src/infrastructure/platforms/android/toolbar.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/render_sliver_ext.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
 
 /// Adds and removes an Android-style editor controls overlay, as dictated by an ancestor
-/// [SuperEditorAndroidControlsScope].
+/// [SuperMessageAndroidControlsScope].
 class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
   const SuperMessageAndroidControlsOverlayManager({
     super.key,
@@ -72,7 +77,7 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
   final _overlayController = OverlayPortalController();
   final _overlayController2 = OverlayPortalController();
 
-  SuperEditorAndroidControlsController? _controlsController;
+  SuperMessageAndroidControlsController? _controlsController;
   late FollowerAligner _toolbarAligner;
 
   // The type of handle that the user started dragging, e.g., upstream or downstream.
@@ -122,7 +127,7 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _controlsController = SuperEditorAndroidControlsScope.rootOf(context);
+    _controlsController = SuperMessageAndroidControlsScope.rootOf(context);
     // TODO: Replace CupertinoPopoverToolbarAligner aligner with a generic aligner because this code runs on Android.
     _toolbarAligner = CupertinoPopoverToolbarAligner(
       toolbarVerticalOffsetAbove: 20,
@@ -166,22 +171,9 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
       // where the expanded handles should be visible when the selection is collapsed is when the selection
       // collapses while the user is dragging an expanded handle, which isn't the case here. Hide the handles.
       _controlsController!
-        ..hideCollapsedHandle()
         ..hideExpandedHandles()
         ..hideMagnifier()
-        ..hideToolbar()
-        ..blinkCaret();
-    }
-
-    if (!selection.isCollapsed && _controlsController!.shouldShowCollapsedHandle.value == true) {
-      // The selection is expanded, but the collapsed handle is visible. This can happen when the
-      // selection is collapsed and the user taps the "Select All" button. There isn't any situation
-      // where the collapsed handle should be visible when the selection is expanded. Hide the collapsed
-      // handle and show the expanded handles.
-      _controlsController!
-        ..hideCollapsedHandle()
-        ..showExpandedHandles()
-        ..hideMagnifier();
+        ..hideToolbar();
     }
   }
 
@@ -232,8 +224,6 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
 
     // Update the controls for handle dragging.
     _controlsController!
-      ..cancelCollapsedHandleAutoHideCountdown()
-      ..doNotBlinkCaret()
       ..showMagnifier()
       ..hideToolbar();
   }
@@ -270,26 +260,19 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
     _magnifierFocalPoint.value = null;
 
     // Start blinking the caret again, and hide the magnifier.
-    _controlsController!
-      ..blinkCaret()
-      ..hideMagnifier();
+    _controlsController!.hideMagnifier();
 
     if (widget.editor.composer.selection?.isCollapsed == true &&
         const [HandleType.upstream, HandleType.downstream].contains(handleType)) {
       // The user dragged an expanded handle until the selection collapsed and then released the handle.
       // While the user was dragging, the expanded handles were displayed.
       // Show the collapsed.
-      _controlsController!
-        ..hideExpandedHandles()
-        ..showCollapsedHandle();
+      _controlsController!.hideExpandedHandles();
     }
 
     if (widget.editor.composer.selection?.isCollapsed == false) {
       // The selection is expanded, show the toolbar.
       _controlsController!.showToolbar();
-    } else {
-      // The selection is collapsed, start the auto-hide countdown for the handle.
-      _controlsController!.startCollapsedHandleAutoHideCountdown();
     }
   }
 
@@ -608,9 +591,8 @@ class SuperMessageAndroidToolbarFocalPointDocumentLayerBuilder implements SuperM
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext editorContext) {
     if (defaultTargetPlatform != TargetPlatform.android ||
-        // FIXME: Either create a SuperMessage version of the scope, or change to a universal scope for all use-cases.
-        SuperEditorAndroidControlsScope.maybeNearestOf(context) == null) {
-      // There's no controls scope. This probably means SuperEditor is configured with
+        SuperMessageAndroidControlsScope.maybeNearestOf(context) == null) {
+      // There's no controls scope. This probably means SuperMessage is configured with
       // a non-Android gesture mode. Build nothing.
       return const ContentLayerProxyWidget(child: EmptyBox());
     }
@@ -618,14 +600,13 @@ class SuperMessageAndroidToolbarFocalPointDocumentLayerBuilder implements SuperM
     return AndroidToolbarFocalPointDocumentLayer(
       document: editorContext.document,
       selection: editorContext.composer.selectionNotifier,
-      // FIXME: Either create a SuperMessage version of the scope, or change to a universal scope for all use-cases.
-      toolbarFocalPointLink: SuperEditorAndroidControlsScope.rootOf(context).toolbarFocalPoint,
+      toolbarFocalPointLink: SuperMessageAndroidControlsScope.rootOf(context).toolbarFocalPoint,
       showDebugLeaderBounds: showDebugLeaderBounds,
     );
   }
 }
 
-/// A [SuperMessageLayerBuilder], which builds an [AndroidHandlesDocumentLayer],
+/// A [SuperMessageLayerBuilder], which builds an [SuperMessageAndroidHandlesDocumentLayer],
 /// which displays Android-style caret and handles.
 class SuperMessageAndroidHandlesDocumentLayerBuilder implements SuperMessageDocumentLayerBuilder {
   const SuperMessageAndroidHandlesDocumentLayerBuilder({
@@ -634,7 +615,7 @@ class SuperMessageAndroidHandlesDocumentLayerBuilder implements SuperMessageDocu
   });
 
   /// The (optional) color of the caret (not the drag handle), by default the color
-  /// defers to the root [SuperEditorAndroidControlsScope], or the app theme if the
+  /// defers to the root [SuperMessageAndroidControlsScope], or the app theme if the
   /// controls controller has no preference for the color.
   final Color? caretColor;
 
@@ -643,14 +624,13 @@ class SuperMessageAndroidHandlesDocumentLayerBuilder implements SuperMessageDocu
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext editContext) {
     if (defaultTargetPlatform != TargetPlatform.android ||
-        // FIXME: Either create a SuperMessage version of the scope, or change to a universal scope for all use-cases.
-        SuperEditorAndroidControlsScope.maybeNearestOf(context) == null) {
-      // There's no controls scope. This probably means SuperEditor is configured with
+        SuperMessageAndroidControlsScope.maybeNearestOf(context) == null) {
+      // There's no controls scope. This probably means SuperMessage is configured with
       // a non-Android gesture mode. Build nothing.
       return const ContentLayerProxyWidget(child: EmptyBox());
     }
 
-    return AndroidHandlesDocumentLayer(
+    return SuperMessageAndroidHandlesDocumentLayer(
       document: editContext.document,
       documentLayout: editContext.documentLayout,
       selection: editContext.composer.selectionNotifier,
@@ -666,20 +646,240 @@ class SuperMessageAndroidHandlesDocumentLayerBuilder implements SuperMessageDocu
   }
 }
 
+/// A document layer that displays an Android-style caret, and positions [Leader]s for the Android
+/// collapsed and expanded drag handles.
+///
+/// This layer positions and paints the caret directly, rather than using `Leader`s and `Follower`s,
+/// because its position is based on the document layout, rather than the user's gesture behavior.
+class SuperMessageAndroidHandlesDocumentLayer extends DocumentLayoutLayerStatefulWidget {
+  const SuperMessageAndroidHandlesDocumentLayer({
+    super.key,
+    required this.document,
+    required this.documentLayout,
+    required this.selection,
+    required this.changeSelection,
+    this.caretWidth = 2,
+    this.caretColor,
+    this.showDebugPaint = false,
+  });
+
+  final Document document;
+
+  final DocumentLayout documentLayout;
+
+  final ValueListenable<DocumentSelection?> selection;
+
+  final void Function(DocumentSelection?, SelectionChangeType, String selectionReason) changeSelection;
+
+  final double caretWidth;
+
+  /// Color used to render the Android-style caret (not handles), by default the color
+  /// is retrieved from the root [SuperEditorAndroidControlsController].
+  final Color? caretColor;
+
+  final bool showDebugPaint;
+
+  @override
+  DocumentLayoutLayerState<SuperMessageAndroidHandlesDocumentLayer, DocumentSelectionLayout> createState() =>
+      SuperMessageAndroidControlsDocumentLayerState();
+}
+
+@visibleForTesting
+class SuperMessageAndroidControlsDocumentLayerState
+    extends DocumentLayoutLayerState<SuperMessageAndroidHandlesDocumentLayer, DocumentSelectionLayout>
+    with SingleTickerProviderStateMixin {
+  SuperMessageAndroidControlsController? _controlsController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    widget.selection.addListener(_onSelectionChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_controlsController != null) {
+      _controlsController!.areSelectionHandlesAllowed.removeListener(_onSelectionHandlesAllowedChange);
+    }
+
+    _controlsController = SuperMessageAndroidControlsScope.rootOf(context);
+    _controlsController!.areSelectionHandlesAllowed.addListener(_onSelectionHandlesAllowedChange);
+  }
+
+  @override
+  void didUpdateWidget(SuperMessageAndroidHandlesDocumentLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.selection != oldWidget.selection) {
+      oldWidget.selection.removeListener(_onSelectionChange);
+      widget.selection.addListener(_onSelectionChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.selection.removeListener(_onSelectionChange);
+    _controlsController!.areSelectionHandlesAllowed.removeListener(_onSelectionHandlesAllowedChange);
+    super.dispose();
+  }
+
+  @visibleForTesting
+  bool get isUpstreamHandleDisplayed => layoutData?.upstream != null;
+
+  @visibleForTesting
+  bool get isDownstreamHandleDisplayed => layoutData?.downstream != null;
+
+  void _onSelectionChange() {
+    setState(() {
+      // Schedule a new layout computation because the handles need to move.
+    });
+  }
+
+  void _onSelectionHandlesAllowedChange() {
+    setState(() {
+      // The controller went from allowing selection handles to disallowing them, or vis-a-versa.
+      // Rebuild this widget to show/hide the handles.
+    });
+  }
+
+  @override
+  DocumentSelectionLayout? computeLayoutDataWithDocumentLayout(
+      BuildContext contentLayersContext, BuildContext documentContext, DocumentLayout documentLayout) {
+    final selection = widget.selection.value;
+    if (selection == null) {
+      return null;
+    }
+
+    if (!_controlsController!.areSelectionHandlesAllowed.value) {
+      // We don't want to show any selection handles.
+      return null;
+    }
+
+    if (selection.isCollapsed && !_controlsController!.shouldShowExpandedHandles.value) {
+      Rect caretRect = documentLayout.getEdgeForPosition(selection.extent)!;
+
+      // Default caret width used by the Android caret.
+      const caretWidth = 2;
+
+      // Use the content's RenderBox instead of the layer's RenderBox to get the layer's width.
+      //
+      // ContentLayers works in four steps:
+      //
+      // 1. The content is built.
+      // 2. The content is laid out.
+      // 3. The layers are built.
+      // 4. The layers are laid out.
+      //
+      // The computeLayoutData method is called during the layer's build, which means that the
+      // layer's RenderBox is outdated, because it wasn't laid out yet for the current frame.
+      // Use the content's RenderBox, which was already laid out for the current frame.
+      final contentBox = documentContext.findRenderObject();
+      if (contentBox != null) {
+        if (contentBox is RenderSliver && contentBox.hasSize && caretRect.left + caretWidth >= contentBox.size.width) {
+          // Adjust the caret position to make it entirely visible because it's currently placed
+          // partially or entirely outside of the layers' bounds. This can happen for downstream selections
+          // of block components that take all the available width.
+          caretRect = Rect.fromLTWH(
+            contentBox.size.width - caretWidth,
+            caretRect.top,
+            caretRect.width,
+            caretRect.height,
+          );
+        } else if (contentBox is RenderBox &&
+            contentBox.hasSize &&
+            caretRect.left + caretWidth >= contentBox.size.width) {
+          // Adjust the caret position to make it entirely visible because it's currently placed
+          // partially or entirely outside of the layers' bounds. This can happen for downstream selections
+          // of block components that take all the available width.
+          caretRect = Rect.fromLTWH(
+            contentBox.size.width - caretWidth,
+            caretRect.top,
+            caretRect.width,
+            caretRect.height,
+          );
+        }
+      }
+
+      return DocumentSelectionLayout(
+        caret: caretRect,
+      );
+    } else {
+      return DocumentSelectionLayout(
+        upstream: documentLayout.getRectForPosition(
+          widget.document.selectUpstreamPosition(selection.base, selection.extent),
+        )!,
+        downstream: documentLayout.getRectForPosition(
+          widget.document.selectDownstreamPosition(selection.base, selection.extent),
+        )!,
+        expandedSelectionBounds: documentLayout.getRectForSelection(
+          selection.base,
+          selection.extent,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget doBuild(BuildContext context, DocumentSelectionLayout? layoutData) {
+    return IgnorePointer(
+      child: SizedBox.expand(
+        child: layoutData != null //
+            ? _buildHandles(layoutData)
+            : const SizedBox(),
+      ),
+    );
+  }
+
+  Widget _buildHandles(DocumentSelectionLayout layoutData) {
+    if (widget.selection.value == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Stack(
+      children: [
+        if (layoutData.upstream != null && layoutData.downstream != null)
+          ..._buildExpandedHandleLeaders(
+            upstream: layoutData.upstream!,
+            downstream: layoutData.downstream!,
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _buildExpandedHandleLeaders({
+    required Rect upstream,
+    required Rect downstream,
+  }) {
+    return [
+      Positioned.fromRect(
+        rect: upstream,
+        child: Leader(link: _controlsController!.upstreamHandleFocalPoint),
+      ),
+      Positioned.fromRect(
+        rect: downstream,
+        child: Leader(link: _controlsController!.downstreamHandleFocalPoint),
+      ),
+    ];
+  }
+}
+
 /// An Android floating toolbar, which includes standard buttons for [SuperMessage]s.
 class DefaultAndroidSuperMessageToolbar extends StatelessWidget {
   const DefaultAndroidSuperMessageToolbar({
     super.key,
     this.floatingToolbarKey,
     required this.editor,
-    required this.editorControlsController,
+    required this.messageControlsController,
     required this.focalPoint,
   });
 
   final Key? floatingToolbarKey;
   final LeaderLink focalPoint;
   final Editor editor;
-  final SuperEditorAndroidControlsController editorControlsController;
+  final SuperMessageAndroidControlsController messageControlsController;
 
   @override
   Widget build(BuildContext context) {
