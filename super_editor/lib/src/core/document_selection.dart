@@ -66,6 +66,7 @@ class DocumentSelection extends DocumentRange {
   ///
   /// A [DocumentSelection] is "collapsed" when its [base] and [extent] are
   /// equivalent. Otherwise, the [DocumentSelection] is "expanded".
+  @override
   bool get isCollapsed => base.nodeId == extent.nodeId && base.nodePosition.isEquivalentTo(extent.nodePosition);
 
   /// Returns the affinity (direction) for this selection - downstream refers to a selection
@@ -85,6 +86,34 @@ class DocumentSelection extends DocumentRange {
   ///
   /// See [calculateAffinity] for more info.
   bool hasUpstreamAffinity(Document document) => calculateAffinity(document) == TextAffinity.upstream;
+
+  /// Returns `true` if the given [position] sits within this [DocumentSelection].
+  bool containsPosition(Document document, DocumentPosition position) {
+    final normalizedSelection = normalize(document);
+
+    final startToPositionAffinity = document.getAffinityBetween(base: normalizedSelection.start, extent: position);
+    if (position == normalizedSelection.start) {
+      // The given position is the same as the selection start, so the selection contains the position.
+      return true;
+    }
+    if (startToPositionAffinity == TextAffinity.upstream) {
+      // The given `position` comes BEFORE the start of the selection, so its not in the selection.
+      return false;
+    }
+
+    final positionToEndAffinity = document.getAffinityBetween(base: position, extent: normalizedSelection.end);
+    if (position == normalizedSelection.end) {
+      // The given position is the same as the selection end, so the selection contains the position.
+      return true;
+    }
+    if (positionToEndAffinity == TextAffinity.upstream) {
+      // The given `position` comes AFTER the end of the selection, so its not in the selection.
+      return false;
+    }
+
+    // The given `position` comes after the selection start, and before the selection end, so its in the selection.
+    return true;
+  }
 
   @override
   String toString() {

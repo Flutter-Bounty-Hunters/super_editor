@@ -352,17 +352,31 @@ class AndroidControlsDocumentLayerState
       // The computeLayoutData method is called during the layer's build, which means that the
       // layer's RenderBox is outdated, because it wasn't laid out yet for the current frame.
       // Use the content's RenderBox, which was already laid out for the current frame.
-      final contentBox = documentContext.findRenderObject() as RenderSliver?;
-      if (contentBox != null && contentBox.hasSize && caretRect.left + caretWidth >= contentBox.size.width) {
-        // Ajust the caret position to make it entirely visible because it's currently placed
-        // partially or entirely outside of the layers' bounds. This can happen for downstream selections
-        // of block components that take all the available width.
-        caretRect = Rect.fromLTWH(
-          contentBox.size.width - caretWidth,
-          caretRect.top,
-          caretRect.width,
-          caretRect.height,
-        );
+      final contentBox = documentContext.findRenderObject();
+      if (contentBox != null) {
+        if (contentBox is RenderSliver && contentBox.hasSize && caretRect.left + caretWidth >= contentBox.size.width) {
+          // Adjust the caret position to make it entirely visible because it's currently placed
+          // partially or entirely outside of the layers' bounds. This can happen for downstream selections
+          // of block components that take all the available width.
+          caretRect = Rect.fromLTWH(
+            contentBox.size.width - caretWidth,
+            caretRect.top,
+            caretRect.width,
+            caretRect.height,
+          );
+        } else if (contentBox is RenderBox &&
+            contentBox.hasSize &&
+            caretRect.left + caretWidth >= contentBox.size.width) {
+          // Adjust the caret position to make it entirely visible because it's currently placed
+          // partially or entirely outside of the layers' bounds. This can happen for downstream selections
+          // of block components that take all the available width.
+          caretRect = Rect.fromLTWH(
+            contentBox.size.width - caretWidth,
+            caretRect.top,
+            caretRect.width,
+            caretRect.height,
+          );
+        }
       }
 
       return DocumentSelectionLayout(
