@@ -12,9 +12,10 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/super_reader/read_only_document_mouse_interactor.dart'
+    show moveToNearestSelectableComponent, selectRegion;
 
 import '../core/document_composer.dart';
-import '../core/editor.dart';
 
 /// Governs mouse gesture interaction with a read-only document, such as scrolling
 /// a document with a scroll wheel and tap-and-dragging to create an expanded selection.
@@ -578,140 +579,4 @@ Updating drag selection:
         ),
     ];
   }
-}
-
-void moveToNearestSelectableComponent(
-  Editor editor,
-  DocumentLayout documentLayout,
-  String nodeId,
-  DocumentComponent component,
-) {
-  // TODO: this was taken from CommonOps. We don't have CommonOps in this
-  // interactor, because it's for read-only documents. Selection operations
-  // should probably be moved to something outside of CommonOps
-  DocumentNode startingNode = editor.document.getNodeById(nodeId)!;
-  String? newNodeId;
-  NodePosition? newPosition;
-
-  // Try to find a new selection downstream.
-  final downstreamNode = getDownstreamSelectableNodeAfter(editor.document, () => documentLayout, startingNode);
-  if (downstreamNode != null) {
-    newNodeId = downstreamNode.id;
-    final nextComponent = documentLayout.getComponentByNodeId(newNodeId);
-    newPosition = nextComponent?.getBeginningPosition();
-  }
-
-  // Try to find a new selection upstream.
-  if (newPosition == null) {
-    final upstreamNode = getUpstreamSelectableNodeBefore(editor.document, () => documentLayout, startingNode);
-    if (upstreamNode != null) {
-      newNodeId = upstreamNode.id;
-      final previousComponent = documentLayout.getComponentByNodeId(newNodeId);
-      newPosition = previousComponent?.getBeginningPosition();
-    }
-  }
-
-  if (newNodeId == null || newPosition == null) {
-    return;
-  }
-
-  editor.execute([
-    ChangeSelectionRequest(
-      editor.composer.selection!.expandTo(
-        DocumentPosition(
-          nodeId: newNodeId,
-          nodePosition: newPosition,
-        ),
-      ),
-      SelectionChangeType.expandSelection,
-      SelectionReason.userInteraction,
-    ),
-  ]);
-}
-
-/// Calculates an appropriate [DocumentSelection] from an (x,y)
-/// [baseOffsetInDocument], to an (x,y) [extentOffsetInDocument], setting
-/// the new document selection in the given [selection].
-void selectRegion({
-  required Editor editor,
-  required DocumentLayout documentLayout,
-  required Offset baseOffsetInDocument,
-  required Offset extentOffsetInDocument,
-  required SelectionType selectionType,
-  bool expandSelection = false,
-}) {
-  docGesturesLog.info("Selecting region with selection mode: $selectionType");
-  DocumentSelection? regionSelection = documentLayout.getDocumentSelectionInRegion(
-    baseOffsetInDocument,
-    extentOffsetInDocument,
-  );
-  DocumentPosition? basePosition = regionSelection?.base;
-  DocumentPosition? extentPosition = regionSelection?.extent;
-  docGesturesLog.fine(" - base: $basePosition, extent: $extentPosition");
-
-  if (basePosition == null || extentPosition == null) {
-    editor.execute([const ClearSelectionRequest()]);
-    return;
-  }
-
-  if (selectionType == SelectionType.paragraph) {
-    final baseParagraphSelection = getParagraphSelection(
-      docPosition: basePosition,
-      docLayout: documentLayout,
-    );
-    if (baseParagraphSelection == null) {
-      editor.execute([const ClearSelectionRequest()]);
-      return;
-    }
-    basePosition = baseOffsetInDocument.dy < extentOffsetInDocument.dy
-        ? baseParagraphSelection.base
-        : baseParagraphSelection.extent;
-
-    final extentParagraphSelection = getParagraphSelection(
-      docPosition: extentPosition,
-      docLayout: documentLayout,
-    );
-    if (extentParagraphSelection == null) {
-      editor.execute([const ClearSelectionRequest()]);
-      return;
-    }
-    extentPosition = baseOffsetInDocument.dy < extentOffsetInDocument.dy
-        ? extentParagraphSelection.extent
-        : extentParagraphSelection.base;
-  } else if (selectionType == SelectionType.word) {
-    final baseWordSelection = getWordSelection(
-      docPosition: basePosition,
-      docLayout: documentLayout,
-    );
-    if (baseWordSelection == null) {
-      editor.execute([const ClearSelectionRequest()]);
-      return;
-    }
-    basePosition = baseWordSelection.base;
-
-    final extentWordSelection = getWordSelection(
-      docPosition: extentPosition,
-      docLayout: documentLayout,
-    );
-    if (extentWordSelection == null) {
-      editor.execute([const ClearSelectionRequest()]);
-      return;
-    }
-    extentPosition = extentWordSelection.extent;
-  }
-
-  final selection = editor.composer.selection;
-  editor.execute([
-    ChangeSelectionRequest(
-      DocumentSelection(
-        // If desired, expand the selection instead of replacing it.
-        base: expandSelection ? selection?.base ?? basePosition : basePosition,
-        extent: extentPosition,
-      ),
-      SelectionChangeType.expandSelection,
-      SelectionReason.userInteraction,
-    ),
-  ]);
-
-  docGesturesLog.fine("Selected region: ${editor.composer.selection}");
 }
