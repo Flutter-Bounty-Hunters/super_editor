@@ -17,6 +17,12 @@ export 'src/core/styles.dart';
 // Chat
 export 'src/chat/message_page_scaffold.dart';
 export 'src/chat/super_message.dart';
+export 'src/chat/super_message_android_overlays.dart';
+export 'src/chat/super_message_android_touch_interactor.dart';
+export 'src/chat/super_message_ios_overlays.dart';
+export 'src/chat/super_message_ios_touch_interactor.dart';
+export 'src/chat/super_message_keyboard_interactor.dart';
+export 'src/chat/super_message_mouse_interactor.dart';
 
 // Super Editor
 export 'src/default_editor/ai/content_fading.dart';
