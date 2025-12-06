@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
-import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text_tools.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -18,6 +19,215 @@ import 'package:super_editor/src/infrastructure/flutter/eager_pan_gesture_recogn
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/android/long_press_selection.dart';
+import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
+
+/// An [InheritedWidget] that provides shared access to a [SuperMessageAndroidControlsController],
+/// which coordinates the state of Android controls like the caret, handles, magnifier, etc.
+///
+/// This widget and its associated controller exist so that [SuperMessage] has maximum freedom
+/// in terms of where to implement Android gestures vs the magnifier vs the toolbar.
+/// Each of these responsibilities have some unique differences, which make them difficult or
+/// impossible to implement within a single widget. By sharing a controller, a group of independent
+/// widgets can work together to cover those various responsibilities.
+///
+/// Centralizing a controller in an [InheritedWidget] also allows [SuperMessage] to share that
+/// control with application code outside of [SuperMessage], by placing a [SuperMessageAndroidControlsScope]
+/// above the [SuperMessage] in the widget tree. For this reason, [SuperMessage] should access
+/// the [SuperMessageAndroidControlsScope] through [rootOf].
+class SuperMessageAndroidControlsScope extends InheritedWidget {
+  /// Finds the highest [SuperMessageAndroidControlsScope] in the widget tree, above the given
+  /// [context], and returns its associated [SuperMessageAndroidControlsController].
+  static SuperMessageAndroidControlsController rootOf(BuildContext context) {
+    final data = maybeRootOf(context);
+
+    if (data == null) {
+      throw Exception(
+          "Tried to depend upon the root SuperEditorAndroidControlsScope but no such ancestor widget exists.");
+    }
+
+    return data;
+  }
+
+  static SuperMessageAndroidControlsController? maybeRootOf(BuildContext context) {
+    InheritedElement? root;
+
+    context.visitAncestorElements((element) {
+      if (element is! InheritedElement || element.widget is! SuperMessageAndroidControlsScope) {
+        // Keep visiting.
+        return true;
+      }
+
+      root = element;
+
+      // Keep visiting, to ensure we get the root scope.
+      return true;
+    });
+
+    if (root == null) {
+      return null;
+    }
+
+    // Create build dependency on the Android controls context.
+    context.dependOnInheritedElement(root!);
+
+    // Return the current Android controls data.
+    return (root!.widget as SuperMessageAndroidControlsScope).controller;
+  }
+
+  /// Finds the nearest [SuperMessageAndroidControlsScope] in the widget tree, above the given
+  /// [context], and returns its associated [SuperMessageAndroidControlsController].
+  static SuperMessageAndroidControlsController nearestOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SuperMessageAndroidControlsScope>()!.controller;
+
+  static SuperMessageAndroidControlsController? maybeNearestOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SuperMessageAndroidControlsScope>()?.controller;
+
+  const SuperMessageAndroidControlsScope({
+    super.key,
+    required this.controller,
+    required super.child,
+  });
+
+  final SuperMessageAndroidControlsController controller;
+
+  @override
+  bool updateShouldNotify(SuperMessageAndroidControlsScope oldWidget) {
+    return controller != oldWidget.controller;
+  }
+}
+
+/// A controller, which coordinates the state of various Android editor controls, including
+/// the caret, handles, magnifier, and toolbar.
+class SuperMessageAndroidControlsController {
+  SuperMessageAndroidControlsController({
+    this.controlsColor,
+    LeaderLink? upstreamHandleFocalPoint,
+    LeaderLink? downstreamHandleFocalPoint,
+    this.expandedHandlesBuilder,
+    this.magnifierBuilder,
+    this.toolbarBuilder,
+    this.createOverlayControlsClipper,
+  })  : upstreamHandleFocalPoint = upstreamHandleFocalPoint ?? LeaderLink(),
+        downstreamHandleFocalPoint = downstreamHandleFocalPoint ?? LeaderLink();
+
+  void dispose() {
+    _shouldShowMagnifier.dispose();
+    _shouldShowToolbar.dispose();
+  }
+
+  /// Color of the drag handles on Android.
+  ///
+  /// The default handle builders honor this color. If custom handle builders are
+  /// provided, its up to those handle builders to honor this color, or not.
+  final Color? controlsColor;
+
+  /// The focal point for the upstream drag handle, when the selection is expanded.
+  ///
+  /// The upstream handle builder should place its handle near this focal point.
+  final LeaderLink upstreamHandleFocalPoint;
+
+  /// The focal point for the downstream drag handle, when the selection is expanded.
+  ///
+  /// The downstream handle builder should place its handle near this focal point.
+  final LeaderLink downstreamHandleFocalPoint;
+
+  /// Whether the expanded drag handles should be displayed right now.
+  ValueListenable<bool> get shouldShowExpandedHandles => _shouldShowExpandedHandles;
+  final _shouldShowExpandedHandles = ValueNotifier<bool>(false);
+
+  /// Shows the expanded drag handles by setting [shouldShowExpandedHandles] to `true`.
+  void showExpandedHandles() {
+    _shouldShowExpandedHandles.value = true;
+  }
+
+  /// Hides the expanded drag handles by setting [shouldShowExpandedHandles] to `false`.
+  void hideExpandedHandles() => _shouldShowExpandedHandles.value = false;
+
+  /// {@template are_selection_handles_allowed}
+  /// Whether or not the selection handles are allowed to be displayed.
+  ///
+  /// Typically, whenever the selection changes, the drag handles are displayed. However,
+  /// there are some cases where we want to select some content, but don't show the
+  /// drag handles. For example, when the user taps a misspelled word, we might want to select
+  /// the misspelled word without showing any handles.
+  ///
+  /// Defaults to `true`.
+  /// {@endtemplate}
+  ValueListenable<bool> get areSelectionHandlesAllowed => _areSelectionHandlesAllowed;
+  final _areSelectionHandlesAllowed = ValueNotifier<bool>(true);
+
+  /// Temporarily prevents any selection handles from being displayed.
+  ///
+  /// Call this when you want to select some content, but don't want to show the drag handles.
+  /// [allowSelectionHandles] must be called to allow the drag handles to be displayed again.
+  void preventSelectionHandles() => _areSelectionHandlesAllowed.value = false;
+
+  /// Allows the selection handles to be displayed after they have been temporarily
+  /// prevented by [preventSelectionHandles].
+  void allowSelectionHandles() => _areSelectionHandlesAllowed.value = true;
+
+  /// (Optional) Builder to create the visual representation of the expanded drag handles.
+  ///
+  /// If [expandedHandlesBuilder] is `null`, default Android handles are displayed.
+  final DocumentExpandedHandlesBuilder? expandedHandlesBuilder;
+
+  /// Whether the Android magnifier should be displayed right now.
+  ValueListenable<bool> get shouldShowMagnifier => _shouldShowMagnifier;
+  final _shouldShowMagnifier = ValueNotifier<bool>(false);
+
+  /// Shows the magnifier by setting [shouldShowMagnifier] to `true`.
+  void showMagnifier() => _shouldShowMagnifier.value = true;
+
+  /// Hides the magnifier by setting [shouldShowMagnifier] to `false`.
+  void hideMagnifier() => _shouldShowMagnifier.value = false;
+
+  /// Toggles [shouldShowMagnifier].
+  void toggleMagnifier() => _shouldShowMagnifier.value = !_shouldShowMagnifier.value;
+
+  /// Link to a location where a magnifier should be focused.
+  ///
+  /// The magnifier builder should place the magnifier near this focal point.
+  final magnifierFocalPoint = LeaderLink();
+
+  /// (Optional) Builder to create the visual representation of the magnifier.
+  ///
+  /// If [magnifierBuilder] is `null`, a default Android magnifier is displayed.
+  final DocumentMagnifierBuilder? magnifierBuilder;
+
+  /// Whether the Android floating toolbar should be displayed right now.
+  ValueListenable<bool> get shouldShowToolbar => _shouldShowToolbar;
+  final _shouldShowToolbar = ValueNotifier<bool>(false);
+
+  /// Shows the toolbar by setting [shouldShowToolbar] to `true`.
+  void showToolbar() => _shouldShowToolbar.value = true;
+
+  /// Hides the toolbar by setting [shouldShowToolbar] to `false`.
+  void hideToolbar() => _shouldShowToolbar.value = false;
+
+  /// Toggles [shouldShowToolbar].
+  void toggleToolbar() => _shouldShowToolbar.value = !_shouldShowToolbar.value;
+
+  /// Link to a location where a toolbar should be focused.
+  ///
+  /// This link probably points to a rectangle, such as a bounding rectangle
+  /// around the user's selection. Therefore, the toolbar builder shouldn't
+  /// assume that this focal point is a single pixel.
+  final toolbarFocalPoint = LeaderLink();
+
+  /// (Optional) Builder to create the visual representation of the floating
+  /// toolbar.
+  ///
+  /// If [toolbarBuilder] is `null`, a default Android toolbar is displayed.
+  final DocumentFloatingToolbarBuilder? toolbarBuilder;
+
+  /// Creates a clipper that restricts where the toolbar and magnifier can
+  /// appear in the overlay.
+  ///
+  /// If no clipper factory method is provided, then the overlay controls
+  /// will be allowed to appear anywhere in the overlay in which they sit
+  /// (probably the entire screen).
+  final CustomClipper<Rect> Function(BuildContext overlayContext)? createOverlayControlsClipper;
+}
 
 /// Document gesture interactor that's designed for Android touch input, e.g.,
 /// drag to scroll, and handles to control selection.
@@ -54,7 +264,7 @@ class SuperMessageAndroidTouchInteractor extends StatefulWidget {
 
 class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroidTouchInteractor>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  SuperEditorAndroidControlsController? _controlsController;
+  SuperMessageAndroidControlsController? _controlsController;
 
   Offset? _globalTapDownOffset;
   Offset? _globalStartDragOffset;
@@ -94,7 +304,7 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     _lastSize = view.physicalSize;
     _lastInsets = view.viewInsets;
 
-    _controlsController = SuperEditorAndroidControlsScope.rootOf(context);
+    _controlsController = SuperMessageAndroidControlsScope.rootOf(context);
   }
 
   @override
@@ -167,7 +377,6 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
   void _onSelectionChange() {
     if (widget.editor.composer.selection == null) {
       _controlsController!
-        ..hideCollapsedHandle()
         ..hideExpandedHandles()
         ..hideMagnifier()
         ..hideToolbar();
@@ -204,7 +413,6 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
 
     // A long-press selection is in progress. Initially show the toolbar, but nothing else.
     _controlsController!
-      ..hideCollapsedHandle()
       ..hideExpandedHandles()
       ..hideMagnifier()
       ..showToolbar();
@@ -213,7 +421,6 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
   }
 
   void _onTapUp(TapUpDetails details) {
-    print("_onTapUp() on message");
     // Stop waiting for a long-press to start.
     _tapDownLongPressTimer?.cancel();
 
@@ -402,19 +609,15 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     if (widget.editor.composer.selection == null) {
       // There's no selection. Hide all controls.
       _controlsController!
-        ..hideCollapsedHandle()
         ..hideExpandedHandles()
         ..hideMagnifier()
-        ..hideToolbar()
-        ..doNotBlinkCaret();
+        ..hideToolbar();
     } else if (!widget.editor.composer.selection!.isCollapsed) {
       // The selection is expanded.
       _controlsController!
-        ..hideCollapsedHandle()
         ..showExpandedHandles()
         ..showToolbar()
-        ..hideMagnifier()
-        ..doNotBlinkCaret();
+        ..hideMagnifier();
     }
   }
 
@@ -475,7 +678,6 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     _magnifierGlobalOffset.value = details.globalPosition;
 
     _controlsController!
-      ..doNotBlinkCaret()
       ..hideToolbar()
       ..showMagnifier();
   }
@@ -578,9 +780,7 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
 
     _magnifierGlobalOffset.value = null;
 
-    _controlsController!
-      ..blinkCaret()
-      ..hideMagnifier();
+    _controlsController!.hideMagnifier();
     if (!widget.editor.composer.selection!.isCollapsed) {
       _controlsController!
         ..showExpandedHandles()

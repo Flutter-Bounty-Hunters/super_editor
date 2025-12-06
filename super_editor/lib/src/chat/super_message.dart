@@ -19,7 +19,8 @@ import 'package:super_editor/src/default_editor/layout_single_column/_presenter.
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_per_component.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_shylesheet.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_user_selection.dart';
-import 'package:super_editor/src/default_editor/super_editor.dart';
+import 'package:super_editor/src/default_editor/super_editor.dart'
+    show defaultComponentBuilders, defaultInlineTextStyler;
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
@@ -31,7 +32,6 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
-import 'package:super_editor/src/super_reader/read_only_document_ios_touch_interactor.dart';
 import 'package:super_editor/src/super_reader/read_only_document_keyboard_interactor.dart';
 
 /// A chat message widget.
@@ -59,8 +59,6 @@ class SuperMessage extends StatefulWidget {
     this.contentTapDelegateFactory,
     this.gestureMode,
     this.overlayController,
-    this.androidHandleColor,
-    this.androidToolbarBuilder,
     List<ReadOnlyDocumentKeyboardAction>? keyboardActions,
     this.createOverlayControlsClipper,
     this.componentBuilders = defaultComponentBuilders,
@@ -131,12 +129,6 @@ class SuperMessage extends StatefulWidget {
   /// Shows, hides, and positions a floating toolbar and magnifier.
   final MagnifierAndToolbarController? overlayController;
 
-  /// Color of the text selection drag handles on Android.
-  final Color? androidHandleColor;
-
-  /// Builder that creates a floating toolbar when running on Android.
-  final WidgetBuilder? androidToolbarBuilder;
-
   /// All actions that this editor takes in response to key
   /// events, e.g., text entry, newlines, character deletion,
   /// copy, paste, etc.
@@ -182,8 +174,8 @@ class _SuperMessageState extends State<SuperMessage> {
   // to carets, handles, and other things that want to follow the selection.
   late SelectionLayerLinks _selectionLinks;
 
-  final _iOSControlsController = SuperReaderIosControlsController();
-  final _androidControlsController = SuperEditorAndroidControlsController();
+  final _iOSControlsController = SuperMessageIosControlsController();
+  final _androidControlsController = SuperMessageAndroidControlsController();
 
   @override
   void initState() {
@@ -369,7 +361,7 @@ class _SuperMessageState extends State<SuperMessage> {
           child: child,
         );
       case DocumentGestureMode.android:
-        return SuperEditorAndroidControlsScope(
+        return SuperMessageAndroidControlsScope(
           controller: _androidControlsController,
           child: Builder(
             // ^ Builder to provide widgets below with access to controller.
@@ -398,7 +390,7 @@ class _SuperMessageState extends State<SuperMessage> {
           ),
         );
       case DocumentGestureMode.iOS:
-        return SuperReaderIosControlsScope(
+        return SuperMessageIosControlsScope(
           controller: _iOSControlsController,
           child: Builder(
               // ^ Builder to provide widgets below with access to controller.
@@ -415,7 +407,7 @@ class _SuperMessageState extends State<SuperMessage> {
                 defaultToolbarBuilder: (overlayContext, mobileToolbarKey, focalPoint) => DefaultIOSSuperMessageToolbar(
                   floatingToolbarKey: mobileToolbarKey,
                   editor: widget.editor,
-                  readerControlsController: SuperReaderIosControlsScope.rootOf(context),
+                  messageControlsController: SuperMessageIosControlsScope.rootOf(context),
                   focalPoint: focalPoint,
                 ),
                 child: SuperMessageIosMagnifierOverlayManager(
@@ -621,7 +613,7 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
 
   @override
   ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
-    if (defaultTargetPlatform != TargetPlatform.iOS || SuperReaderIosControlsScope.maybeNearestOf(context) == null) {
+    if (defaultTargetPlatform != TargetPlatform.iOS || SuperMessageIosControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperEditor is configured with
       // a non-iOS gesture mode. Build nothing.
       return const ContentLayerProxyWidget(child: EmptyBox());
@@ -630,7 +622,7 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
     return IosToolbarFocalPointDocumentLayer(
       document: messageContext.editor.document,
       selection: messageContext.editor.composer.selectionNotifier,
-      toolbarFocalPointLink: SuperReaderIosControlsScope.rootOf(context).toolbarFocalPoint,
+      toolbarFocalPointLink: SuperMessageIosControlsScope.rootOf(context).toolbarFocalPoint,
       showDebugLeaderBounds: showDebugLeaderBounds,
     );
   }

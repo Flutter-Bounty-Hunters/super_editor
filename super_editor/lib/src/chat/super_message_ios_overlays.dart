@@ -7,6 +7,7 @@ import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:overlord/follow_the_leader.dart';
 import 'package:overlord/overlord.dart';
 import 'package:super_editor/src/chat/super_message.dart' show SuperMessageDocumentLayerBuilder;
+import 'package:super_editor/src/chat/super_message_ios_touch_interactor.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_selection.dart';
@@ -235,14 +236,14 @@ class DefaultIOSSuperMessageToolbar extends StatelessWidget {
     super.key,
     this.floatingToolbarKey,
     required this.editor,
-    required this.readerControlsController,
+    required this.messageControlsController,
     required this.focalPoint,
   });
 
   final Key? floatingToolbarKey;
   final LeaderLink focalPoint;
   final Editor editor;
-  final SuperReaderIosControlsController readerControlsController;
+  final SuperMessageIosControlsController messageControlsController;
 
   @override
   Widget build(BuildContext context) {

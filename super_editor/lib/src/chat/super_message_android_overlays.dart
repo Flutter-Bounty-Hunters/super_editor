@@ -70,6 +70,7 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
 class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageAndroidControlsOverlayManager> {
   final _boundsKey = GlobalKey();
   final _overlayController = OverlayPortalController();
+  final _overlayController2 = OverlayPortalController();
 
   SuperEditorAndroidControlsController? _controlsController;
   late FollowerAligner _toolbarAligner;
@@ -113,6 +114,7 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
       // Call `show()` at the end of the frame because calling during a build
       // process blows up.
       _overlayController.show();
+      _overlayController2.show();
     });
   }
 
@@ -337,11 +339,26 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
       groupId: widget.tapRegionGroupId,
       child: Stack(
         key: _boundsKey,
+        clipBehavior: Clip.none,
         children: [
-          _buildMagnifierFocalPoint(),
+          if (widget.showInAppOverlay)
+            _buildMagnifierFocalPoint()
+          else
+            OverlayPortal(
+              controller: _overlayController,
+              overlayChildBuilder: (context) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _buildMagnifierFocalPoint(),
+                  _buildMagnifier(),
+                ],
+              ),
+              child: const SizedBox(),
+            ),
           if (widget.showDebugPaint) //
             _buildDebugSelectionFocalPoint(),
-          _buildMagnifier(),
+          if (widget.showInAppOverlay) //
+            _buildMagnifier(),
           // Handles and toolbar are built after the magnifier so that they don't appear in the magnifier.
           ..._buildExpandedHandles(),
           _buildToolbar(),

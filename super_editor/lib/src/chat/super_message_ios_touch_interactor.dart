@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
@@ -16,9 +17,157 @@ import 'package:super_editor/src/infrastructure/flutter/eager_pan_gesture_recogn
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/long_press_selection.dart';
+import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
-import 'package:super_editor/src/super_reader/read_only_document_ios_touch_interactor.dart';
+
+/// An [InheritedWidget] that provides shared access to a [SuperMessageIosControlsController],
+/// which coordinates the state of iOS controls like drag handles, magnifier, and toolbar.
+///
+/// This widget and its associated controller exist so that [SuperMessage] has maximum freedom
+/// in terms of where to implement iOS gestures vs handles vs the magnifier vs the toolbar.
+/// Each of these responsibilities have some unique differences, which make them difficult
+/// or impossible to implement within a single widget. By sharing a controller, a group of
+/// independent widgets can work together to cover those various responsibilities.
+///
+/// Centralizing a controller in an [InheritedWidget] also allows [SuperMessage] to share that
+/// control with application code outside of [SuperMessage], by placing an [SuperMessageIosControlsScope]
+/// above the [SuperMessage] in the widget tree. For this reason, [SuperMessage] should access
+/// the [SuperMessageIosControlsScope] through [rootOf].
+class SuperMessageIosControlsScope extends InheritedWidget {
+  /// Finds the highest [SuperMessageIosControlsScope] in the widget tree, above the given
+  /// [context], and returns its associated [SuperMessageIosControlsController].
+  static SuperMessageIosControlsController rootOf(BuildContext context) {
+    final data = maybeRootOf(context);
+
+    if (data == null) {
+      throw Exception("Tried to depend upon the root IosReaderControlsScope but no such ancestor widget exists.");
+    }
+
+    return data;
+  }
+
+  static SuperMessageIosControlsController? maybeRootOf(BuildContext context) {
+    InheritedElement? root;
+
+    context.visitAncestorElements((element) {
+      if (element is! InheritedElement || element.widget is! SuperMessageIosControlsScope) {
+        // Keep visiting.
+        return true;
+      }
+
+      root = element;
+
+      // Keep visiting, to ensure we get the root scope.
+      return true;
+    });
+
+    if (root == null) {
+      return null;
+    }
+
+    // Create build dependency on the iOS controls context.
+    context.dependOnInheritedElement(root!);
+
+    // Return the current iOS controls data.
+    return (root!.widget as SuperMessageIosControlsScope).controller;
+  }
+
+  /// Finds the nearest [SuperMessageIosControlsScope] in the widget tree, above the given
+  /// [context], and returns its associated [SuperMessageIosControlsController].
+  static SuperMessageIosControlsController nearestOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SuperMessageIosControlsScope>()!.controller;
+
+  static SuperMessageIosControlsController? maybeNearestOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SuperMessageIosControlsScope>()?.controller;
+
+  const SuperMessageIosControlsScope({
+    super.key,
+    required this.controller,
+    required super.child,
+  });
+
+  final SuperMessageIosControlsController controller;
+
+  @override
+  bool updateShouldNotify(SuperMessageIosControlsScope oldWidget) {
+    return controller != oldWidget.controller;
+  }
+}
+
+/// A controller, which coordinates the state of various iOS reader controls, including
+/// drag handles, magnifier, and toolbar.
+class SuperMessageIosControlsController {
+  SuperMessageIosControlsController({
+    this.handleColor,
+    this.magnifierBuilder,
+    this.toolbarBuilder,
+    this.createOverlayControlsClipper,
+  });
+
+  void dispose() {
+    _shouldShowMagnifier.dispose();
+    _shouldShowToolbar.dispose();
+  }
+
+  /// Color of the text selection drag handles on iOS.
+  final Color? handleColor;
+
+  /// Whether the iOS magnifier should be displayed right now.
+  ValueListenable<bool> get shouldShowMagnifier => _shouldShowMagnifier;
+  final _shouldShowMagnifier = ValueNotifier<bool>(false);
+
+  /// Shows the magnifier by setting [shouldShowMagnifier] to `true`.
+  void showMagnifier() => _shouldShowMagnifier.value = true;
+
+  /// Hides the magnifier by setting [shouldShowMagnifier] to `false`.
+  void hideMagnifier() => _shouldShowMagnifier.value = false;
+
+  /// Toggles [shouldShowMagnifier].
+  void toggleMagnifier() => _shouldShowMagnifier.value = !_shouldShowMagnifier.value;
+
+  /// Link to a location where a magnifier should be focused.
+  final magnifierFocalPoint = LeaderLink();
+
+  /// (Optional) Builder to create the visual representation of the magnifier.
+  ///
+  /// If [magnifierBuilder] is `null`, a default iOS magnifier is displayed.
+  final DocumentMagnifierBuilder? magnifierBuilder;
+
+  /// Whether the iOS floating toolbar should be displayed right now.
+  ValueListenable<bool> get shouldShowToolbar => _shouldShowToolbar;
+  final _shouldShowToolbar = ValueNotifier<bool>(false);
+
+  /// Shows the toolbar by setting [shouldShowToolbar] to `true`.
+  void showToolbar() => _shouldShowToolbar.value = true;
+
+  /// Hides the toolbar by setting [shouldShowToolbar] to `false`.
+  void hideToolbar() => _shouldShowToolbar.value = false;
+
+  /// Toggles [shouldShowToolbar].
+  void toggleToolbar() => _shouldShowToolbar.value = !_shouldShowToolbar.value;
+
+  /// Link to a location where a toolbar should be focused.
+  ///
+  /// This link probably points to a rectangle, such as a bounding rectangle
+  /// around the user's selection. Therefore, the toolbar builder shouldn't
+  /// assume that this focal point is a single pixel.
+  final toolbarFocalPoint = LeaderLink();
+
+  /// (Optional) Builder to create the visual representation of the floating
+  /// toolbar.
+  ///
+  /// If [toolbarBuilder] is `null`, a default iOS toolbar is displayed.
+  final DocumentFloatingToolbarBuilder? toolbarBuilder;
+
+  /// Creates a clipper that restricts where the toolbar and magnifier can
+  /// appear in the overlay.
+  ///
+  /// If no clipper factory method is provided, then the overlay controls
+  /// will be allowed to appear anywhere in the overlay in which they sit
+  /// (probably the entire screen).
+  final CustomClipper<Rect> Function(BuildContext overlayContext)? createOverlayControlsClipper;
+}
 
 /// Document gesture interactor that's designed for iOS touch input, e.g.,
 /// drag to scroll, double and triple tap to select content, and drag
@@ -62,7 +211,7 @@ class SuperMessageIosTouchInteractor extends StatefulWidget {
 
 class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInteractor>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  SuperReaderIosControlsController? _controlsController;
+  SuperMessageIosControlsController? _controlsController;
 
   Offset? _globalStartDragOffset;
   Offset? _dragStartInDoc;
@@ -102,7 +251,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _controlsController = SuperReaderIosControlsScope.rootOf(context);
+    _controlsController = SuperMessageIosControlsScope.rootOf(context);
   }
 
   @override
