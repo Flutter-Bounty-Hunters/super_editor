@@ -13,6 +13,7 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
+import 'package:super_editor/src/infrastructure/flutter/eager_pan_gesture_recognizer.dart';
 import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/platforms/android/android_document_controls.dart';
@@ -82,9 +83,6 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
     widget.editor.composer.selectionNotifier.addListener(_onSelectionChange);
 
     _upstreamHandleGesturesDelegate = DocumentHandleGestureDelegate(
-      onTap: () {
-        // Register tap down to win gesture arena ASAP.
-      },
       onPanStart: (details) => _onHandlePanStart(details, HandleType.upstream),
       onPanUpdate: _onHandlePanUpdate,
       onPanEnd: (details) => _onHandlePanEnd(details, HandleType.upstream),
@@ -309,11 +307,12 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
     return Stack(
       children: [
         widget.child!,
-        OverlayPortal(
-          controller: _overlayController,
-          overlayChildBuilder: _buildOverlay,
-          child: const SizedBox(),
-        ),
+        // OverlayPortal(
+        //   controller: _overlayController,
+        //   overlayChildBuilder: _buildOverlay,
+        //   child: const SizedBox(),
+        // ),
+        Positioned.fill(child: _buildOverlay(context)),
       ],
     );
   }
@@ -357,6 +356,7 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
       ];
     }
 
+    final gestureSettings = MediaQuery.maybeOf(context)?.gestureSettings;
     return [
       ValueListenableBuilder(
         valueListenable: _controlsController!.shouldShowExpandedHandles,
@@ -373,13 +373,28 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
             // Use the offset to account for the invisible expanded touch region around the handle.
             offset:
                 -AndroidSelectionHandle.defaultTouchRegionExpansion.topRight * MediaQuery.devicePixelRatioOf(context),
-            child: GestureDetector(
-              onTapDown: _upstreamHandleGesturesDelegate.onTapDown,
-              onPanStart: _upstreamHandleGesturesDelegate.onPanStart,
-              onPanUpdate: _upstreamHandleGesturesDelegate.onPanUpdate,
-              onPanEnd: _upstreamHandleGesturesDelegate.onPanEnd,
-              onPanCancel: _upstreamHandleGesturesDelegate.onPanCancel,
-              dragStartBehavior: DragStartBehavior.down,
+            child: RawGestureDetector(
+              gestures: <Type, GestureRecognizerFactory>{
+                EagerPanGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerPanGestureRecognizer>(
+                  () => EagerPanGestureRecognizer(),
+                  (EagerPanGestureRecognizer instance) {
+                    instance
+                      ..shouldAccept = () {
+                        return true;
+                      }
+                      ..dragStartBehavior = DragStartBehavior.down
+                      ..onDown = (DragDownDetails details) {
+                        // No-op: this method is only here to beat out any ancestor
+                        // Scrollable that's also trying to drag.
+                      }
+                      ..onStart = _upstreamHandleGesturesDelegate.onPanStart
+                      ..onUpdate = _upstreamHandleGesturesDelegate.onPanUpdate
+                      ..onEnd = _upstreamHandleGesturesDelegate.onPanEnd
+                      ..onCancel = _upstreamHandleGesturesDelegate.onPanCancel
+                      ..gestureSettings = gestureSettings;
+                  },
+                ),
+              },
               child: AndroidSelectionHandle(
                 key: DocumentKeys.upstreamHandle,
                 handleType: HandleType.upstream,
@@ -404,13 +419,28 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
             // Use the offset to account for the invisible expanded touch region around the handle.
             offset:
                 -AndroidSelectionHandle.defaultTouchRegionExpansion.topLeft * MediaQuery.devicePixelRatioOf(context),
-            child: GestureDetector(
-              onTapDown: _downstreamHandleGesturesDelegate.onTapDown,
-              onPanStart: _downstreamHandleGesturesDelegate.onPanStart,
-              onPanUpdate: _downstreamHandleGesturesDelegate.onPanUpdate,
-              onPanEnd: _downstreamHandleGesturesDelegate.onPanEnd,
-              onPanCancel: _downstreamHandleGesturesDelegate.onPanCancel,
-              dragStartBehavior: DragStartBehavior.down,
+            child: RawGestureDetector(
+              gestures: <Type, GestureRecognizerFactory>{
+                EagerPanGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerPanGestureRecognizer>(
+                  () => EagerPanGestureRecognizer(),
+                  (EagerPanGestureRecognizer instance) {
+                    instance
+                      ..shouldAccept = () {
+                        return true;
+                      }
+                      ..dragStartBehavior = DragStartBehavior.down
+                      ..onDown = (DragDownDetails details) {
+                        // No-op: this method is only here to beat out any ancestor
+                        // Scrollable that's also trying to drag.
+                      }
+                      ..onStart = _downstreamHandleGesturesDelegate.onPanStart
+                      ..onUpdate = _downstreamHandleGesturesDelegate.onPanUpdate
+                      ..onEnd = _downstreamHandleGesturesDelegate.onPanEnd
+                      ..onCancel = _downstreamHandleGesturesDelegate.onPanCancel
+                      ..gestureSettings = gestureSettings;
+                  },
+                ),
+              },
               child: AndroidSelectionHandle(
                 key: DocumentKeys.downstreamHandle,
                 handleType: HandleType.downstream,
