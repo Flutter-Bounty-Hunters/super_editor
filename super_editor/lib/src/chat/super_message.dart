@@ -389,6 +389,8 @@ class _SuperMessageState extends State<SuperMessage> {
                     editorControlsController: SuperEditorAndroidControlsScope.rootOf(context),
                     focalPoint: focalPoint,
                   ),
+                  // Show controls above `child`, not in app overlay.
+                  showInAppOverlay: false,
                   child: child,
                 ),
               );

@@ -34,6 +34,7 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
     required this.editor,
     required this.getDocumentLayout,
     this.defaultToolbarBuilder,
+    this.showInAppOverlay = true,
     this.showDebugPaint = false,
     this.child,
   });
@@ -45,6 +46,15 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
   final DocumentLayoutResolver getDocumentLayout;
 
   final DocumentFloatingToolbarBuilder? defaultToolbarBuilder;
+
+  /// Whether to show the controls (handles, toolbar, etc) in the application overlay (`true`),
+  /// or whether to just place the controls on top of the given [child] (`false`).
+  ///
+  /// Showing the controls in the app overlay is fine, but be care with situations such as
+  /// selection handles being rendered in a list that the user can scroll, because those handles
+  /// might appear on top of other UI elements that should cover the handles. For example, the
+  /// handles might appear on top of a bottom sheet, when the user scrolls the content behind the sheet.
+  final bool showInAppOverlay;
 
   /// Paints some extra visual ornamentation to help with
   /// debugging, when `true`.
@@ -305,14 +315,19 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
   @override
   Widget build(BuildContext context) {
     return Stack(
+      // Don't clip at stack boundary when we're showing the overlay controls
+      // within the stack.
+      clipBehavior: widget.showInAppOverlay ? Clip.hardEdge : Clip.none,
       children: [
         widget.child!,
-        // OverlayPortal(
-        //   controller: _overlayController,
-        //   overlayChildBuilder: _buildOverlay,
-        //   child: const SizedBox(),
-        // ),
-        Positioned.fill(child: _buildOverlay(context)),
+        if (widget.showInAppOverlay)
+          OverlayPortal(
+            controller: _overlayController,
+            overlayChildBuilder: _buildOverlay,
+            child: const SizedBox(),
+          )
+        else
+          Positioned.fill(child: _buildOverlay(context)),
       ],
     );
   }
