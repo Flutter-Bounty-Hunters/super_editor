@@ -332,6 +332,7 @@ class HorizontalRuleConversionReaction extends EditReaction {
         ),
       ),
       InsertNodeAtIndexRequest(
+        parentNodeId: document.getNodePathById(paragraph.id)?.parent?.nodeId,
         nodeIndex: document.getNodeIndexById(paragraph.id),
         newNode: HorizontalRuleNode(
           id: Editor.createNodeId(),

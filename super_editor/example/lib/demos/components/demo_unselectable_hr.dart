@@ -71,7 +71,11 @@ class UnselectableHrComponentBuilder implements ComponentBuilder {
   const UnselectableHrComponentBuilder();
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    PresenterContext context,
+    Document document,
+    DocumentNode node,
+  ) {
     // This builder can work with the standard horizontal rule view model, so
     // we'll defer to the standard horizontal rule builder.
     return null;

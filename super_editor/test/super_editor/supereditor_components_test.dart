@@ -130,7 +130,11 @@ class _FakeImageComponentBuilder implements ComponentBuilder {
   const _FakeImageComponentBuilder();
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    PresenterContext context,
+    Document document,
+    DocumentNode node,
+  ) {
     return null;
   }
 

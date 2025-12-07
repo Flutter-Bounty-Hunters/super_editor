@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_component.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 import '_presenter.dart';
@@ -70,6 +72,11 @@ class SingleColumnDocumentLayout extends StatefulWidget {
 class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout> implements DocumentLayout {
   final Map<String, GlobalKey> _nodeIdsToComponentKeys = {};
   final Map<GlobalKey, String> _componentKeysToNodeIds = {};
+
+  /// Similar to [_nodeIdsToComponentKeys], but only for non-root nodes, so that it
+  /// won't affect existing logic based on _nodeIdsToComponentKeys iterations.
+  /// Used only to reuse component keys between renders
+  final Map<String, Map<String, GlobalKey<DocumentComponent>>> _parentNodeIdToChildrenComponentKeys = {};
 
   // Keys are cached in top-to-bottom order so that we can visually
   // traverse components without repeatedly querying a `Document`
@@ -165,7 +172,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       // Return the position at the start of the first node.
       final firstPosition = _findFirstPosition();
       if (firstPosition != null) {
-        return firstPosition;
+        return firstPosition.toLeafPosition();
       }
     }
 
@@ -174,7 +181,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       // Return the position at the end of the last node.
       final lastPosition = _findLastPosition();
       if (lastPosition != null) {
-        return lastPosition;
+        return lastPosition.toLeafPosition();
       }
     }
 
@@ -200,7 +207,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final selectionAtOffset = DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: componentPosition,
-    );
+    ).toLeafPosition();
     editorLayoutLog.info(' - selection at offset: $selectionAtOffset');
     return selectionAtOffset;
   }
@@ -360,16 +367,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   List<String> _getNodeIdsBetween(String baseNodeId, String extentNodeId) {
-    final baseComponentKey = _nodeIdsToComponentKeys[baseNodeId]!;
-    final baseComponentIndex = _topToBottomComponentKeys.indexOf(baseComponentKey);
-    final extentComponentKey = _nodeIdsToComponentKeys[extentNodeId]!;
-    final extentComponentIndex = _topToBottomComponentKeys.indexOf(extentComponentKey);
+    final doc = widget.presenter.document;
 
-    final topNodeIndex = baseComponentIndex <= extentComponentIndex ? baseComponentIndex : extentComponentIndex;
-    final bottomNodeIndex = topNodeIndex == baseComponentIndex ? extentComponentIndex : baseComponentIndex;
-    final componentsInside = _topToBottomComponentKeys.sublist(topNodeIndex, bottomNodeIndex + 1);
+    final baseNode = doc.getNodeById(baseNodeId)!;
+    final extentNode = doc.getNodeById(extentNodeId)!;
+    final affinity = doc.getAffinityBetweenNodes(baseNode, extentNode);
 
-    return componentsInside.map((componentKey) => _componentKeysToNodeIds[componentKey]!).toList();
+    final pathAbove = doc.getNodePathById(affinity == TextAffinity.downstream ? baseNodeId : extentNodeId);
+    final pathBelow = doc.getNodePathById(affinity == TextAffinity.downstream ? extentNodeId : baseNodeId);
+
+    return doc.getNodesInsideById(pathAbove!.nodeId, pathBelow!.nodeId).map((node) => node.id).toList();
   }
 
   @override
@@ -412,15 +419,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       if (componentOverlap != null) {
         editorLayoutLog.fine(' - drag intersects: $componentKey}');
         editorLayoutLog.fine(' - intersection: $componentOverlap');
-        final componentBaseOffset = _componentOffset(
-          componentKey.currentContext!.findRenderObject() as RenderBox,
-          baseOffset,
-        );
+        final componentRenderBox = componentKey.currentContext!.findRenderObject() as RenderBox;
+        final componentSize = componentRenderBox.size;
+        final componentBaseOffset = _componentOffset(componentRenderBox, baseOffset);
         editorLayoutLog.fine(' - base component offset: $componentBaseOffset');
-        final componentExtentOffset = _componentOffset(
-          componentKey.currentContext!.findRenderObject() as RenderBox,
-          extentOffset,
-        );
+        final componentExtentOffset = _componentOffset(componentRenderBox, extentOffset);
         editorLayoutLog.fine(' - extent component offset: $componentExtentOffset');
 
         if (topNodeId == null) {
@@ -428,16 +431,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
           // first intersecting component that we find must be the top node of
           // the selected area.
           topNodeId = _componentKeysToNodeIds[componentKey];
-          topNodeBasePosition = _getNodePositionForComponentOffset(component, componentBaseOffset);
-          topNodeExtentPosition = _getNodePositionForComponentOffset(component, componentExtentOffset);
+          topNodeBasePosition = _getNodePositionForComponentOffset(component, componentSize, componentBaseOffset);
+          topNodeExtentPosition = _getNodePositionForComponentOffset(component, componentSize, componentExtentOffset);
         }
         // We continuously update the bottom node with every additional
         // intersection that we find. This way, when the iteration ends,
         // the last bottom node that we assigned must be the actual bottom
         // node within the selected area.
         bottomNodeId = _componentKeysToNodeIds[componentKey];
-        bottomNodeBasePosition = _getNodePositionForComponentOffset(component, componentBaseOffset);
-        bottomNodeExtentPosition = _getNodePositionForComponentOffset(component, componentExtentOffset);
+        bottomNodeBasePosition = _getNodePositionForComponentOffset(component, componentSize, componentBaseOffset);
+        bottomNodeExtentPosition = _getNodePositionForComponentOffset(component, componentSize, componentExtentOffset);
       } else if (topNodeId != null) {
         // We already found an overlapping component and the current component doesn't
         // overlap with the region.
@@ -462,11 +465,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         base: DocumentPosition(
           nodeId: topNodeId,
           nodePosition: topNodeBasePosition,
-        ),
+        ).toLeafPosition(),
         extent: DocumentPosition(
           nodeId: bottomNodeId,
           nodePosition: topNodeExtentPosition,
-        ),
+        ).toLeafPosition(),
       );
     } else {
       // Region covers multiple components.
@@ -480,11 +483,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         base: DocumentPosition(
           nodeId: isDraggingDown ? topNodeId : bottomNodeId,
           nodePosition: isDraggingDown ? topNodeBasePosition : bottomNodeBasePosition,
-        ),
+        ).toLeafPosition(),
         extent: DocumentPosition(
           nodeId: isDraggingDown ? bottomNodeId : topNodeId,
           nodePosition: isDraggingDown ? bottomNodeExtentPosition : topNodeExtentPosition,
-        ),
+        ).toLeafPosition(),
       );
     }
   }
@@ -512,11 +515,16 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   /// If the [componentOffset] is above the component, then the component's
   /// "beginning" position is returned. If the [componentOffset] is below
   /// the component, then the component's "end" position is returned.
-  NodePosition? _getNodePositionForComponentOffset(DocumentComponent component, Offset componentOffset) {
+  NodePosition? _getNodePositionForComponentOffset(
+      DocumentComponent component, Size componentSize, Offset componentOffset) {
     if (componentOffset.dy < 0) {
       return component.getBeginningPosition();
     }
-    if (componentOffset.dy > component.getRectForPosition(component.getEndPosition()).bottom) {
+
+    // In CompositeComponent we can't be sure that all content placed vertically one by one
+    // so let's leave to DocumentComponent implementation the layout-based decision
+    // on getEndPosition call within component bounds
+    if (componentOffset.dy > componentSize.height) {
       return component.getEndPosition();
     }
 
@@ -593,7 +601,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: component.getBeginningPosition(),
-    );
+    ).toLeafPosition();
   }
 
   /// Returns the [DocumentPosition] at the end of the last node or `null` if the document is empty.
@@ -608,7 +616,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: _componentKeysToNodeIds[componentKey]!,
       nodePosition: component.getEndPosition(),
-    );
+    ).toLeafPosition();
   }
 
   bool _isOffsetInComponent(RenderBox componentBox, Offset documentOffset) {
@@ -648,21 +656,54 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
   @override
   DocumentComponent? getComponentByNodeId(String nodeId) {
-    final key = _nodeIdsToComponentKeys[nodeId];
+    final path = widget.presenter.document.getNodePathById(nodeId);
+    if (path == null) {
+      editorLayoutLog.info('WARNING: could not find NodePath for node ID: $nodeId');
+      return null;
+    }
+    var currentId = path.rootNodeId;
+    var key = _nodeIdsToComponentKeys[currentId];
     if (key == null) {
       editorLayoutLog.info('WARNING: could not find component for node ID: $nodeId');
       return null;
     }
-    if (key.currentState is! DocumentComponent) {
-      editorLayoutLog.info(
-          'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: ${key.currentState}, widget: ${key.currentWidget}, context: ${key.currentContext}');
+    var state = key.currentState;
+    for (var childId in path.skip(1)) {
+      if (state is! CompositeComponent) {
+        editorLayoutLog.info('WARNING: found component but it\'s not a CompositeComponent: $childId, state: $state');
+        return null;
+      }
+      state = state.getChildComponentById(childId);
+    }
+    if (state is! DocumentComponent) {
+      editorLayoutLog
+          .info('WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: $state');
       if (kDebugMode) {
         throw Exception(
-            'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: ${key.currentState}, widget: ${key.currentWidget}, context: ${key.currentContext}');
+            'WARNING: found component but it\'s not a DocumentComponent: $nodeId, layout key: $key, state: $state');
       }
       return null;
     }
-    return key.currentState as DocumentComponent;
+
+    return state;
+  }
+
+  @override
+  DocumentComponent? getComponentByNodePath(NodePath nodePath) {
+    var component = getComponentByNodeId(nodePath.rootNodeId);
+    for (final childId in nodePath.skip(1)) {
+      if (component is! DocumentComponent) {
+        final warningText =
+            'WARNING: found child component but it\'s not a DocumentComponent: ${component.runtimeType}';
+        editorLayoutLog.info(warningText);
+        if (kDebugMode) {
+          throw Exception(warningText);
+        }
+        return null;
+      }
+      component = (component as CompositeComponent).getChildComponentById(childId);
+    }
+    return component;
   }
 
   @override
@@ -703,7 +744,7 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     return DocumentPosition(
       nodeId: nodeId!,
       nodePosition: nodePosition,
-    );
+    ).toLeafPosition();
   }
 
   @override
@@ -743,6 +784,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final newNodeIds = <GlobalKey, String>{};
     _topToBottomComponentKeys.clear();
 
+    final childComponentProvider = _ChildrenComponentKeyProvider(_parentNodeIdToChildrenComponentKeys);
+
     final viewModel = widget.presenter.viewModel;
     editorLayoutLog.fine("Rendering layout view model: ${viewModel.hashCode}");
     for (final componentViewModel in viewModel.componentViewModels) {
@@ -752,6 +795,8 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
       );
       newNodeIds[componentKey] = componentViewModel.nodeId;
       editorLayoutLog.finer('Node -> Key: ${componentViewModel.nodeId} -> $componentKey');
+
+      childComponentProvider.registerComponentKeysForChildren(componentViewModel.nodeId, componentViewModel);
 
       _topToBottomComponentKeys.add(componentKey);
 
@@ -767,11 +812,14 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
               componentBuilders: widget.componentBuilders,
               componentKey: componentKey,
               componentViewModel: newComponentViewModel,
+              childComponentKeyProvider: (childId) => childComponentProvider.getKey(componentViewModel.nodeId, childId),
             );
           },
         ),
       );
     }
+
+    childComponentProvider.replaceExisting();
 
     _nodeIdsToComponentKeys
       ..clear()
@@ -868,6 +916,27 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final contentOffset = componentBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
     return contentOffset & componentBox.size;
   }
+
+  @override
+  bool displayCaretForExpandedSelectionWithExtent(DocumentPosition position) {
+    final path = widget.presenter.document.getNodePathById(position.nodeId);
+    if (path == null || path.isRoot) {
+      return true;
+    }
+    var childPosition = CompositeNodePosition(path.last, position.nodePosition);
+    // Ask each CompositeNode, if they would like to have caret inside selection
+    for (var i = 0; i < path.length - 1; i += 1) {
+      final component = getComponentByNodeId(path[i]);
+      if (component is! CompositeComponent) {
+        throw Exception('Unexpected component "${component.runtimeType}". CompositeComponent was expected');
+      }
+      if (!component.displayCaretWithExpandedSelection(childPosition)) {
+        return false;
+      }
+      childPosition = CompositeNodePosition(path[i], childPosition);
+    }
+    return true;
+  }
 }
 
 class _PresenterComponentBuilder extends StatefulWidget {
@@ -944,7 +1013,7 @@ class _PresenterComponentBuilderState extends State<_PresenterComponentBuilder> 
 /// Builds a component widget for the given [componentViewModel] and
 /// binds it to the given [componentKey].
 ///
-/// The specific widget that's build is determined by the given
+/// The specific widget that's built is determined by the given
 /// [componentBuilders]. The component widget is rebuilt whenever the
 /// given [presenter] reports that the
 class _Component extends StatelessWidget {
@@ -958,6 +1027,7 @@ class _Component extends StatelessWidget {
     // constraint is >= 3.6.0, just ignore `unused_element_parameter`.
     // ignore: unused_element, unused_element_parameter
     this.showDebugPaint = false,
+    required this.childComponentKeyProvider,
   }) : super(key: key);
 
   /// Builders for every type of component that this layout displays.
@@ -977,12 +1047,35 @@ class _Component extends StatelessWidget {
   /// Whether to add debug paint to the component.
   final bool showDebugPaint;
 
+  final GlobalKey<DocumentComponent> Function(String nodeId) childComponentKeyProvider;
+
   @override
   Widget build(BuildContext context) {
     final componentContext = SingleColumnDocumentComponentContext(
       context: context,
       componentKey: componentKey,
+      buildChildComponent: _createChildBuilder(context),
     );
+
+    final component = _buildComponent(
+      componentContext,
+      componentBuilders,
+      componentViewModel,
+      showDebugPaint: showDebugPaint,
+    );
+    if (component != null) {
+      return component;
+    }
+
+    return const SizedBox();
+  }
+
+  Widget? _buildComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    List<ComponentBuilder> componentBuilders,
+    SingleColumnLayoutComponentViewModel componentViewModel, {
+    bool showDebugPaint = false,
+  }) {
     for (final componentBuilder in componentBuilders) {
       var component = componentBuilder.createComponent(componentContext, componentViewModel);
       if (component != null) {
@@ -1002,7 +1095,29 @@ class _Component extends StatelessWidget {
         return showDebugPaint ? _wrapWithDebugWidget(component) : component;
       }
     }
-    return const SizedBox();
+
+    return null;
+  }
+
+  ComponentWidgetBuilder _createChildBuilder(BuildContext context) {
+    return (SingleColumnLayoutComponentViewModel componentViewModel) {
+      final childComponentKey = childComponentKeyProvider(componentViewModel.nodeId);
+      return (
+        childComponentKey,
+        _buildComponent(
+              SingleColumnDocumentComponentContext(
+                context: context,
+                componentKey: childComponentKey,
+                // Recursively generate functions to build deeper and deeper children.
+                buildChildComponent: _createChildBuilder(context),
+              ),
+              componentBuilders,
+              componentViewModel,
+              showDebugPaint: showDebugPaint,
+            ) ??
+            const SizedBox(),
+      );
+    };
   }
 
   Widget _wrapWithDebugWidget(Widget component) {
@@ -1012,5 +1127,44 @@ class _Component extends StatelessWidget {
       ),
       child: component,
     );
+  }
+}
+
+class _ChildrenComponentKeyProvider {
+  _ChildrenComponentKeyProvider(this._existing);
+
+  final Map<String, Map<String, GlobalKey<DocumentComponent>>> _existing;
+  final _new = <String, Map<String, GlobalKey<DocumentComponent>>>{};
+
+  /// Returns a [GlobalKey] for the component at [nodeId] within [rootNodeId].
+  /// Reuses existing keys when possible, otherwise creates and registers a new one.
+  void createKeyForNode(String rootNodeId, String nodeId) {
+    // 1. Reuse from previous render
+    // 2. Reuse from current render
+    // 3. Create new if not found
+    final key = _existing[rootNodeId]?[nodeId] ?? GlobalKey<DocumentComponent>();
+
+    // 4. Register it in _new
+    final rootMap = _new.putIfAbsent(rootNodeId, () => <String, GlobalKey<DocumentComponent>>{});
+    rootMap[nodeId] = key;
+  }
+
+  GlobalKey<DocumentComponent> getKey(String rootNodeId, String nodeId) {
+    return _existing[rootNodeId]?[nodeId] ?? _new[rootNodeId]![nodeId]!;
+  }
+
+  void registerComponentKeysForChildren(String rootNodeId, SingleColumnLayoutComponentViewModel viewModel) {
+    if (viewModel is CompositeNodeViewModel) {
+      for (final child in viewModel.children) {
+        createKeyForNode(rootNodeId, child.nodeId);
+        registerComponentKeysForChildren(rootNodeId, child);
+      }
+    }
+  }
+
+  void replaceExisting() {
+    _existing.clear();
+    _existing.addAll(_new);
+    _new.clear();
   }
 }

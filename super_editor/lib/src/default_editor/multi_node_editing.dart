@@ -4,10 +4,12 @@ import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
+import 'package:super_editor/src/core/document_composite_nodes.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/common_editor_operations.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -214,10 +216,15 @@ class PasteStructuredContentEditorCommand extends EditCommand {
     }
 
     if (deleteInitiallySelectedNode) {
+      final parentNodeId = document.getNodePathById(currentNodeWithSelection.id)?.parent?.nodeId;
       document.deleteNode(currentNodeWithSelection.id);
       executor.logChanges([
         DocumentEdit(
-          NodeRemovedEvent(currentNodeWithSelection.id, currentNodeWithSelection),
+          NodeRemovedEvent(
+            currentNodeWithSelection.id,
+            currentNodeWithSelection,
+            parentNodeId: parentNodeId,
+          ),
         )
       ]);
     }
@@ -279,20 +286,24 @@ class InsertNodeAtEndOfDocumentRequest implements EditRequest {
 
 class InsertNodeAtIndexRequest implements EditRequest {
   InsertNodeAtIndexRequest({
+    this.parentNodeId,
     required this.nodeIndex,
     required this.newNode,
   });
 
+  final String? parentNodeId;
   final int nodeIndex;
   final DocumentNode newNode;
 }
 
 class InsertNodeAtIndexCommand extends EditCommand {
   InsertNodeAtIndexCommand({
+    this.parentNodeId,
     required this.nodeIndex,
     required this.newNode,
   });
 
+  final String? parentNodeId;
   final int nodeIndex;
   final DocumentNode newNode;
 
@@ -302,7 +313,8 @@ class InsertNodeAtIndexCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     final document = context.document;
-    document.insertNodeAt(nodeIndex, newNode);
+    document.insertNodeAt(nodeIndex, newNode, parentNodeId: parentNodeId);
+
     executor.logChanges([
       DocumentEdit(
         NodeInsertedEvent(newNode.id, nodeIndex),
@@ -411,6 +423,7 @@ class InsertNodeAtCaretCommand extends EditCommand {
     if (selectedNode is! ParagraphNode) {
       return;
     }
+    final selectedNodePath = document.getNodePathById(selectedNodeId)!;
 
     final paragraphPosition = composer.selection!.extent.nodePosition as TextNodePosition;
     final beginningOfParagraph = selectedNode.beginningPosition;
@@ -434,7 +447,11 @@ class InsertNodeAtCaretCommand extends EditCommand {
       );
     } else if (paragraphPosition.offset == beginningOfParagraph.offset) {
       // Insert block item after the paragraph.
-      document.insertNodeAt(document.getNodeIndexById(selectedNode.id), newNode);
+      document.insertNodeAt(
+        document.getNodeIndexInParentByPath(selectedNodePath),
+        newNode,
+        parentNodeId: selectedNodePath.parent?.nodeId,
+      );
       executor.logChanges([
         DocumentEdit(
           NodeInsertedEvent(newNode.id, document.getNodeIndexById(newNode.id)),
@@ -602,12 +619,13 @@ class ReplaceNodeCommand extends EditCommand {
     final oldNode = document.getNodeById(existingNodeId)!;
     document.replaceNodeById(oldNode.id, newNode);
 
+    final parentNodeId = document.getNodePathById(oldNode.id)?.parent?.nodeId;
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(existingNodeId, oldNode),
+        NodeRemovedEvent(existingNodeId, oldNode, parentNodeId: parentNodeId),
       ),
       DocumentEdit(
-        NodeInsertedEvent(newNode.id, document.getNodeIndexById(newNode.id)),
+        NodeInsertedEvent(newNode.id, document.getNodeIndexInParentById(newNode.id), parentNodeId: parentNodeId),
       ),
     ]);
   }
@@ -656,12 +674,13 @@ class ReplaceNodeWithEmptyParagraphWithCaretCommand extends EditCommand {
     );
     document.replaceNodeById(oldNode.id, newNode);
 
+    final parentNodeId = document.getNodePathById(oldNode.id)?.parent?.nodeId;
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(oldNode.id, oldNode),
+        NodeRemovedEvent(oldNode.id, oldNode, parentNodeId: parentNodeId),
       ),
       DocumentEdit(
-        NodeInsertedEvent(newNode.id, document.getNodeIndexById(newNode.id)),
+        NodeInsertedEvent(newNode.id, document.getNodeIndexInParentById(newNode.id), parentNodeId: parentNodeId),
       ),
     ]);
 
@@ -708,6 +727,15 @@ class DeleteContentCommand extends EditCommand {
     final nodes = document.getNodesInside(documentRange.start, documentRange.end);
     final normalizedRange = documentRange.normalize(document);
 
+    // Track all changes into currentEvents, so later we can obtain id of deleted nodes
+    // if later we decide to re-create them
+    final currentEvents = <EditEvent>[];
+
+    void logChanges(List<EditEvent> changes) {
+      currentEvents.addAll(changes);
+      executor.logChanges(changes);
+    }
+
     if (nodes.length == 1) {
       // This is a selection within a single node.
 
@@ -738,8 +766,7 @@ class DeleteContentCommand extends EditCommand {
         node: nodes.first,
       );
 
-      executor.logChanges(changeList);
-
+      logChanges(changeList);
       return;
     }
 
@@ -747,18 +774,20 @@ class DeleteContentCommand extends EditCommand {
     if (startNode == null) {
       throw Exception('Could not locate start node for DeleteSelectionCommand: ${normalizedRange.start}');
     }
-    final startNodeIndex = document.getNodeIndexById(startNode.id);
+    final startNodePath = document.getNodePathById(startNode.id)!;
+    final startNodeIndex = document.getNodeIndexInParentByPath(startNodePath);
 
     final endNode = document.getNode(normalizedRange.end);
     if (endNode == null) {
       throw Exception('Could not locate end node for DeleteSelectionCommand: ${normalizedRange.end}');
     }
+    final endNodePath = document.getNodePathById(endNode.id)!;
 
     // We expect that this command will only be called when the delete range
     // contains at least one deletable node.
-    final firstDeletableNodeId = nodes.firstWhere((node) => node.isDeletable).id;
+    final firstDeletableNodePath = document.getNodePathById(nodes.firstWhere((node) => node.isDeletable).id)!;
 
-    executor.logChanges(
+    logChanges(
       _deleteNodesBetweenFirstAndLast(
         document: document,
         startNode: startNode,
@@ -768,7 +797,7 @@ class DeleteContentCommand extends EditCommand {
 
     if (startNode.isDeletable) {
       _log.log('DeleteSelectionCommand', ' - deleting partial selection within the starting node.');
-      executor.logChanges(
+      logChanges(
         _deleteRangeWithinNodeFromPositionToEnd(
           document: document,
           node: startNode,
@@ -780,7 +809,7 @@ class DeleteContentCommand extends EditCommand {
 
     if (endNode.isDeletable) {
       _log.log('DeleteSelectionCommand', ' - deleting partial selection within ending node.');
-      executor.logChanges(
+      logChanges(
         _deleteRangeWithinNodeFromStartToPosition(
           document: document,
           node: endNode,
@@ -810,19 +839,20 @@ class DeleteContentCommand extends EditCommand {
       // new empty paragraph. Otherwise, use the ID of the first deletable node in the range.
       // We expect that this method is never called when there are no deletable nodes
       // in the range.
-      final emptyParagraphId = startNode.isDeletable
-          ? startNode.id
+      final emptyParagraphPath = startNode.isDeletable
+          ? startNodePath
           : endNode.isDeletable
-              ? endNode.id
-              : firstDeletableNodeId;
+              ? endNodePath
+              : firstDeletableNodePath;
 
       document.insertNodeAt(
         insertIndex,
-        ParagraphNode(id: emptyParagraphId, text: AttributedText()),
+        ParagraphNode(id: emptyParagraphPath.nodeId, text: AttributedText()),
+        parentNodeId: emptyParagraphPath.parent?.nodeId,
       );
-      executor.logChanges([
+      logChanges([
         DocumentEdit(
-          NodeChangeEvent(emptyParagraphId),
+          NodeChangeEvent(emptyParagraphPath.nodeId),
         )
       ]);
     }
@@ -833,40 +863,52 @@ class DeleteContentCommand extends EditCommand {
     final startNodeAfterDeletion = document.getNodeById(startNode.id);
     final endNodeAfterDeletion = document.getNodeById(endNode.id);
 
-    // If the start node and end nodes are both `TextNode`s
-    // then we need to consider merging them if one or both are
+    // If the start node and end nodes are both `TextNode`s and are not children
+    // of isolating CompositeNodes, then we need to consider merging them if one or both are
     // empty.
-    if (startNodeAfterDeletion is! TextNode || endNodeAfterDeletion is! TextNode) {
-      // Neither of the end nodes are `TextNode`s, so there's nothing
-      // for us to merge. We're done.
-      return;
+    final mergeStartAndEndNodes = startNodeAfterDeletion is TextNode &&
+        endNodeAfterDeletion is TextNode &&
+        !document.shouldIsolateNodes([startNodeAfterDeletion.id, endNodeAfterDeletion.id]);
+
+    if (mergeStartAndEndNodes) {
+      _log.log('DeleteSelectionCommand', ' - combining last node text with first node text');
+      logChanges([
+        DocumentEdit(
+          TextInsertionEvent(
+            nodeId: startNodeAfterDeletion.id,
+            offset: startNodeAfterDeletion.text.length,
+            text: endNodeAfterDeletion.text,
+          ),
+        ),
+      ]);
+
+      document.replaceNodeById(
+        startNodeAfterDeletion.id,
+        startNodeAfterDeletion.copyTextNodeWith(
+          text: startNodeAfterDeletion.text.copyAndAppend(endNodeAfterDeletion.text),
+        ),
+      );
+
+      final endNodeParentId = document.getNodePathById(endNodeAfterDeletion.id)?.parent?.nodeId;
+      _log.log('DeleteSelectionCommand', ' - deleting last node');
+      document.deleteNode(endNodeAfterDeletion.id);
+      logChanges([
+        DocumentEdit(
+          NodeRemovedEvent(
+            endNodeAfterDeletion.id,
+            endNodeAfterDeletion,
+            parentNodeId: endNodeParentId,
+          ),
+        )
+      ]);
     }
 
-    _log.log('DeleteSelectionCommand', ' - combining last node text with first node text');
-    executor.logChanges([
-      DocumentEdit(
-        TextInsertionEvent(
-          nodeId: startNodeAfterDeletion.id,
-          offset: startNodeAfterDeletion.text.length,
-          text: endNodeAfterDeletion.text,
-        ),
-      ),
-    ]);
+    logChanges(document.postProcessCompositeNodesAfterDeletion(
+      startPath: startNodePath,
+      endPath: endNodePath,
+      changes: currentEvents,
+    ));
 
-    document.replaceNodeById(
-      startNodeAfterDeletion.id,
-      startNodeAfterDeletion.copyTextNodeWith(
-        text: startNodeAfterDeletion.text.copyAndAppend(endNodeAfterDeletion.text),
-      ),
-    );
-
-    _log.log('DeleteSelectionCommand', ' - deleting last node');
-    document.deleteNode(endNodeAfterDeletion.id);
-    executor.logChanges([
-      DocumentEdit(
-        NodeRemovedEvent(endNodeAfterDeletion.id, endNodeAfterDeletion),
-      )
-    ]);
     _log.log('DeleteSelectionCommand', ' - done with selection deletion');
   }
 
@@ -953,20 +995,23 @@ class DeleteContentCommand extends EditCommand {
     // Remove nodes from last to first so that indices don't get
     // screwed up during removal.
     final changes = <EditEvent>[];
-    var nodeToDelete = document.getNodeAfter(startNode);
-    while (nodeToDelete != null && nodeToDelete != endNode) {
-      _log.log('_deleteNodesBetweenFirstAndLast', ' - deleting node: ${nodeToDelete.id}');
-      final nextNode = document.getNodeAfter(nodeToDelete);
+    for (final nodeToDelete in document.getNodesInsideById(startNode.id, endNode.id).reversed) {
+      if (nodeToDelete.id == startNode.id || nodeToDelete.id == endNode.id) {
+        // Exclude startNode and endNode as they are handled outside
+        continue;
+      }
       if (nodeToDelete.isDeletable) {
+        final parentNodeId = document.getNodePathById(nodeToDelete.id)?.parent?.nodeId;
         // This node is deletable, so delete it.
         changes.add(DocumentEdit(
-          NodeRemovedEvent(nodeToDelete.id, nodeToDelete),
+          NodeRemovedEvent(
+            nodeToDelete.id,
+            nodeToDelete,
+            parentNodeId: parentNodeId,
+          ),
         ));
         document.deleteNode(nodeToDelete.id);
       }
-
-      // Move to the next node.
-      nodeToDelete = nextNode;
     }
     return changes;
   }
@@ -993,11 +1038,16 @@ class DeleteContentCommand extends EditCommand {
     } else if (nodePosition is TextPosition && node is TextNode) {
       if (nodePosition == node.beginningPosition) {
         // All text is selected. Delete the node.
+        final parentNodeId = document.getNodePathById(node.id)?.parent?.nodeId;
         document.deleteNode(node.id);
 
         return [
           DocumentEdit(
-            NodeRemovedEvent(node.id, node),
+            NodeRemovedEvent(
+              node.id,
+              node,
+              parentNodeId: parentNodeId,
+            ),
           )
         ];
       } else {
@@ -1052,11 +1102,16 @@ class DeleteContentCommand extends EditCommand {
     } else if (nodePosition is TextPosition && node is TextNode) {
       if (nodePosition == node.endPosition) {
         // All text is selected. Delete the node.
+        final parentNodeId = document.getNodePathById(node.id)?.parent?.nodeId;
         document.deleteNode(node.id);
 
         return [
           DocumentEdit(
-            NodeRemovedEvent(node.id, node),
+            NodeRemovedEvent(
+              node.id,
+              node,
+              parentNodeId: parentNodeId,
+            ),
           )
         ];
       } else {
@@ -1110,22 +1165,36 @@ class DeleteContentCommand extends EditCommand {
 
       final newNode = ParagraphNode(id: node.id, text: AttributedText());
       document.replaceNodeById(node.id, newNode);
+      final parentNodeId = document.getNodePathById(node.id)?.parent?.nodeId;
 
       return [
         DocumentEdit(
-          NodeRemovedEvent(node.id, node),
+          NodeRemovedEvent(
+            node.id,
+            node,
+            parentNodeId: parentNodeId,
+          ),
         ),
         DocumentEdit(
-          NodeInsertedEvent(newNode.id, document.getNodeIndexById(newNode.id)),
+          NodeInsertedEvent(
+            newNode.id,
+            document.getNodeIndexInParentById(newNode.id),
+            parentNodeId: parentNodeId,
+          ),
         ),
       ];
     } else {
       _log.log('_deleteBlockNode', ' - deleting block level node');
+      final parentNodeId = document.getNodePathById(node.id)?.parent?.nodeId;
       document.deleteNode(node.id);
 
       return [
         DocumentEdit(
-          NodeRemovedEvent(node.id, node),
+          NodeRemovedEvent(
+            node.id,
+            node,
+            parentNodeId: parentNodeId,
+          ),
         )
       ];
     }
@@ -1324,11 +1393,16 @@ class DeleteNodeCommand extends EditCommand {
     }
 
     _log.log('DeleteNodeCommand', ' - deleting node');
+    final parentNodeId = document.getNodePathById(node.id)?.parent?.nodeId;
     document.deleteNode(node.id);
     _log.log('DeleteNodeCommand', ' - done with node deletion');
     executor.logChanges([
       DocumentEdit(
-        NodeRemovedEvent(node.id, node),
+        NodeRemovedEvent(
+          node.id,
+          node,
+          parentNodeId: parentNodeId,
+        ),
       )
     ]);
   }

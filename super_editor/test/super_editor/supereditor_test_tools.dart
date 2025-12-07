@@ -1023,7 +1023,11 @@ class FakeImageComponentBuilder implements ComponentBuilder {
   final Color? fillColor;
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    PresenterContext context,
+    Document document,
+    DocumentNode node,
+  ) {
     return null;
   }
 
@@ -1054,7 +1058,11 @@ class FakeImageComponentBuilder implements ComponentBuilder {
 /// [TaskNode] in a document.
 class ExpandingTaskComponentBuilder extends ComponentBuilder {
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    PresenterContext context,
+    Document document,
+    DocumentNode node,
+  ) {
     if (node is! TaskNode) {
       return null;
     }

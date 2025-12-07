@@ -158,7 +158,7 @@ class TaskComponentBuilder implements ComponentBuilder {
   final Editor _editor;
 
   @override
-  TaskComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  TaskComponentViewModel? createViewModel(PresenterContext context, Document document, DocumentNode node) {
     if (node is! TaskNode) {
       return null;
     }

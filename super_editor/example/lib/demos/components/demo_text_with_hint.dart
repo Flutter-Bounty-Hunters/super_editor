@@ -146,7 +146,11 @@ class HeaderWithHintComponentBuilder implements ComponentBuilder {
   const HeaderWithHintComponentBuilder();
 
   @override
-  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  SingleColumnLayoutComponentViewModel? createViewModel(
+    PresenterContext context,
+    Document document,
+    DocumentNode node,
+  ) {
     // This component builder can work with the standard paragraph view model.
     // We'll defer to the standard paragraph component builder to create it.
     return null;

@@ -13,7 +13,7 @@ class ReadOnlyTaskComponentBuilder implements ComponentBuilder {
   const ReadOnlyTaskComponentBuilder();
 
   @override
-  TaskComponentViewModel? createViewModel(Document document, DocumentNode node) {
+  TaskComponentViewModel? createViewModel(PresenterContext context, Document document, DocumentNode node) {
     if (node is! TaskNode) {
       return null;
     }

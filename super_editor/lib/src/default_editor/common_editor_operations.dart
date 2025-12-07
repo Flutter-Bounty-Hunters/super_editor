@@ -12,6 +12,7 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/composite_nodes.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
@@ -24,6 +25,7 @@ import 'package:super_editor/src/default_editor/horizontal_rule.dart';
 import 'package:super_editor/src/default_editor/image.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/text_tools.dart';
+import 'package:super_editor/src/infrastructure/documents/document_selection.dart';
 
 /// Performs common, high-level editing and composition tasks
 /// with a simplified API.
@@ -325,10 +327,19 @@ class CommonEditorOperations {
       }
 
       // Move to next node
-      final nextNode = _getUpstreamSelectableNodeBefore(node);
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.left,
+      );
 
       if (nextNode == null) {
         // We're at the beginning of the document and can't go anywhere.
+        return false;
+      }
+
+      if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+        // We should not expand selection through isolated nodes
         return false;
       }
 
@@ -343,7 +354,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     if (expand) {
       // Push the extent of an expanded selection.
@@ -448,11 +459,20 @@ class CommonEditorOperations {
       }
 
       // Move to next node
-      final nextNode = _getDownstreamSelectableNodeAfter(node);
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.right,
+      );
 
       if (nextNode == null) {
         // We're at the beginning/end of the document and can't go
         // anywhere.
+        return false;
+      }
+
+      if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+        // We should not expand selection through isolated nodes
         return false;
       }
 
@@ -468,7 +488,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     if (expand) {
       // Push the extent of an expanded selection downstream.
@@ -551,16 +571,31 @@ class CommonEditorOperations {
 
     if (newExtentNodePosition == null) {
       // Move to next node
-      final nextNode = _getUpstreamSelectableNodeBefore(node);
+      final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+      final offsetToMatch = documentLayoutResolver()
+          .getDocumentOffsetFromAncestorOffset(offsetInExtent, extentComponent.context.findRenderObject());
+
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.up,
+        nearX: offsetToMatch.dx,
+      );
+
       if (nextNode != null) {
+        if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+          // We should not expand selection through isolated nodes
+          return false;
+        }
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
         if (nextComponent == null) {
           editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
           return false;
         }
-        final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-        newExtentNodePosition = nextComponent.getEndPositionNearX(offsetToMatch.dx);
+        final offsetInNextComponent = documentLayoutResolver()
+            .getAncestorOffsetFromDocumentOffset(offsetToMatch, nextComponent.context.findRenderObject());
+        newExtentNodePosition = nextComponent.getEndPositionNearX(offsetInNextComponent.dx);
       } else {
         // We're at the top of the document. Move the cursor to the
         // beginning of the current node.
@@ -571,7 +606,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     _updateSelectionExtent(position: newExtent, expandSelection: expand);
 
@@ -622,16 +657,29 @@ class CommonEditorOperations {
 
     if (newExtentNodePosition == null) {
       // Move to next node
-      final nextNode = _getDownstreamSelectableNodeAfter(node);
+      final offsetInExtent = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
+      final offsetToMatch = documentLayoutResolver()
+          .getDocumentOffsetFromAncestorOffset(offsetInExtent, extentComponent.context.findRenderObject());
+      final nextNode = document.getNextSelectableNode(
+        startingNode: node,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.down,
+        nearX: offsetToMatch.dx,
+      );
       if (nextNode != null) {
+        if (expand && editor.document.shouldIsolateNodes([nextNode.id, node.id])) {
+          // We should not expand selection through isolated nodes
+          return false;
+        }
         newExtentNodeId = nextNode.id;
         final nextComponent = documentLayoutResolver().getComponentByNodeId(nextNode.id);
         if (nextComponent == null) {
           editorOpsLog.shout("Tried to obtain non-existent component by node id: $newExtentNodeId");
           return false;
         }
-        final offsetToMatch = extentComponent.getOffsetForPosition(currentExtent.nodePosition);
-        newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetToMatch.dx);
+        final offsetInNextComponent = documentLayoutResolver()
+            .getAncestorOffsetFromDocumentOffset(offsetToMatch, nextComponent.context.findRenderObject());
+        newExtentNodePosition = nextComponent.getBeginningPositionNearX(offsetInNextComponent.dx);
       } else {
         // We're at the bottom of the document. Move the cursor to the
         // end of the current node.
@@ -642,7 +690,7 @@ class CommonEditorOperations {
     final newExtent = DocumentPosition(
       nodeId: newExtentNodeId,
       nodePosition: newExtentNodePosition,
-    );
+    ).toLeafPosition();
 
     _updateSelectionExtent(position: newExtent, expandSelection: expand);
 
@@ -670,7 +718,11 @@ class CommonEditorOperations {
     NodePosition? newPosition;
 
     // Try to find a new selection downstream.
-    final downstreamNode = _getDownstreamSelectableNodeAfter(startingNode);
+    final downstreamNode = document.getNextSelectableNode(
+      startingNode: startingNode,
+      documentLayoutResolver: documentLayoutResolver,
+      direction: DocumentNodeLookupDirection.right,
+    );
     if (downstreamNode != null) {
       newNodeId = downstreamNode.id;
       final nextComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -679,7 +731,11 @@ class CommonEditorOperations {
 
     // Try to find a new selection upstream.
     if (newPosition == null) {
-      final upstreamNode = _getUpstreamSelectableNodeBefore(startingNode);
+      final upstreamNode = document.getNextSelectableNode(
+        startingNode: startingNode,
+        documentLayoutResolver: documentLayoutResolver,
+        direction: DocumentNodeLookupDirection.left,
+      );
       if (upstreamNode != null) {
         newNodeId = upstreamNode.id;
         final previousComponent = documentLayoutResolver().getComponentByNodeId(newNodeId);
@@ -863,48 +919,6 @@ class CommonEditorOperations {
     }
   }
 
-  /// Returns the first [DocumentNode] before [startingNode] whose
-  /// [DocumentComponent] is visually selectable.
-  DocumentNode? _getUpstreamSelectableNodeBefore(DocumentNode startingNode) {
-    bool foundSelectableNode = false;
-    DocumentNode prevNode = startingNode;
-    DocumentNode? selectableNode;
-    do {
-      selectableNode = document.getNodeBeforeById(prevNode.id);
-
-      if (selectableNode != null) {
-        final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
-        if (nextComponent != null) {
-          foundSelectableNode = nextComponent.isVisualSelectionSupported();
-        }
-        prevNode = selectableNode;
-      }
-    } while (!foundSelectableNode && selectableNode != null);
-
-    return selectableNode;
-  }
-
-  /// Returns the first [DocumentNode] after [startingNode] whose
-  /// [DocumentComponent] is visually selectable.
-  DocumentNode? _getDownstreamSelectableNodeAfter(DocumentNode startingNode) {
-    bool foundSelectableNode = false;
-    DocumentNode prevNode = startingNode;
-    DocumentNode? selectableNode;
-    do {
-      selectableNode = document.getNodeAfterById(prevNode.id);
-
-      if (selectableNode != null) {
-        final nextComponent = documentLayoutResolver().getComponentByNodeId(selectableNode.id);
-        if (nextComponent != null) {
-          foundSelectableNode = nextComponent.isVisualSelectionSupported();
-        }
-        prevNode = selectableNode;
-      }
-    } while (!foundSelectableNode && selectableNode != null);
-
-    return selectableNode;
-  }
-
   /// Deletes a unit of content that comes after the [DocumentComposer]'s
   /// selection extent, or deletes all selected content if the selection
   /// is not collapsed.
@@ -1006,6 +1020,12 @@ class CommonEditorOperations {
       return false;
     }
 
+    // Do not go to next node, if current node or next node
+    // belongs to isolating composite node
+    if (document.shouldIsolateNodes([nodeAfter.id, node.id])) {
+      return false;
+    }
+
     editor.execute([
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
@@ -1040,6 +1060,9 @@ class CommonEditorOperations {
       return false;
     }
     if (nodeAfter is! TextNode) {
+      return false;
+    }
+    if (!CombineParagraphsCommand.canPerform(document, firstNodeId: node.id, secondNodeId: nodeAfter.id)) {
       return false;
     }
 
@@ -1235,6 +1258,12 @@ class CommonEditorOperations {
       return false;
     }
 
+    // Do not go to previous node, if current node or previous node
+    // belongs to isolating composite node
+    if (document.shouldIsolateNodes([nodeBefore.id, node.id])) {
+      return false;
+    }
+
     editor.execute([
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
@@ -1316,6 +1345,9 @@ class CommonEditorOperations {
       return false;
     }
     if (nodeAbove is! TextNode) {
+      return false;
+    }
+    if (!CombineParagraphsCommand.canPerform(document, firstNodeId: nodeAbove.id, secondNodeId: node.id)) {
       return false;
     }
 
@@ -2296,56 +2328,7 @@ class CommonEditorOperations {
     required Document document,
     required DocumentSelection documentSelection,
   }) {
-    final selectedNodes = document.getNodesInside(
-      documentSelection.base,
-      documentSelection.extent,
-    );
-
-    final buffer = StringBuffer();
-    for (int i = 0; i < selectedNodes.length; ++i) {
-      final selectedNode = selectedNodes[i];
-      dynamic nodeSelection;
-
-      if (i == 0) {
-        // This is the first node and it may be partially selected.
-        final baseSelectionPosition = selectedNode.id == documentSelection.base.nodeId
-            ? documentSelection.base.nodePosition
-            : documentSelection.extent.nodePosition;
-
-        final extentSelectionPosition =
-            selectedNodes.length > 1 ? selectedNode.endPosition : documentSelection.extent.nodePosition;
-
-        nodeSelection = selectedNode.computeSelection(
-          base: baseSelectionPosition,
-          extent: extentSelectionPosition,
-        );
-      } else if (i == selectedNodes.length - 1) {
-        // This is the last node and it may be partially selected.
-        final nodePosition = selectedNode.id == documentSelection.base.nodeId
-            ? documentSelection.base.nodePosition
-            : documentSelection.extent.nodePosition;
-
-        nodeSelection = selectedNode.computeSelection(
-          base: selectedNode.beginningPosition,
-          extent: nodePosition,
-        );
-      } else {
-        // This node is fully selected. Copy the whole thing.
-        nodeSelection = selectedNode.computeSelection(
-          base: selectedNode.beginningPosition,
-          extent: selectedNode.endPosition,
-        );
-      }
-
-      final nodeContent = selectedNode.copyContent(nodeSelection);
-      if (nodeContent != null) {
-        buffer.write(nodeContent);
-        if (i < selectedNodes.length - 1) {
-          buffer.writeln();
-        }
-      }
-    }
-    return buffer.toString();
+    return extractTextFromSelection(document: document, documentSelection: documentSelection);
   }
 
   /// Deletes all selected content, and then pastes the current clipboard

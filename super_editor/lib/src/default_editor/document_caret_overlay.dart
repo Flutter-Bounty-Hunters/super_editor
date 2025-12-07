@@ -106,8 +106,15 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
   ///
   /// Returns `false` if the selection is collapsed or `null`, or if we want to show the caret
   /// when the selection is expanded.
-  bool get _shouldHideCaretForExpandedSelection =>
-      !widget.displayCaretWithExpandedSelection && widget.composer.selection?.isCollapsed == false;
+  bool get _shouldHideCaretForExpandedSelection {
+    if (widget.composer.selection?.isCollapsed != false) {
+      return false;
+    }
+    final extent = widget.composer.selection!.extent;
+    // it would hide caret either if it was configured globally, or if current CompositeNode at extent position decides to
+    return !widget.displayCaretWithExpandedSelection ||
+        !widget.documentLayoutResolver().displayCaretForExpandedSelectionWithExtent(extent);
+  }
 
   @visibleForTesting
   Duration get caretFlashPeriod => _blinkController.flashPeriod;

@@ -683,7 +683,11 @@ void moveToNearestSelectableComponent(
   NodePosition? newPosition;
 
   // Try to find a new selection downstream.
-  final downstreamNode = getDownstreamSelectableNodeAfter(editor.document, () => documentLayout, startingNode);
+  final downstreamNode = editor.document.getNextSelectableNode(
+    startingNode: startingNode,
+    documentLayoutResolver: () => documentLayout,
+    direction: DocumentNodeLookupDirection.right,
+  );
   if (downstreamNode != null) {
     newNodeId = downstreamNode.id;
     final nextComponent = documentLayout.getComponentByNodeId(newNodeId);
@@ -692,7 +696,11 @@ void moveToNearestSelectableComponent(
 
   // Try to find a new selection upstream.
   if (newPosition == null) {
-    final upstreamNode = getUpstreamSelectableNodeBefore(editor.document, () => documentLayout, startingNode);
+    final upstreamNode = editor.document.getNextSelectableNode(
+      startingNode: startingNode,
+      documentLayoutResolver: () => documentLayout,
+      direction: DocumentNodeLookupDirection.left,
+    );
     if (upstreamNode != null) {
       newNodeId = upstreamNode.id;
       final previousComponent = documentLayout.getComponentByNodeId(newNodeId);
@@ -789,14 +797,17 @@ void selectRegion({
     extentPosition = extentWordSelection.extent;
   }
 
-  final selection = editor.composer.selection;
+  final currentSelection = editor.composer.selection;
+  var newSelection = DocumentSelection(base: basePosition, extent: extentPosition);
+  if (expandSelection && currentSelection != null) {
+    // If desired, expand the selection instead of replacing it.
+    newSelection = editor.document.expandSelection(currentSelection, extentPosition);
+  }
+  newSelection = editor.document.refineSelectionWithCompositeNodeAdjustments(newSelection);
+
   editor.execute([
     ChangeSelectionRequest(
-      DocumentSelection(
-        // If desired, expand the selection instead of replacing it.
-        base: expandSelection ? selection?.base ?? basePosition : basePosition,
-        extent: extentPosition,
-      ),
+      newSelection,
       SelectionChangeType.expandSelection,
       SelectionReason.userInteraction,
     ),
