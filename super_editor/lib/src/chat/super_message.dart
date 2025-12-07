@@ -32,6 +32,7 @@ import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_contr
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
 import 'package:super_editor/src/super_reader/read_only_document_keyboard_interactor.dart';
+import 'package:super_editor/src/super_reader/super_reader.dart';
 
 /// A chat message widget.
 ///
@@ -62,7 +63,7 @@ class SuperMessage extends StatefulWidget {
     this.createOverlayControlsClipper,
     this.componentBuilders = defaultComponentBuilders,
     this.debugPaint = const DebugPaintConfig(),
-  })  : styles = styles ?? SuperMessageStyles(),
+  })  : styles = styles ?? SuperMessageStyles.lightAndDark(),
         keyboardActions = keyboardActions ?? superMessageDefaultKeyboardActions;
 
   final FocusNode? focusNode;
@@ -380,8 +381,6 @@ class _SuperMessageState extends State<SuperMessage> {
                     messageControlsController: SuperMessageAndroidControlsScope.rootOf(context),
                     focalPoint: focalPoint,
                   ),
-                  // Show controls above `child`, not in app overlay.
-                  showInAppOverlay: false,
                   child: child,
                 ),
               );
@@ -549,6 +548,14 @@ const defaultSuperMessageDocumentOverlayBuilders = <SuperMessageDocumentLayerBui
 /// and selection styles, for both light and dark modes.
 class SuperMessageStyles {
   SuperMessageStyles({
+    required Stylesheet stylesheet,
+    required SelectionStyles selectionStyles,
+  })  : lightStylesheet = stylesheet,
+        lightSelectionStyles = selectionStyles,
+        darkStylesheet = stylesheet,
+        darkSelectionStyles = selectionStyles;
+
+  SuperMessageStyles.lightAndDark({
     Stylesheet? lightStylesheet,
     SelectionStyles? lightSelectionStyles,
     Stylesheet? darkStylesheet,
@@ -627,7 +634,10 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
   }
 }
 
-typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(ReadOnlyContext editContext);
+typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(ReadOnlyContext messageContext);
+
+ContentTapDelegate superMessageLinkTapHandlerFactory(ReadOnlyContext messageContext) =>
+    SuperReaderLaunchLinkTapHandler(messageContext.document);
 
 /// Keyboard actions for the standard [SuperReader].
 final superMessageDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[

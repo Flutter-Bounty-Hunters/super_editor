@@ -39,7 +39,6 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
     required this.editor,
     required this.getDocumentLayout,
     this.defaultToolbarBuilder,
-    this.showInAppOverlay = true,
     this.showDebugPaint = false,
     this.child,
   });
@@ -51,15 +50,6 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
   final DocumentLayoutResolver getDocumentLayout;
 
   final DocumentFloatingToolbarBuilder? defaultToolbarBuilder;
-
-  /// Whether to show the controls (handles, toolbar, etc) in the application overlay (`true`),
-  /// or whether to just place the controls on top of the given [child] (`false`).
-  ///
-  /// Showing the controls in the app overlay is fine, but be care with situations such as
-  /// selection handles being rendered in a list that the user can scroll, because those handles
-  /// might appear on top of other UI elements that should cover the handles. For example, the
-  /// handles might appear on top of a bottom sheet, when the user scrolls the content behind the sheet.
-  final bool showInAppOverlay;
 
   /// Paints some extra visual ornamentation to help with
   /// debugging, when `true`.
@@ -75,7 +65,6 @@ class SuperMessageAndroidControlsOverlayManager extends StatefulWidget {
 class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageAndroidControlsOverlayManager> {
   final _boundsKey = GlobalKey();
   final _overlayController = OverlayPortalController();
-  final _overlayController2 = OverlayPortalController();
 
   SuperMessageAndroidControlsController? _controlsController;
   late FollowerAligner _toolbarAligner;
@@ -119,7 +108,6 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
       // Call `show()` at the end of the frame because calling during a build
       // process blows up.
       _overlayController.show();
-      _overlayController2.show();
     });
   }
 
@@ -299,21 +287,10 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      // Don't clip at stack boundary when we're showing the overlay controls
-      // within the stack.
-      clipBehavior: widget.showInAppOverlay ? Clip.hardEdge : Clip.none,
-      children: [
-        widget.child!,
-        if (widget.showInAppOverlay)
-          OverlayPortal(
-            controller: _overlayController,
-            overlayChildBuilder: _buildOverlay,
-            child: const SizedBox(),
-          )
-        else
-          Positioned.fill(child: _buildOverlay(context)),
-      ],
+    return OverlayPortal(
+      controller: _overlayController,
+      overlayChildBuilder: _buildOverlay,
+      child: widget.child,
     );
   }
 
@@ -324,24 +301,10 @@ class SuperMessageAndroidControlsOverlayManagerState extends State<SuperMessageA
         key: _boundsKey,
         clipBehavior: Clip.none,
         children: [
-          if (widget.showInAppOverlay)
-            _buildMagnifierFocalPoint()
-          else
-            OverlayPortal(
-              controller: _overlayController,
-              overlayChildBuilder: (context) => Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _buildMagnifierFocalPoint(),
-                  _buildMagnifier(),
-                ],
-              ),
-              child: const SizedBox(),
-            ),
+          _buildMagnifierFocalPoint(),
           if (widget.showDebugPaint) //
             _buildDebugSelectionFocalPoint(),
-          if (widget.showInAppOverlay) //
-            _buildMagnifier(),
+          _buildMagnifier(),
           // Handles and toolbar are built after the magnifier so that they don't appear in the magnifier.
           ..._buildExpandedHandles(),
           _buildToolbar(),

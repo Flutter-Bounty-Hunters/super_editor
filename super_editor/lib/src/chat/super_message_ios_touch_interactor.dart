@@ -321,7 +321,14 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   /// space to the [DocumentLayout]'s coordinate space.
   Offset _interactorOffsetToDocumentOffset(Offset interactorOffset) {
     final globalOffset = interactorBox.localToGlobal(interactorOffset);
+    print("_interactorOffsetToDocumentOffest() - interactor offset: $interactorOffset, global offset: $globalOffset");
     return _docLayout.getDocumentOffsetFromAncestorOffset(globalOffset);
+  }
+
+  Offset _globalOffsetToDocumentOffset(Offset globalOffset) {
+    final myBox = context.findRenderObject() as RenderBox;
+    final docOffset = myBox.globalToLocal(globalOffset);
+    return docOffset;
   }
 
   void _onTapDown(TapDownDetails details) {
@@ -338,6 +345,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   // Runs when a tap down has lasted long enough to signify a long-press.
   void _onLongPressDown() {
     final interactorOffset = interactorBox.globalToLocal(_globalTapDownOffset!);
+    print("Long press down, interactor offset: $interactorOffset");
     final tapDownDocumentOffset = _interactorOffsetToDocumentOffset(interactorOffset);
     final tapDownDocumentPosition = _docLayout.getDocumentPositionNearestToOffset(tapDownDocumentOffset);
     if (tapDownDocumentPosition == null) {
@@ -378,17 +386,18 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     _tapDownLongPressTimer?.cancel();
     _controlsController!.hideMagnifier();
 
+    readerGesturesLog.info("Tap down on document");
+    final docOffset = _globalOffsetToDocumentOffset(details.globalPosition);
+    readerGesturesLog.fine(" - document offset: $docOffset");
+    print("Tap up. Doc offset: $docOffset");
+
     final selection = widget.messageContext.composer.selection;
     if (selection != null &&
         !selection.isCollapsed &&
-        (_isOverBaseHandle(details.localPosition) || _isOverExtentHandle(details.localPosition))) {
+        (_isOverBaseHandle(docOffset) || _isOverExtentHandle(docOffset))) {
       _controlsController!.toggleToolbar();
       return;
     }
-
-    readerGesturesLog.info("Tap down on document");
-    final docOffset = _interactorOffsetToDocumentOffset(details.localPosition);
-    readerGesturesLog.fine(" - document offset: $docOffset");
 
     if (widget.contentTapHandler != null) {
       final result = widget.contentTapHandler!.onTap(
@@ -423,15 +432,17 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onDoubleTapUp(TapUpDetails details) {
+    final docOffset = _globalOffsetToDocumentOffset(details.globalPosition);
     final selection = widget.messageContext.composer.selection;
     if (selection != null &&
         !selection.isCollapsed &&
-        (_isOverBaseHandle(details.localPosition) || _isOverExtentHandle(details.localPosition))) {
+        (_isOverBaseHandle(docOffset) || _isOverExtentHandle(docOffset))) {
       return;
     }
 
     readerGesturesLog.info("Double tap down on document");
-    final docOffset = _interactorOffsetToDocumentOffset(details.localPosition);
+
+    // print("Double tap. Local position: $docOffset, Global to local: ${myBox.globalToLocal(details.globalPosition)}");
     readerGesturesLog.fine(" - document offset: $docOffset");
 
     if (widget.contentTapHandler != null) {
@@ -489,8 +500,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
 
   void _onTripleTapUp(TapUpDetails details) {
     readerGesturesLog.info("Triple down down on document");
-
-    final docOffset = _interactorOffsetToDocumentOffset(details.localPosition);
+    final docOffset = _globalOffsetToDocumentOffset(details.globalPosition);
     readerGesturesLog.fine(" - document offset: $docOffset");
 
     if (widget.contentTapHandler != null) {
@@ -535,11 +545,19 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onPanDown(DragDownDetails details) {
+    print("_onPanDown()");
     // No-op: this method is only here to beat out any ancestor
     // Scrollable that's also trying to drag.
+    _updateDragStartLocation(details.globalPosition);
   }
 
   void _onPanStart(DragStartDetails details) {
+    print("_onPanStart()");
+
+    final myBox = context.findRenderObject() as RenderBox;
+    final docOffset = myBox.globalToLocal(details.globalPosition);
+    print(" - global projected locally: $docOffset");
+
     // Stop waiting for a long-press to start, if a long press isn't already in-progress.
     _globalTapDownOffset = null;
     _tapDownLongPressTimer?.cancel();
@@ -549,6 +567,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     //       bit of slop might be the problem.
     final selection = widget.messageContext.composer.selection;
     if (selection == null) {
+      print(" - selection is null. Fizzling.");
       return;
     }
 
@@ -556,13 +575,14 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       _dragMode = DragMode.longPress;
       _dragHandleType = null;
       _longPressStrategy!.onLongPressDragStart();
-    } else if (_isOverBaseHandle(details.localPosition)) {
+    } else if (_isOverBaseHandle(docOffset)) {
       _dragMode = DragMode.base;
       _dragHandleType = HandleType.upstream;
-    } else if (_isOverExtentHandle(details.localPosition)) {
+    } else if (_isOverExtentHandle(docOffset)) {
       _dragMode = DragMode.extent;
       _dragHandleType = HandleType.downstream;
     } else {
+      print(" - not over either handle. Not setting drag handle type.");
       return;
     }
 
@@ -572,8 +592,10 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   bool _isOverBaseHandle(Offset interactorOffset) {
+    print("_isOverBaseHandle() - $interactorOffset");
     final basePosition = widget.messageContext.composer.selection?.base;
     if (basePosition == null) {
+      print(" - no base position. Fizzling.");
       return false;
     }
 
@@ -583,6 +605,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     final caretRect = Rect.fromLTWH(baseRect.left - 24, baseRect.top - 24, 48, baseRect.height + 48);
 
     final docOffset = _interactorOffsetToDocumentOffset(interactorOffset);
+    print(" - Is over base handle? ${caretRect.contains(docOffset)}");
     return caretRect.contains(docOffset);
   }
 
@@ -602,6 +625,7 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    print("_onPanUpdate()");
     // The user is dragging a handle. Update the document selection, and
     // auto-scroll, if needed.
     _globalDragOffset = details.globalPosition;
@@ -623,18 +647,22 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _updateSelectionForNewDragHandleLocation() {
+    print("_updateSelectionForNewDragHandleLocation()");
     final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
     final docDragPosition = _docLayout.getDocumentPositionNearestToOffset(_startDragPositionOffset! + docDragDelta);
 
     if (docDragPosition == null) {
+      print(" - fizzling");
       return;
     }
 
     if (_dragHandleType == HandleType.upstream) {
+      print(" - changing selection based on upstream handle");
       _setSelection(widget.messageContext.composer.selection!.copyWith(
         base: docDragPosition,
       ));
     } else if (_dragHandleType == HandleType.downstream) {
+      print(" - changing selection based on downstream handle");
       _setSelection(widget.messageContext.composer.selection!.copyWith(
         extent: docDragPosition,
       ));
@@ -642,12 +670,14 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
   }
 
   void _onPanEnd(DragEndDetails details) {
+    print("_onPanEnd()");
     if (_dragMode != null) {
       _onDragSelectionEnd();
     }
   }
 
   void _onPanCancel() {
+    print("_onPanCancel()");
     if (_dragMode != null) {
       _onDragSelectionEnd();
     }
