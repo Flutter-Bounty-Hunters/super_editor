@@ -644,7 +644,7 @@ class SuperEditorInspector {
     final element = find
         .descendant(
           of: (superEditorFinder ?? find.byType(SuperEditor)),
-          matching: find.byType(SuperMessageAndroidHandlesDocumentLayer),
+          matching: find.byType(AndroidHandlesDocumentLayer),
         )
         .evaluate()
         .single as StatefulElement;
