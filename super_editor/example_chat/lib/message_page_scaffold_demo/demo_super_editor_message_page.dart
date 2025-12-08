@@ -546,7 +546,7 @@ class _ChatEditorState extends State<_ChatEditor> {
           shrinkWrap: false,
           stylesheet: _chatStylesheet,
           componentBuilders: [
-            HintComponentBuilder.basic(
+            HintComponentBuilder.plainText(
               "Send a message...",
               hintStyleBuilder: _hintTextStyleBuilder,
             ),

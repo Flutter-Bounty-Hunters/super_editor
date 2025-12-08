@@ -143,7 +143,7 @@ class _TextWithHintDemoState extends State<TextWithHintDemo> {
         /// Add a new component builder to the front of the list
         /// that knows how to render header widgets with hint text.
         componentBuilders: [
-          HintComponentBuilder.attributed(
+          HintComponentBuilder.richText(
             AttributedText(
               'Header goes here...',
               AttributedSpans(

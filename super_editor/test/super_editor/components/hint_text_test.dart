@@ -22,7 +22,7 @@ void main() {
             ],
           ))
           .withComponentBuilders([
-            HintComponentBuilder.basic(
+            HintComponentBuilder.plainText(
               "Hello",
               hintTextStyle: const TextStyle(),
             ),
@@ -68,7 +68,7 @@ void main() {
           ))
           .withAddedComponents(
         [
-          HintComponentBuilder.basic(
+          HintComponentBuilder.plainText(
             "This is a hint",
             hintTextStyle: const TextStyle(),
             shouldShowHint: (document, node) => document.getNodeIndexById(node.id) == 0 && node.text.isEmpty,
@@ -86,7 +86,7 @@ void main() {
           .withSingleEmptyParagraph()
           .withAddedComponents(
         [
-          HintComponentBuilder.basic(
+          HintComponentBuilder.plainText(
             "This is a hint",
             hintTextStyle: const TextStyle(color: Colors.red),
           ),
@@ -113,7 +113,7 @@ void main() {
           .withSingleEmptyParagraph()
           .withAddedComponents(
         [
-          HintComponentBuilder.basic(
+          HintComponentBuilder.plainText(
             "This is a hint",
             hintStyleBuilder: (context, attributions) => const TextStyle(color: Colors.red),
           ),
@@ -140,7 +140,7 @@ void main() {
           .withSingleEmptyParagraph()
           .withAddedComponents(
         [
-          HintComponentBuilder.attributed(
+          HintComponentBuilder.richText(
             AttributedText(
               "This is a hint",
               // The word "hint" has italics.

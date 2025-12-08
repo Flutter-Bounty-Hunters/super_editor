@@ -16,7 +16,7 @@ void main() {
       await tester //
           .createDocument()
           .withSingleEmptyParagraph()
-          .withAddedComponents([HintComponentBuilder.basic("Hello", hintTextStyle: const TextStyle())])
+          .withAddedComponents([HintComponentBuilder.plainText("Hello", hintTextStyle: const TextStyle())])
           .autoFocus(false)
           .pump();
 

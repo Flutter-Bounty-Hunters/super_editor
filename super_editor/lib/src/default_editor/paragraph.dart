@@ -292,7 +292,7 @@ class HintComponentBuilder extends ParagraphComponentBuilder {
   /// Either a [hintTextStyle] or a [hintStyleBuilder] must be provided to style the hint text.
   ///
   /// The [shouldShowHint] determines whether to show the hint for a given [DocumentNode].
-  HintComponentBuilder.attributed(
+  HintComponentBuilder.richText(
     this.hint, {
     this.shouldShowHint = defaultShowHintDelegate,
     TextStyle? hintTextStyle,
@@ -308,7 +308,7 @@ class HintComponentBuilder extends ParagraphComponentBuilder {
   /// Either a [hintTextStyle] or a [hintStyleBuilder] must be provided to style the hint text.
   ///
   /// The [shouldShowHint] determines whether to show the hint for a given [DocumentNode].
-  HintComponentBuilder.basic(
+  HintComponentBuilder.plainText(
     String hint, {
     this.shouldShowHint = defaultShowHintDelegate,
     TextStyle? hintTextStyle,
