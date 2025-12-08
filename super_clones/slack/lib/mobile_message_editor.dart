@@ -364,7 +364,7 @@ class _ChatEditorState extends State<_ChatEditor> {
         shrinkWrap: false,
         stylesheet: messageEditorStylesheet,
         componentBuilders: [
-          HintComponentBuilder.basic(
+          HintComponentBuilder.plainText(
             widget.hintText,
             hintStyleBuilder: _hintTextStyleBuilder,
           ),
