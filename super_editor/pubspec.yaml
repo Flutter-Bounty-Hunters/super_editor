@@ -52,6 +52,7 @@ dependencies:
   golden_toolkit: ^0.15.0
   meta: ^1.8.0
   matcher: ^0.12.16+1
+  mockito: ^5.0.4
   path: ^1.8.3
   text_table: ^4.0.3
 
@@ -70,7 +71,6 @@ dev_dependencies:
   flutter_test_goldens: ^0.0.7
   golden_bricks: ^1.0.0
   golden_runner: ^0.2.0
-  mockito: ^5.0.4
 
 flutter:
   # no Flutter configuration
