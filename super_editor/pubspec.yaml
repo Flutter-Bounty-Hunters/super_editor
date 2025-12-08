@@ -61,16 +61,16 @@ dependencies:
 #    path: ../super_text_layout
 
 dev_dependencies:
-  flutter_lints: ^2.0.1
-  golden_toolkit: ^0.15.0
-  mockito: ^5.0.4
-  meta: ^1.8.0
   args: ^2.3.1
-  path: ^1.8.3
-  golden_runner:
-    path: ../golden_runner
+  flutter_lints: ^2.0.1
   flutter_test_runners: ^0.0.4
+  flutter_test_goldens: ^0.0.7
   golden_bricks: ^1.0.0
+  golden_runner: ^0.2.0
+  golden_toolkit: ^0.15.0
+  meta: ^1.8.0
+  mockito: ^5.0.4
+  path: ^1.8.3
 
 flutter:
   # no Flutter configuration
