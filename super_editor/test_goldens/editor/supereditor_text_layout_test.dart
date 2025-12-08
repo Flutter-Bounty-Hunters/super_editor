@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_inspector.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../../test/super_editor/supereditor_test_tools.dart';
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_editor_test.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group('SuperEditor', () {
@@ -16,10 +13,12 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: 'This is a paragraph',
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: 'This is a paragraph',
           ),
         );
@@ -35,11 +34,13 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: 'This is a paragraph',
             key: regularEditorKey,
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: 'This is a paragraph',
             key: scaledEditorKey,
           ),
@@ -70,11 +71,13 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: 'This is a paragraph',
             key: regularEditorKey,
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: 'This is a paragraph',
             key: scaledEditorKey,
           ),
@@ -108,10 +111,12 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: '- List item 1\n- List item 2',
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: '- List item 1\n- List item 2',
           ),
         );
@@ -124,10 +129,12 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: '1. List item 1\n2. List item 2',
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: '1. List item 1\n2. List item 2',
           ),
         );
@@ -140,10 +147,12 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: '# This is a header',
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: '# This is a header',
           ),
         );
@@ -159,10 +168,12 @@ void main() {
           tester,
           regularEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'regular-editor',
             markdown: '> This is a blockquote',
           ),
           scaledEditor: _buildSuperEditorFromMarkdown(
             tester,
+            inputRole: 'scaled-editor',
             markdown: '> This is a blockquote',
           ),
         );
@@ -211,6 +222,7 @@ Future<void> _doubleTapAtFirstNode(
 /// This editor uses [_stylesheet] and doesn't clear selection when loses focus.
 Widget _buildSuperEditorFromMarkdown(
   WidgetTester tester, {
+  required String inputRole,
   required String markdown,
   Key? key,
 }) {
@@ -219,6 +231,7 @@ Widget _buildSuperEditorFromMarkdown(
       .fromMarkdown(markdown)
       .forDesktop()
       .withKey(key)
+      .withInputRole(inputRole)
       .withSelectionPolicies(
         const SuperEditorSelectionPolicies(
           clearSelectionWhenEditorLosesFocus: false,

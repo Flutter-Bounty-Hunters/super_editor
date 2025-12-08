@@ -4,8 +4,6 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_reader_test.dart';
 
-import 'reader_test_tools.dart';
-
 void main() {
   group("SuperReader selection", () {
     testWidgetsOnArbitraryDesktop("calculates upstream document selection within a single node", (tester) async {

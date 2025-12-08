@@ -5,8 +5,6 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import 'supereditor_test_tools.dart';
-
 void main() {
   group("SuperEditor", () {
     // We're testing the automatic movement of the caret when the available space changes. This

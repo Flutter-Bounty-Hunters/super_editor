@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
-
-import 'supereditor_test_tools.dart';
+import 'package:super_editor/super_editor_test.dart';
 
 void main() {
   group('SuperEditor > routes >', () {

@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/src/test/super_editor_test/supereditor_inspector.dart';
 import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:super_editor/super_editor_test.dart';
 
-import '../supereditor_test_tools.dart';
 import '../test_documents.dart';
 
 /// Upstream/downstream selection refers components that only support
