@@ -2,8 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../supereditor_test_tools.dart';
+import 'package:super_editor/super_editor_test.dart';
+import 'package:super_editor/super_test.dart';
 
 Future<void> main() async {
   group('text.dart', () {

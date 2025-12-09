@@ -11,7 +11,6 @@ import 'package:super_text_layout/super_text_layout.dart';
 
 import '../../test_runners.dart';
 import '../../test_tools.dart';
-import '../supereditor_test_tools.dart';
 
 void main() {
   group("SuperEditor > Android > overlay controls >", () {

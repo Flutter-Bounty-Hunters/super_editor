@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
-
-import 'super_textfield_inspector.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
 void main() {
   group("SuperTextField", () {

@@ -2,12 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
-import 'package:super_editor/src/test/ime.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../../test/super_editor/supereditor_test_tools.dart';
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_editor_test.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group('SuperEditor > RTL mode >', () {

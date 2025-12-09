@@ -4,7 +4,7 @@ import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.dart';
 
 import '../../test_runners.dart';
-import '../reader_test_tools.dart';
+import '../../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group("SuperReader > iOS > overlay controls >", () {

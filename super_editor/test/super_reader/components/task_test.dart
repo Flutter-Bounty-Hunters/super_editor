@@ -3,7 +3,7 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/src/test/super_editor_test/tasks_test_tools.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../reader_test_tools.dart';
+import '../../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group('SuperReader tasks >', () {

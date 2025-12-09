@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../../super_reader/reader_test_tools.dart';
+import '../../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group('MutableDocument', () {

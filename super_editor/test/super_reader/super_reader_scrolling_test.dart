@@ -4,10 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_reader_test.dart';
+import 'package:super_editor/super_test.dart';
 
 import '../test_tools.dart';
-import 'reader_test_tools.dart';
-import 'test_documents.dart';
 
 void main() {
   group("SuperReader scrolling", () {

@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
-import '../test_tools_user_input.dart';
-import 'super_textfield_robot.dart';
+import '../../lib/src/test/flutter_extensions/test_tools_user_input.dart';
 
 void main() {
   group('ImeAttributedTextEditingController', () {

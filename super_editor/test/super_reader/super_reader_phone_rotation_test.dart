@@ -4,8 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor_test.dart';
 
-import 'reader_test_tools.dart';
-
 void main() {
   group('SuperReader > phone rotation >', () {
     const screenSizePortrait = Size(400.0, 1000.0);

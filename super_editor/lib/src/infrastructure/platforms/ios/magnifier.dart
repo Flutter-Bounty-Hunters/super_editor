@@ -107,6 +107,7 @@ class _IOSFollowingMagnifierState extends State<IOSFollowingMagnifier> with Sing
 
         return Follower.withOffset(
           link: widget.leaderLink,
+          showWhenUnlinked: false,
           // Center-align the magnifier with the focal point, so when the animation starts
           // the magnifier is displayed in the same position as the focal point.
           leaderAnchor: Alignment.center,
