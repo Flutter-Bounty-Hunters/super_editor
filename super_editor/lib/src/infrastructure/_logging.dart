@@ -44,6 +44,7 @@ class LogNames {
   static const androidTextField = 'textfield.android';
   static const iosTextField = 'textfield.ios';
 
+  static const superIme = 'superime';
   static const infrastructure = 'infrastructure';
   static const keyboardPanel = 'infrastructure.keyboardPanel';
   static const longPressSelection = 'infrastructure.gestures.longPress';
@@ -91,13 +92,16 @@ final readerStyleLog = logging.Logger(LogNames.readerStyle);
 final readerDocLog = logging.Logger(LogNames.readerDocument);
 final readerOpsLog = logging.Logger(LogNames.readerCommonOps);
 
+// Text Fields.
 final textFieldLog = logging.Logger(LogNames.textField);
 final scrollingTextFieldLog = logging.Logger(LogNames.scrollingTextField);
 final imeTextFieldLog = logging.Logger(LogNames.imeTextField);
 final androidTextFieldLog = logging.Logger(LogNames.androidTextField);
 final iosTextFieldLog = logging.Logger(LogNames.iosTextField);
 
+// Infrastructure.
 final docGesturesLog = logging.Logger(LogNames.documentGestures);
+final superImeLog = logging.Logger(LogNames.superIme);
 final infrastructureLog = logging.Logger(LogNames.infrastructure);
 final keyboardPanelLog = logging.Logger(LogNames.keyboardPanel);
 final longPressSelectionLog = logging.Logger(LogNames.longPressSelection);
