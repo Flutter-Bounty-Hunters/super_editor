@@ -17,6 +17,12 @@ export 'src/core/styles.dart';
 // Chat
 export 'src/chat/message_page_scaffold.dart';
 export 'src/chat/super_message.dart';
+export 'src/chat/super_message_android_overlays.dart';
+export 'src/chat/super_message_android_touch_interactor.dart';
+export 'src/chat/super_message_ios_overlays.dart';
+export 'src/chat/super_message_ios_touch_interactor.dart';
+export 'src/chat/super_message_keyboard_interactor.dart';
+export 'src/chat/super_message_mouse_interactor.dart';
 
 // Super Editor
 export 'src/default_editor/ai/content_fading.dart';
@@ -104,6 +110,7 @@ export 'src/super_textfield/super_textfield.dart';
 export 'src/infrastructure/touch_controls.dart';
 export 'src/infrastructure/text_input.dart';
 export 'src/infrastructure/popovers.dart';
+export 'src/infrastructure/document_context.dart';
 export 'src/infrastructure/selectable_list.dart';
 export 'src/infrastructure/actions.dart';
 export 'src/infrastructure/keyboard_panel_scaffold.dart';

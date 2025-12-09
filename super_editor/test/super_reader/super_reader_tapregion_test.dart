@@ -9,7 +9,7 @@ import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.d
 import 'package:super_editor/src/test/super_reader_test/super_reader_robot.dart';
 
 import '../test_tools.dart';
-import 'reader_test_tools.dart';
+import '../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group('SuperReader inside a TapRegion', () {

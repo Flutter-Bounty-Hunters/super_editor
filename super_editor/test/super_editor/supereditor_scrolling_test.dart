@@ -10,7 +10,6 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
 import '../test_tools.dart';
-import 'supereditor_test_tools.dart';
 import 'test_documents.dart';
 
 void main() {

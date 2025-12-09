@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/src/default_editor/tables/table_markdown.dart';
 
-import '../reader_test_tools.dart';
+import '../../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group("Super Reader > components > Markdown tables >", () {

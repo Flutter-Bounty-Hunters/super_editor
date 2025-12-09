@@ -4,8 +4,6 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
-import 'supereditor_test_tools.dart';
-
 void main() {
   group('SuperEditor > single column layout >', () {
     testWidgetsOnAllPlatforms('updates component width when component styles are changed by the editor',

@@ -6,6 +6,7 @@ import 'package:super_editor/src/document_operations/selection_operations.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 
 import '../core/document_composer.dart';
 import 'reader_context.dart';
@@ -47,11 +48,11 @@ class ReadOnlyDocumentKeyboardInteractor extends StatelessWidget {
   /// All the actions that the user can execute with keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [ReadOnlyDocumentKeyboardAction] is
+  /// from the beginning of the list, a [DocumentKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [ReadOnlyDocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [ReadOnlyDocumentKeyboardAction].
-  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
+  /// [DocumentKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
+  final List<SuperReaderKeyboardAction> keyboardActions;
 
   /// Whether or not the [ReadOnlyDocumentKeyboardInteractor] should autofocus
   final bool autofocus;
@@ -102,13 +103,13 @@ class ReadOnlyDocumentKeyboardInteractor extends StatelessWidget {
 ///
 /// It is possible that an action does nothing and then returns
 /// [ExecutionInstruction.haltExecution] to prevent further execution.
-typedef ReadOnlyDocumentKeyboardAction = ExecutionInstruction Function({
+typedef SuperReaderKeyboardAction = ExecutionInstruction Function({
   required SuperReaderContext documentContext,
   required KeyEvent keyEvent,
 });
 
 /// Keyboard actions for the standard [SuperReader].
-final readOnlyDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[
+final superReaderDefaultKeyboardActions = <SuperReaderKeyboardAction>[
   removeCollapsedSelectionWhenShiftIsReleased,
   scrollUpWithArrowKey,
   scrollDownWithArrowKey,
@@ -135,9 +136,9 @@ final readOnlyDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[
 /// pressing shift, we want to allow any selection. When the user releases the
 /// shift key (and triggers this shortcut), we want to remove the document selection
 /// if it's collapsed.
-final removeCollapsedSelectionWhenShiftIsReleased = createShortcut(
+final removeCollapsedSelectionWhenShiftIsReleased = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final selection = documentContext.composer.selection;
@@ -158,7 +159,7 @@ final removeCollapsedSelectionWhenShiftIsReleased = createShortcut(
   onKeyDown: false,
 );
 
-final scrollUpWithArrowKey = createShortcut(
+final scrollUpWithArrowKey = createSuperReaderShortcut(
   ({
     required SuperReaderContext documentContext,
     required KeyEvent keyEvent,
@@ -170,7 +171,7 @@ final scrollUpWithArrowKey = createShortcut(
   isShiftPressed: false,
 );
 
-final scrollDownWithArrowKey = createShortcut(
+final scrollDownWithArrowKey = createSuperReaderShortcut(
   ({
     required SuperReaderContext documentContext,
     required KeyEvent keyEvent,
@@ -182,9 +183,9 @@ final scrollDownWithArrowKey = createShortcut(
   isShiftPressed: false,
 );
 
-final expandSelectionWithLeftArrow = createShortcut(
+final expandSelectionWithLeftArrow = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -210,9 +211,9 @@ final expandSelectionWithLeftArrow = createShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowLeft,
 );
 
-final expandSelectionWithRightArrow = createShortcut(
+final expandSelectionWithRightArrow = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -251,9 +252,9 @@ MovementModifier? _getHorizontalMovementModifier(KeyEvent keyEvent) {
   return null;
 }
 
-final expandSelectionWithUpArrow = createShortcut(
+final expandSelectionWithUpArrow = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -275,9 +276,9 @@ final expandSelectionWithUpArrow = createShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowUp,
 );
 
-final expandSelectionWithDownArrow = createShortcut(
+final expandSelectionWithDownArrow = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -299,9 +300,9 @@ final expandSelectionWithDownArrow = createShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowDown,
 );
 
-final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createShortcut(
+final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretUpstream(
@@ -318,9 +319,9 @@ final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createShortcut(
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineEndWithEndOnWindowsAndLinux = createShortcut(
+final expandSelectionToLineEndWithEndOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretDownstream(
@@ -337,9 +338,9 @@ final expandSelectionToLineEndWithEndOnWindowsAndLinux = createShortcut(
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createShortcut(
+final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretUpstream(
@@ -357,9 +358,9 @@ final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createShortcut(
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createShortcut(
+final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretDownstream(
@@ -377,9 +378,9 @@ final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createShortcut(
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final selectAllWhenCmdAIsPressedOnMac = createShortcut(
+final selectAllWhenCmdAIsPressedOnMac = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didSelectAll = selectAll(documentContext.editor);
@@ -390,9 +391,9 @@ final selectAllWhenCmdAIsPressedOnMac = createShortcut(
   platforms: {TargetPlatform.macOS, TargetPlatform.iOS},
 );
 
-final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createShortcut(
+final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didSelectAll = selectAll(documentContext.editor);
@@ -408,9 +409,9 @@ final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createShortcut(
   },
 );
 
-final copyWhenCmdCIsPressedOnMac = createShortcut(
+final copyWhenCmdCIsPressedOnMac = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (documentContext.composer.selection == null) {
@@ -433,9 +434,9 @@ final copyWhenCmdCIsPressedOnMac = createShortcut(
   platforms: {TargetPlatform.macOS, TargetPlatform.iOS},
 );
 
-final copyWhenCtlCIsPressedOnWindowsAndLinux = createShortcut(
+final copyWhenCtlCIsPressedOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required SuperReaderContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (documentContext.composer.selection == null) {
@@ -463,19 +464,19 @@ final copyWhenCtlCIsPressedOnWindowsAndLinux = createShortcut(
   },
 );
 
-/// A proxy for a [ReadOnlyDocumentKeyboardAction] that filters events based
+/// A proxy for a [SuperReaderKeyboardAction] that filters events based
 /// on [onKeyUp], [onKeyDown], and [shortcut].
 ///
 /// If [onKeyUp] is `false`, all key-up events are ignored. If [onKeyDown] is
 /// `false`, all key-down events are ignored. If [shortcut] is non-null, all
 /// events that don't match the [shortcut] key presses are ignored.
 ///
-/// This proxy is optional. Individual [ReadOnlyDocumentKeyboardAction]s can
+/// This proxy is optional. Individual [SuperReaderKeyboardAction]s can
 /// make these same decisions about key handling. This proxy is provided as
 /// a convenience for the average use-case, which typically tries to match
 /// a specific shortcut for either an up or down key event.
-ReadOnlyDocumentKeyboardAction createShortcut(
-  ReadOnlyDocumentKeyboardAction action, {
+SuperReaderKeyboardAction createSuperReaderShortcut(
+  SuperReaderKeyboardAction action, {
   LogicalKeyboardKey? keyPressedOrReleased,
   Set<LogicalKeyboardKey>? triggers,
   bool? isShiftPressed,
@@ -568,3 +569,29 @@ ReadOnlyDocumentKeyboardAction createShortcut(
     return action(documentContext: documentContext, keyEvent: keyEvent);
   };
 }
+
+@Deprecated("Use createReadOnlyShortcut or createSuperReaderShortcut instead")
+SuperReaderKeyboardAction createShortcut(
+  SuperReaderKeyboardAction action, {
+  LogicalKeyboardKey? keyPressedOrReleased,
+  Set<LogicalKeyboardKey>? triggers,
+  bool? isShiftPressed,
+  bool? isCmdPressed,
+  bool? isCtlPressed,
+  bool? isAltPressed,
+  bool onKeyUp = false,
+  bool onKeyDown = true,
+  Set<TargetPlatform>? platforms,
+}) =>
+    createSuperReaderShortcut(
+      action,
+      keyPressedOrReleased: keyPressedOrReleased,
+      triggers: triggers,
+      isShiftPressed: isShiftPressed,
+      isCmdPressed: isCmdPressed,
+      isCtlPressed: isCtlPressed,
+      isAltPressed: isAltPressed,
+      onKeyUp: onKeyUp,
+      onKeyDown: onKeyDown,
+      platforms: platforms,
+    );

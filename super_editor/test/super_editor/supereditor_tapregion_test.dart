@@ -9,7 +9,6 @@ import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/super_editor_test.dart';
 
 import '../test_tools.dart';
-import 'supereditor_test_tools.dart';
 
 void main() {
   group('SuperEditor inside a TapRegion', () {

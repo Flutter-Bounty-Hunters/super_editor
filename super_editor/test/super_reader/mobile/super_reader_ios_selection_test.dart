@@ -7,7 +7,6 @@ import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_reader_test.dart';
 
 import '../../test_tools.dart';
-import '../reader_test_tools.dart';
 
 void main() {
   group("SuperReader mobile selection >", () {

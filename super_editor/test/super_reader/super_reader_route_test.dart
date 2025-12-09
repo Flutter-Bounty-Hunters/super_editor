@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 
-import 'reader_test_tools.dart';
+import '../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group('SuperReader > routes >', () {

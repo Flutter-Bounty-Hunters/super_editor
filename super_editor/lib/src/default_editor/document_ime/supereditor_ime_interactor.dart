@@ -126,11 +126,11 @@ class SuperEditorImeInteractor extends StatefulWidget {
   /// keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [DocumentKeyboardAction] is
+  /// from the beginning of the list, a [SuperEditorKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [DocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
-  final List<DocumentKeyboardAction> hardwareKeyboardActions;
+  /// [SuperEditorKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [SuperEditorKeyboardAction].
+  final List<SuperEditorKeyboardAction> hardwareKeyboardActions;
 
   /// Controls "floating cursor" behavior for iOS devices.
   ///

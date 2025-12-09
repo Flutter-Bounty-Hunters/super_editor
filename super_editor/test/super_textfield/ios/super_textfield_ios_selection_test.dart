@@ -6,10 +6,8 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/toolbar.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_editor/super_text_field.dart';
+import 'package:super_editor/super_text_field_test.dart';
 import 'package:super_text_layout/super_text_layout.dart';
-
-import '../super_textfield_inspector.dart';
-import '../super_textfield_robot.dart';
 
 void main() {
   group("SuperTextField mobile selection > iOS", () {

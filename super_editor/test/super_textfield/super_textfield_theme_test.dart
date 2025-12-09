@@ -7,9 +7,8 @@ import 'package:super_editor/src/super_textfield/android/android_textfield.dart'
 import 'package:super_editor/src/super_textfield/infrastructure/attributed_text_editing_controller.dart';
 import 'package:super_editor/src/super_textfield/input_method_engine/_ime_text_editing_controller.dart';
 import 'package:super_editor/src/super_textfield/ios/ios_textfield.dart';
+import 'package:super_editor/super_text_field_test.dart';
 import 'package:super_text_layout/super_text_layout.dart';
-
-import 'super_textfield_robot.dart';
 
 void main() {
   group('SuperTextField', () {

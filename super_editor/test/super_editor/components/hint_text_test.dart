@@ -2,10 +2,8 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_inspector.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../supereditor_test_tools.dart';
+import 'package:super_editor/super_editor_test.dart';
 
 void main() {
   group("Super Editor > components > hint text >", () {

@@ -5,10 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.dart';
+import 'package:super_editor/src/test/flutter_extensions/test_documents.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:text_table/text_table.dart';
-
-import 'test_documents.dart';
 
 /// Extensions on [WidgetTester] that configure and pump [SuperReader]
 /// document editors.

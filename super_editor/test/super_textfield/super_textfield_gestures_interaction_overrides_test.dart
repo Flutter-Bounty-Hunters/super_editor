@@ -6,9 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/super_text_field.dart';
-
-import 'super_textfield_inspector.dart';
-import 'super_textfield_robot.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
 void main() {
   group('SuperTextField gesture interaction overrides > ', () {
