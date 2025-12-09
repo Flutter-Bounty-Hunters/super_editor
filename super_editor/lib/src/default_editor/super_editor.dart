@@ -333,7 +333,7 @@ class SuperEditor extends StatefulWidget {
   /// If [keyboardActions] is `null`, [SuperEditor] uses [defaultKeyboardActions]
   /// when the gesture mode is [TextInputSource.keyboard], and
   /// [defaultImeKeyboardActions] when the gesture mode is [TextInputSource.ime].
-  final List<DocumentKeyboardAction>? keyboardActions;
+  final List<SuperEditorKeyboardAction>? keyboardActions;
 
   /// Handlers for all Mac OS "selectors" reported by the IME.
   ///
@@ -692,7 +692,7 @@ class SuperEditorState extends State<SuperEditor> {
   TextInputSource get inputSource => widget.inputSource ?? TextInputSource.ime;
 
   /// Returns the key handlers that respond to keyboard events within [SuperEditor].
-  List<DocumentKeyboardAction> get _keyboardActions =>
+  List<SuperEditorKeyboardAction> get _keyboardActions =>
       widget.keyboardActions ??
       (inputSource == TextInputSource.ime ? defaultImeKeyboardActions : defaultKeyboardActions);
 
@@ -1232,8 +1232,8 @@ abstract class SuperEditorPlugin {
   /// Removes behaviors from the given [editor], which were added in [attach].
   void detach(Editor editor) {}
 
-  /// Additional [DocumentKeyboardAction]s that will be added to a given [SuperEditor] widget.
-  List<DocumentKeyboardAction> get keyboardActions => [];
+  /// Additional [SuperEditorKeyboardAction]s that will be added to a given [SuperEditor] widget.
+  List<SuperEditorKeyboardAction> get keyboardActions => [];
 
   /// Additional [ComponentBuilder]s that will be added to a given [SuperEditor] widget.
   List<ComponentBuilder> get componentBuilders => [];
@@ -1439,7 +1439,7 @@ const defaultSuperEditorDocumentOverlayBuilders = <SuperEditorLayerBuilder>[
 ];
 
 /// Keyboard actions for the standard [SuperEditor].
-final defaultKeyboardActions = <DocumentKeyboardAction>[
+final defaultKeyboardActions = <SuperEditorKeyboardAction>[
   toggleInteractionModeWhenCmdOrCtrlPressed,
   doNothingWhenThereIsNoSelection,
   scrollOnPageUpKeyPress,
@@ -1494,7 +1494,7 @@ final defaultKeyboardActions = <DocumentKeyboardAction>[
 ///
 /// Using the IME on desktop involves partial input from the IME
 /// and partial input from non-content keys, like arrow keys.
-final defaultImeKeyboardActions = <DocumentKeyboardAction>[
+final defaultImeKeyboardActions = <SuperEditorKeyboardAction>[
   toggleInteractionModeWhenCmdOrCtrlPressed,
   pasteWhenCmdVIsPressed,
   copyWhenCmdCIsPressed,

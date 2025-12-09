@@ -21,7 +21,7 @@ import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_contr
 import 'package:super_editor/src/infrastructure/platforms/ios/magnifier.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 
 /// Adds and removes an iOS-style editor toolbar, as dictated by an ancestor
 /// [SuperMessageIosControlsScope].
@@ -201,7 +201,7 @@ class SuperMessageIosHandlesDocumentLayerBuilder implements SuperMessageDocument
   final Color? handleColor;
 
   @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext readerContext) {
+  ContentLayerWidget build(BuildContext context, DocumentContext readerContext) {
     if (defaultTargetPlatform != TargetPlatform.iOS || SuperMessageIosControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperEditor is configured with
       // a non-iOS gesture mode. Build nothing.

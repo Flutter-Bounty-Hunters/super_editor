@@ -6,16 +6,9 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 
-/// Collection of core artifacts used to create various read-only document
-/// use-cases.
-///
-/// While [ReadOnlyContext] includes an [editor], it's expected that clients
-/// of a [ReadOnlyContext] do not allow users to alter [Document] within
-/// the [editor]. Instead, the [editor] provides access to a [Document], a
-/// [DocumentComposer] to display and alter selections, and the ability for
-/// code to alter the [Document], such as an AI GPT system.
-class ReadOnlyContext {
-  ReadOnlyContext({
+/// Collection of core artifacts used to create various document use-cases.
+class DocumentContext {
+  DocumentContext({
     required this.editor,
     required DocumentLayout Function() getDocumentLayout,
   }) : _getDocumentLayout = getDocumentLayout;
@@ -44,24 +37,24 @@ class ReadOnlyContext {
 ///
 /// It is possible that an action does nothing and then returns
 /// [ExecutionInstruction.haltExecution] to prevent further execution.
-typedef ReadOnlyDocumentKeyboardAction = ExecutionInstruction Function({
-  required ReadOnlyContext documentContext,
+typedef DocumentKeyboardAction = ExecutionInstruction Function({
+  required DocumentContext documentContext,
   required KeyEvent keyEvent,
 });
 
-/// A proxy for a [ReadOnlyDocumentKeyboardAction] that filters events based
+/// A proxy for a [DocumentKeyboardAction] that filters events based
 /// on [onKeyUp], [onKeyDown], and [shortcut].
 ///
 /// If [onKeyUp] is `false`, all key-up events are ignored. If [onKeyDown] is
 /// `false`, all key-down events are ignored. If [shortcut] is non-null, all
 /// events that don't match the [shortcut] key presses are ignored.
 ///
-/// This proxy is optional. Individual [ReadOnlyDocumentKeyboardAction]s can
+/// This proxy is optional. Individual [DocumentKeyboardAction]s can
 /// make these same decisions about key handling. This proxy is provided as
 /// a convenience for the average use-case, which typically tries to match
 /// a specific shortcut for either an up or down key event.
-ReadOnlyDocumentKeyboardAction createReadOnlyShortcut(
-  ReadOnlyDocumentKeyboardAction action, {
+DocumentKeyboardAction createDocumentShortcut(
+  DocumentKeyboardAction action, {
   LogicalKeyboardKey? keyPressedOrReleased,
   Set<LogicalKeyboardKey>? triggers,
   bool? isShiftPressed,
@@ -77,7 +70,7 @@ ReadOnlyDocumentKeyboardAction createReadOnlyShortcut(
         "Invalid shortcut definition. Both onKeyUp and onKeyDown are false. This shortcut will never be triggered.");
   }
 
-  return ({required ReadOnlyContext documentContext, required KeyEvent keyEvent}) {
+  return ({required DocumentContext documentContext, required KeyEvent keyEvent}) {
     if (keyEvent is KeyUpEvent && !onKeyUp) {
       return ExecutionInstruction.continueExecution;
     }

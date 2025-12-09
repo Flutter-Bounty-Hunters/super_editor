@@ -13,7 +13,7 @@ import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 
 import '../core/document_composer.dart';
@@ -51,7 +51,7 @@ class ReadOnlyDocumentMouseInteractor extends StatefulWidget {
   final FocusNode? focusNode;
 
   /// Service locator for document dependencies.
-  final ReadOnlyContext readerContext;
+  final DocumentContext readerContext;
 
   /// Optional handler that responds to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.

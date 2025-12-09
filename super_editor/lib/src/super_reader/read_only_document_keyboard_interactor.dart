@@ -6,7 +6,7 @@ import 'package:super_editor/src/document_operations/selection_operations.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 
 import '../core/document_composer.dart';
 import 'reader_context.dart';
@@ -48,10 +48,10 @@ class ReadOnlyDocumentKeyboardInteractor extends StatelessWidget {
   /// All the actions that the user can execute with keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [ReadOnlyDocumentKeyboardAction] is
+  /// from the beginning of the list, a [DocumentKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [ReadOnlyDocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [ReadOnlyDocumentKeyboardAction].
+  /// [DocumentKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
   final List<SuperReaderKeyboardAction> keyboardActions;
 
   /// Whether or not the [ReadOnlyDocumentKeyboardInteractor] should autofocus
@@ -136,9 +136,9 @@ final superReaderDefaultKeyboardActions = <SuperReaderKeyboardAction>[
 /// pressing shift, we want to allow any selection. When the user releases the
 /// shift key (and triggers this shortcut), we want to remove the document selection
 /// if it's collapsed.
-final removeCollapsedSelectionWhenShiftIsReleased = createReadOnlyShortcut(
+final removeCollapsedSelectionWhenShiftIsReleased = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final selection = documentContext.composer.selection;
@@ -183,9 +183,9 @@ final scrollDownWithArrowKey = createSuperReaderShortcut(
   isShiftPressed: false,
 );
 
-final expandSelectionWithLeftArrow = createReadOnlyShortcut(
+final expandSelectionWithLeftArrow = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -211,9 +211,9 @@ final expandSelectionWithLeftArrow = createReadOnlyShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowLeft,
 );
 
-final expandSelectionWithRightArrow = createReadOnlyShortcut(
+final expandSelectionWithRightArrow = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -252,9 +252,9 @@ MovementModifier? _getHorizontalMovementModifier(KeyEvent keyEvent) {
   return null;
 }
 
-final expandSelectionWithUpArrow = createReadOnlyShortcut(
+final expandSelectionWithUpArrow = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -276,9 +276,9 @@ final expandSelectionWithUpArrow = createReadOnlyShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowUp,
 );
 
-final expandSelectionWithDownArrow = createReadOnlyShortcut(
+final expandSelectionWithDownArrow = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (defaultTargetPlatform == TargetPlatform.windows && HardwareKeyboard.instance.isAltPressed) {
@@ -300,9 +300,9 @@ final expandSelectionWithDownArrow = createReadOnlyShortcut(
   keyPressedOrReleased: LogicalKeyboardKey.arrowDown,
 );
 
-final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createReadOnlyShortcut(
+final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretUpstream(
@@ -319,9 +319,9 @@ final expandSelectionToLineStartWithHomeOnWindowsAndLinux = createReadOnlyShortc
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineEndWithEndOnWindowsAndLinux = createReadOnlyShortcut(
+final expandSelectionToLineEndWithEndOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretDownstream(
@@ -338,9 +338,9 @@ final expandSelectionToLineEndWithEndOnWindowsAndLinux = createReadOnlyShortcut(
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createReadOnlyShortcut(
+final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretUpstream(
@@ -358,9 +358,9 @@ final expandSelectionToLineStartWithCtrlAOnWindowsAndLinux = createReadOnlyShort
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createReadOnlyShortcut(
+final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didMove = moveCaretDownstream(
@@ -378,9 +378,9 @@ final expandSelectionToLineEndWithCtrlEOnWindowsAndLinux = createReadOnlyShortcu
   platforms: {TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia},
 );
 
-final selectAllWhenCmdAIsPressedOnMac = createReadOnlyShortcut(
+final selectAllWhenCmdAIsPressedOnMac = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didSelectAll = selectAll(documentContext.editor);
@@ -391,9 +391,9 @@ final selectAllWhenCmdAIsPressedOnMac = createReadOnlyShortcut(
   platforms: {TargetPlatform.macOS, TargetPlatform.iOS},
 );
 
-final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createReadOnlyShortcut(
+final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     final didSelectAll = selectAll(documentContext.editor);
@@ -409,9 +409,9 @@ final selectAllWhenCtlAIsPressedOnWindowsAndLinux = createReadOnlyShortcut(
   },
 );
 
-final copyWhenCmdCIsPressedOnMac = createReadOnlyShortcut(
+final copyWhenCmdCIsPressedOnMac = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (documentContext.composer.selection == null) {
@@ -434,9 +434,9 @@ final copyWhenCmdCIsPressedOnMac = createReadOnlyShortcut(
   platforms: {TargetPlatform.macOS, TargetPlatform.iOS},
 );
 
-final copyWhenCtlCIsPressedOnWindowsAndLinux = createReadOnlyShortcut(
+final copyWhenCtlCIsPressedOnWindowsAndLinux = createDocumentShortcut(
   ({
-    required ReadOnlyContext documentContext,
+    required DocumentContext documentContext,
     required KeyEvent keyEvent,
   }) {
     if (documentContext.composer.selection == null) {

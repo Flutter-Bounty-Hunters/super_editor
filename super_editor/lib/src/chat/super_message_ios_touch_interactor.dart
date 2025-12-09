@@ -18,7 +18,7 @@ import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/long_press_selection.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
 
 /// An [InheritedWidget] that provides shared access to a [SuperMessageIosControlsController],
@@ -192,7 +192,7 @@ class SuperMessageIosTouchInteractor extends StatefulWidget {
 
   final FocusNode focusNode;
 
-  final ReadOnlyContext messageContext;
+  final DocumentContext messageContext;
 
   final GlobalKey documentKey;
   final DocumentLayout Function() getDocumentLayout;

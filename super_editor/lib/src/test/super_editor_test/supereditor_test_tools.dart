@@ -256,8 +256,8 @@ class TestSuperEditorConfigurator {
   }
 
   TestSuperEditorConfigurator withAddedKeyboardActions({
-    List<DocumentKeyboardAction> prepend = const [],
-    List<DocumentKeyboardAction> append = const [],
+    List<SuperEditorKeyboardAction> prepend = const [],
+    List<SuperEditorKeyboardAction> append = const [],
   }) {
     _config.prependedKeyboardActions.addAll(prepend);
     _config.appendedKeyboardActions.addAll(append);
@@ -791,8 +791,8 @@ class SuperEditorTestConfiguration {
   DeltaTextInputClientDecorator? imeOverrides;
   ValueNotifier<bool> isImeConnected = ValueNotifier<bool>(false);
   Map<String, SuperEditorSelectorHandler>? selectorHandlers;
-  final prependedKeyboardActions = <DocumentKeyboardAction>[];
-  final appendedKeyboardActions = <DocumentKeyboardAction>[];
+  final prependedKeyboardActions = <SuperEditorKeyboardAction>[];
+  final appendedKeyboardActions = <SuperEditorKeyboardAction>[];
   final addedComponents = <ComponentBuilder>[];
 
   DocumentFloatingToolbarBuilder? androidToolbarBuilder;

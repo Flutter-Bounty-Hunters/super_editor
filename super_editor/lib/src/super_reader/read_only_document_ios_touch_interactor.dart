@@ -24,7 +24,7 @@ import 'package:super_editor/src/infrastructure/platforms/ios/long_press_selecti
 import 'package:super_editor/src/infrastructure/platforms/ios/magnifier.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
 import 'package:super_editor/src/super_reader/reader_context.dart';
@@ -204,7 +204,7 @@ class SuperReaderIosDocumentTouchInteractor extends StatefulWidget {
 
   final FocusNode focusNode;
 
-  final ReadOnlyContext readerContext;
+  final DocumentContext readerContext;
 
   final GlobalKey documentKey;
   final DocumentLayout Function() getDocumentLayout;

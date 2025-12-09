@@ -91,7 +91,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   late final List<EditReaction> _reactions;
 
   @override
-  List<DocumentKeyboardAction> get keyboardActions => [_cancelOnEscape];
+  List<SuperEditorKeyboardAction> get keyboardActions => [_cancelOnEscape];
   ExecutionInstruction _cancelOnEscape({
     required SuperEditorContext editContext,
     required KeyEvent keyEvent,

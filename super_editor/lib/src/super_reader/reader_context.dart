@@ -1,7 +1,7 @@
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/infrastructure/documents/document_scroller.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 
 /// Collection of core artifacts used to display a read-only document.
 ///
@@ -10,7 +10,7 @@ import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
 /// the [editor]. Instead, the [editor] provides access to a [Document], a
 /// [DocumentComposer] to display and alter selections, and the ability for
 /// code to alter the [Document], such as an AI GPT system.
-class SuperReaderContext extends ReadOnlyContext {
+class SuperReaderContext extends DocumentContext {
   SuperReaderContext({
     required super.editor,
     required super.getDocumentLayout,

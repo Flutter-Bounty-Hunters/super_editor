@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 
 /// Receives all hardware keyboard input, when focused, and changes the read-only
 /// document display, as needed.
@@ -28,16 +28,16 @@ class SuperMessageKeyboardInteractor extends StatelessWidget {
   final FocusNode focusNode;
 
   /// Service locator for document display dependencies.
-  final ReadOnlyContext messageContext;
+  final DocumentContext messageContext;
 
   /// All the actions that the user can execute with keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [ReadOnlyDocumentKeyboardAction] is
+  /// from the beginning of the list, a [DocumentKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [ReadOnlyDocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [ReadOnlyDocumentKeyboardAction].
-  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
+  /// [DocumentKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
+  final List<DocumentKeyboardAction> keyboardActions;
 
   /// Whether or not the [SuperMessageKeyboardInteractor] should autofocus
   final bool autofocus;

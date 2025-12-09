@@ -28,7 +28,7 @@ import 'package:super_editor/src/infrastructure/platforms/android/magnifier.dart
 import 'package:super_editor/src/infrastructure/platforms/android/selection_handles.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/render_sliver_ext.dart';
 import 'package:super_editor/src/infrastructure/signal_notifier.dart';
 import 'package:super_editor/src/infrastructure/sliver_hybrid_stack.dart';
@@ -73,7 +73,7 @@ class ReadOnlyAndroidDocumentTouchInteractor extends StatefulWidget {
   /// {@macro super_reader_tap_region_group_id}
   final String? tapRegionGroupId;
 
-  final ReadOnlyContext readerContext;
+  final DocumentContext readerContext;
 
   final GlobalKey documentKey;
   final DocumentLayout Function() getDocumentLayout;

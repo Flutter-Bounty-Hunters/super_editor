@@ -26,7 +26,7 @@ import 'package:super_editor/src/infrastructure/platforms/android/magnifier.dart
 import 'package:super_editor/src/infrastructure/platforms/android/selection_handles.dart';
 import 'package:super_editor/src/infrastructure/platforms/android/toolbar.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/render_sliver_ext.dart';
 import 'package:super_editor/src/infrastructure/touch_controls.dart';
 
@@ -552,7 +552,7 @@ class SuperMessageAndroidToolbarFocalPointDocumentLayerBuilder implements SuperM
   final bool showDebugLeaderBounds;
 
   @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext editorContext) {
+  ContentLayerWidget build(BuildContext context, DocumentContext editorContext) {
     if (defaultTargetPlatform != TargetPlatform.android ||
         SuperMessageAndroidControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperMessage is configured with
@@ -585,7 +585,7 @@ class SuperMessageAndroidHandlesDocumentLayerBuilder implements SuperMessageDocu
   final double caretWidth;
 
   @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext editContext) {
+  ContentLayerWidget build(BuildContext context, DocumentContext editContext) {
     if (defaultTargetPlatform != TargetPlatform.android ||
         SuperMessageAndroidControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperMessage is configured with

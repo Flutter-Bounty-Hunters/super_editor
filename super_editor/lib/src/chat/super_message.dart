@@ -24,13 +24,13 @@ import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
 import 'package:super_editor/src/infrastructure/content_layers_for_boxes.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/documents/selection_leader_document_layer.dart';
 import 'package:super_editor/src/infrastructure/flutter/empty_box.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
 import 'package:super_editor/src/super_reader/read_only_document_keyboard_interactor.dart';
 import 'package:super_editor/src/super_reader/super_reader.dart';
 
@@ -59,7 +59,7 @@ class SuperMessage extends StatefulWidget {
     this.contentTapDelegateFactory,
     this.gestureMode,
     this.overlayController,
-    List<ReadOnlyDocumentKeyboardAction>? keyboardActions,
+    List<DocumentKeyboardAction>? keyboardActions,
     this.createOverlayControlsClipper,
     this.componentBuilders = defaultComponentBuilders,
     this.debugPaint = const DebugPaintConfig(),
@@ -135,7 +135,7 @@ class SuperMessage extends StatefulWidget {
   ///
   /// These actions are only used when in [TextInputSource.keyboard]
   /// mode.
-  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
+  final List<DocumentKeyboardAction> keyboardActions;
 
   /// Creates a clipper that applies to overlay controls, like drag
   /// handles, magnifiers, and popover toolbars, preventing the overlay
@@ -157,7 +157,7 @@ class SuperMessage extends StatefulWidget {
 class _SuperMessageState extends State<SuperMessage> {
   late FocusNode _focusNode;
 
-  late ReadOnlyContext _messageContext;
+  late DocumentContext _messageContext;
 
   final _documentLayoutKey = GlobalKey(debugLabel: 'SuperMessage-DocumentLayout');
 
@@ -275,7 +275,7 @@ class _SuperMessageState extends State<SuperMessage> {
       ],
     );
 
-    _messageContext = ReadOnlyContext(
+    _messageContext = DocumentContext(
       editor: widget.editor,
       getDocumentLayout: () => _documentLayoutKey.currentState as DocumentLayout,
     );
@@ -590,7 +590,7 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayer
   final bool showDebugLeaderBounds;
 
   @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
+  ContentLayerWidget build(BuildContext context, DocumentContext messageContext) {
     return SelectionLeadersDocumentLayer(
       document: messageContext.editor.document,
       selection: messageContext.editor.composer.selectionNotifier,
@@ -603,7 +603,7 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperMessageDocumentLayer
 /// Builds widgets that are displayed at the same position and size as
 /// the document layout within a [SuperMessage].
 abstract class SuperMessageDocumentLayerBuilder {
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext);
+  ContentLayerWidget build(BuildContext context, DocumentContext messageContext);
 }
 
 /// A [SuperMessageDocumentLayerBuilder] that builds a [IosToolbarFocalPointDocumentLayer], which
@@ -618,7 +618,7 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
   final bool showDebugLeaderBounds;
 
   @override
-  ContentLayerWidget build(BuildContext context, ReadOnlyContext messageContext) {
+  ContentLayerWidget build(BuildContext context, DocumentContext messageContext) {
     if (defaultTargetPlatform != TargetPlatform.iOS || SuperMessageIosControlsScope.maybeNearestOf(context) == null) {
       // There's no controls scope. This probably means SuperEditor is configured with
       // a non-iOS gesture mode. Build nothing.
@@ -634,13 +634,13 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
   }
 }
 
-typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(ReadOnlyContext messageContext);
+typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(DocumentContext messageContext);
 
-ContentTapDelegate superMessageLinkTapHandlerFactory(ReadOnlyContext messageContext) =>
+ContentTapDelegate superMessageLinkTapHandlerFactory(DocumentContext messageContext) =>
     SuperReaderLaunchLinkTapHandler(messageContext.document);
 
 /// Keyboard actions for the standard [SuperReader].
-final superMessageDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[
+final superMessageDefaultKeyboardActions = <DocumentKeyboardAction>[
   removeCollapsedSelectionWhenShiftIsReleased,
   expandSelectionWithLeftArrow,
   expandSelectionWithRightArrow,
@@ -666,6 +666,6 @@ final superMessageDefaultKeyboardActions = <ReadOnlyDocumentKeyboardAction>[
 /// It is possible that an action does nothing and then returns
 /// [ExecutionInstruction.haltExecution] to prevent further execution.
 typedef SuperMessageKeyboardAction = ExecutionInstruction Function({
-  required ReadOnlyContext documentContext,
+  required DocumentContext documentContext,
   required KeyEvent keyEvent,
 });

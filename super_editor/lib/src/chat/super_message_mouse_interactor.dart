@@ -11,7 +11,7 @@ import 'package:super_editor/src/document_operations/selection_operations.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
-import 'package:super_editor/src/infrastructure/read_only_use_cases.dart';
+import 'package:super_editor/src/infrastructure/document_context.dart';
 import 'package:super_editor/src/super_reader/read_only_document_mouse_interactor.dart'
     show moveToNearestSelectableComponent, selectRegion;
 
@@ -47,7 +47,7 @@ class SuperMessageMouseInteractor extends StatefulWidget {
   final FocusNode? focusNode;
 
   /// Service locator for document dependencies.
-  final ReadOnlyContext messageContext;
+  final DocumentContext messageContext;
 
   /// Optional handler that responds to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.
