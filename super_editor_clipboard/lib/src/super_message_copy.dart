@@ -4,8 +4,8 @@ import 'package:super_editor_clipboard/src/document_copy.dart';
 
 /// [SuperMessage] shortcut to copy the selected content within the document
 /// as rich text, on Mac.
-final copyMessageAsRichTextWhenCmdCIsPressedOnMac = createReadOnlyShortcut(
-  ({required ReadOnlyContext documentContext, required KeyEvent keyEvent}) {
+final copyMessageAsRichTextWhenCmdCIsPressedOnMac = createDocumentShortcut(
+  ({required DocumentContext documentContext, required KeyEvent keyEvent}) {
     if (documentContext.composer.selection == null) {
       return ExecutionInstruction.continueExecution;
     }
@@ -27,8 +27,8 @@ final copyMessageAsRichTextWhenCmdCIsPressedOnMac = createReadOnlyShortcut(
 
 /// [SuperMessage] shortcut to copy the selected content within the document
 /// as rich text, on Windows and Linux.
-final copyMessageAsRichTextWhenCtrlCIsPressedOnWindowsAndLinux = createReadOnlyShortcut(
-  ({required ReadOnlyContext documentContext, required KeyEvent keyEvent}) {
+final copyMessageAsRichTextWhenCtrlCIsPressedOnWindowsAndLinux = createDocumentShortcut(
+  ({required DocumentContext documentContext, required KeyEvent keyEvent}) {
     if (documentContext.composer.selection == null) {
       return ExecutionInstruction.continueExecution;
     }
