@@ -17,7 +17,6 @@ import 'package:super_editor/src/default_editor/common_editor_operations.dart';
 import 'package:super_editor/src/default_editor/debug_visualization.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_android.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_ios.dart';
-import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
 import 'package:super_editor/src/default_editor/document_scrollable.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_composing_region.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
@@ -881,9 +880,26 @@ class SuperEditorState extends State<SuperEditor> {
           document: editContext.document,
           getDocumentLayout: () => _docLayoutKey.currentState as DocumentLayout,
           selection: _composer.selectionNotifier,
-          setSelection: (newSelection) => editContext.editor.execute([
-            ChangeSelectionRequest(newSelection, SelectionChangeType.pushCaret, SelectionReason.userInteraction),
-          ]),
+          setSelection: (newSelection) {
+            if (newSelection == null) {
+              editContext.editor.execute([
+                ChangeSelectionRequest(
+                  newSelection,
+                  SelectionChangeType.clearSelection,
+                  SelectionReason.userInteraction,
+                ),
+              ]);
+              return;
+            }
+
+            editContext.editor.execute([
+              ChangeSelectionRequest(
+                newSelection,
+                newSelection.isCollapsed ? SelectionChangeType.pushCaret : SelectionChangeType.expandSelection,
+                SelectionReason.userInteraction,
+              ),
+            ]);
+          },
           scrollChangeSignal: _scrollChangeSignal,
           dragHandleAutoScroller: _dragHandleAutoScroller,
           defaultToolbarBuilder: (overlayContext, mobileToolbarKey, focalPoint) => defaultAndroidEditorToolbarBuilder(
