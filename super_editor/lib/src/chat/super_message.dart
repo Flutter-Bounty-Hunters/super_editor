@@ -213,6 +213,7 @@ class _SuperMessageState extends State<SuperMessage> {
     }
 
     if (widget.editor != oldWidget.editor ||
+        widget.styles != oldWidget.styles ||
         !const DeepCollectionEquality().equals(widget.customStylePhases, oldWidget.customStylePhases) ||
         !const DeepCollectionEquality().equals(widget.componentBuilders, oldWidget.componentBuilders)) {
       _initializePresenter();
@@ -570,6 +571,20 @@ class SuperMessageStyles {
 
   late final Stylesheet darkStylesheet;
   late final SelectionStyles darkSelectionStyles;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SuperMessageStyles &&
+          runtimeType == other.runtimeType &&
+          lightStylesheet == other.lightStylesheet &&
+          lightSelectionStyles == other.lightSelectionStyles &&
+          darkStylesheet == other.darkStylesheet &&
+          darkSelectionStyles == other.darkSelectionStyles;
+
+  @override
+  int get hashCode =>
+      lightStylesheet.hashCode ^ lightSelectionStyles.hashCode ^ darkStylesheet.hashCode ^ darkSelectionStyles.hashCode;
 }
 
 /// A [SuperMessageDocumentLayerBuilder] that builds a [SelectionLeadersDocumentLayer], which positions
