@@ -97,8 +97,29 @@ class PasteStructuredContentEditorCommand extends EditCommand {
       return;
     }
 
-    final (upstreamNodeId, _) = _splitPasteParagraph(
-        executor, currentNodeWithSelection.id, (pastePosition.nodePosition as TextNodePosition).offset);
+    late final String upstreamNodeId;
+    DocumentPosition? caretPositionAfterPaste;
+
+    if (currentNodeWithSelection.text.isEmpty ||
+        (pastePosition.nodePosition as TextNodePosition).offset == currentNodeWithSelection.text.length) {
+      // We're pasting into an empty node, or pasting at the very end of a non-empty `TextNode`.
+      // We already know we can't combine the pasted content with this node. We'll paste below
+      // this node.
+      upstreamNodeId = currentNodeWithSelection.id;
+    } else {
+      // We're pasting into the middle of a non-empty text node. We already know we can't combine
+      // the pasted content with this node. Split the selected node before pasting.
+      final (splitUpstreamNodeId, splitDownstreamNodeId) = _splitPasteParagraph(
+          executor, currentNodeWithSelection.id, (pastePosition.nodePosition as TextNodePosition).offset);
+      upstreamNodeId = splitUpstreamNodeId;
+
+      // Since we split a non-empty paragraph, we'll insert the caret at the start
+      // of the 2nd half of the split text.
+      caretPositionAfterPaste = DocumentPosition(
+        nodeId: splitDownstreamNodeId,
+        nodePosition: const TextNodePosition(offset: 0),
+      );
+    }
 
     // Insert the pasted node after the split upstream node.
     document.insertNodeAfter(
@@ -108,17 +129,53 @@ class PasteStructuredContentEditorCommand extends EditCommand {
     executor.logChanges([
       DocumentEdit(
         NodeInsertedEvent(pastedNode.id, document.getNodeIndexById(pastedNode.id)),
-      )
+      ),
     ]);
+
+    // Maybe delete the original selected node, and maybe insert empty paragraph at end.
+    if (currentNodeWithSelection.text.isEmpty) {
+      // We pasted content below the selected node, but the selected node was empty.
+      // As a UX policy, let's delete that empty paragraph because a user won't expect
+      // it to stay around.
+      document.deleteNode(currentNodeWithSelection.id);
+      executor.logChanges([
+        DocumentEdit(
+          NodeRemovedEvent(pastedNode.id, currentNodeWithSelection),
+        ),
+      ]);
+
+      if (pastedNode is! TextNode) {
+        // The pasted content isn't text. It might be an image, table, etc. As a UX
+        // policy, we insert an empty paragraph after the pasted content because users
+        // typically expect to be able to start typing after pasting.
+        final newNodeId = Editor.createNodeId();
+        document.insertNodeAfter(
+          existingNodeId: pastedNode.id,
+          newNode: ParagraphNode(id: newNodeId, text: AttributedText()),
+        );
+        executor.logChanges([
+          DocumentEdit(
+            NodeInsertedEvent(newNodeId, document.getNodeIndexById(newNodeId)),
+          ),
+        ]);
+
+        caretPositionAfterPaste = DocumentPosition(nodeId: newNodeId, nodePosition: const TextNodePosition(offset: 0));
+      }
+    }
+
+    // We didn't split a non-empty paragraph, and we didn't insert a new empty paragraph
+    // at the end of the pasted content. Therefore, place the caret at the end of the pasted
+    // content.
+    caretPositionAfterPaste ??= DocumentPosition(
+      nodeId: pastedNode.id,
+      nodePosition: pastedNode.endPosition,
+    );
 
     // Place the caret at the end of the pasted content.
     executor.executeCommand(
       ChangeSelectionCommand(
         DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: pastedNode.id,
-            nodePosition: pastedNode.endPosition,
-          ),
+          position: caretPositionAfterPaste,
         ),
         SelectionChangeType.insertContent,
         SelectionReason.userInteraction,
@@ -163,13 +220,15 @@ class PasteStructuredContentEditorCommand extends EditCommand {
 
       // We've pasted the first new node. Remove it from the nodes to insert.
       nodesToInsert.removeAt(0);
-    }
-    if (currentNodeWithSelection.text.length == 0) {
+    } else if (currentNodeWithSelection.text.length == 0) {
       // The node with the selection is an empty text node. After we use that node's
       // position to insert other nodes, we want to delete that first node, as if the
       // pasted content replaced it.
       deleteInitiallySelectedNode = true;
     }
+
+    // The caret position we want after the paste.
+    DocumentPosition? pasteEndPosition;
 
     // (Possibly) merge or delete the downstream split node.
     if (nodesToInsert.isNotEmpty) {
@@ -193,6 +252,13 @@ class PasteStructuredContentEditorCommand extends EditCommand {
 
         // We've pasted the last new node. Remove it from the nodes to insert.
         nodesToInsert.removeLast();
+
+        // Since we combined the last paste node with the 2nd half of the original
+        // node, the caret position sits in the middle of that combined node.
+        pasteEndPosition = DocumentPosition(
+          nodeId: downstreamSplitNode.id,
+          nodePosition: TextNodePosition(offset: lastPastedNode.text.length),
+        );
       }
     }
 
@@ -212,6 +278,10 @@ class PasteStructuredContentEditorCommand extends EditCommand {
         )
       ]);
     }
+    pasteEndPosition ??= DocumentPosition(
+      nodeId: previousNode.id,
+      nodePosition: previousNode.endPosition,
+    );
 
     if (deleteInitiallySelectedNode) {
       document.deleteNode(currentNodeWithSelection.id);
@@ -225,12 +295,7 @@ class PasteStructuredContentEditorCommand extends EditCommand {
     // Place the caret at the end of the pasted content.
     executor.executeCommand(
       ChangeSelectionCommand(
-        DocumentSelection.collapsed(
-          position: DocumentPosition(
-            nodeId: previousNode.id,
-            nodePosition: previousNode.endPosition,
-          ),
-        ),
+        DocumentSelection.collapsed(position: pasteEndPosition),
         SelectionChangeType.insertContent,
         SelectionReason.userInteraction,
       ),
