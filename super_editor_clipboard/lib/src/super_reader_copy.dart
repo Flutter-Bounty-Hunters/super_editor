@@ -4,6 +4,7 @@ import 'package:super_editor_clipboard/src/document_copy.dart';
 
 /// [SuperReader] shortcut to copy the selected content within the document
 /// as rich text, on Mac.
+// ignore: deprecated_member_use
 final copyAsRichTextWhenCmdCIsPressedOnMac = createShortcut(
   ({required SuperReaderContext documentContext, required KeyEvent keyEvent}) {
     if (documentContext.editor.composer.selection == null) {
@@ -27,6 +28,7 @@ final copyAsRichTextWhenCmdCIsPressedOnMac = createShortcut(
 
 /// [SuperReader] shortcut to copy the selected content within the document
 /// as rich text, on Windows and Linux.
+// ignore: deprecated_member_use
 final copyAsRichTextWhenCtrlCIsPressedOnWindowsAndLinux = createShortcut(
   ({required SuperReaderContext documentContext, required KeyEvent keyEvent}) {
     if (documentContext.editor.composer.selection == null) {
