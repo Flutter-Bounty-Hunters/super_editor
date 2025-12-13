@@ -60,6 +60,37 @@ class TableBlockNode extends BlockNode {
   }
 
   @override
+  bool hasEquivalentContent(DocumentNode other) {
+    if (other is! TableBlockNode) {
+      return false;
+    }
+
+    if (!super.hasEquivalentContent(other)) {
+      return false;
+    }
+
+    if (rowCount != other.rowCount) {
+      return false;
+    }
+
+    if (columnCount != other.columnCount) {
+      return false;
+    }
+
+    for (int row = 0; row < rowCount; row += 1) {
+      for (int col = 0; col < columnCount; col += 1) {
+        final myCell = getCell(rowIndex: row, columnIndex: col);
+        final otherCell = other.getCell(rowIndex: row, columnIndex: col);
+        if (!myCell.hasEquivalentContent(otherCell)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  @override
   DocumentNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
     return TableBlockNode(
       id: id,
