@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// A globally shared holder of an IME connection, so that the IME connection
 /// can be seamlessly transferred between the same `SuperEditor` or `SuperTextField`
@@ -68,6 +69,7 @@ class SuperIme with ChangeNotifier {
       _imeConnection = null;
     }
 
+    superImeLog.info("Opening IME connection (owner: '$ownerInputId')");
     _imeConnection ??= TextInput.attach(client, configuration);
     if (showKeyboard) {
       _imeConnection!.show();
@@ -83,6 +85,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    superImeLog.info("Closing IME connection (owner: '$ownerInputId')");
     _imeConnection?.close();
     _imeConnection = null;
 
@@ -112,6 +115,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    superImeLog.info("Giving IME ownership to new owner (owner: '$newOwnerInputId')");
     _owner = newOwnerInputId;
 
     notifyListeners();
@@ -133,7 +137,9 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
+    superImeLog.info("Releasing IME ownership (owner: '$ownerInputId')");
     if (clearConnectionOnRelease) {
+      superImeLog.info("Closing connection when releasing IME ownership (owner: '$ownerInputId')");
       clearConnection(ownerInputId);
     }
     _owner = null;
