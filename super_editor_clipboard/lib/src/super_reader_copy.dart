@@ -4,18 +4,19 @@ import 'package:super_editor_clipboard/src/document_copy.dart';
 
 /// [SuperReader] shortcut to copy the selected content within the document
 /// as rich text, on Mac.
+// ignore: deprecated_member_use
 final copyAsRichTextWhenCmdCIsPressedOnMac = createShortcut(
   ({required SuperReaderContext documentContext, required KeyEvent keyEvent}) {
-    if (documentContext.composer.selection == null) {
+    if (documentContext.editor.composer.selection == null) {
       return ExecutionInstruction.continueExecution;
     }
-    if (documentContext.composer.selection!.isCollapsed) {
+    if (documentContext.editor.composer.selection!.isCollapsed) {
       // Nothing to copy, but we technically handled the task.
       return ExecutionInstruction.haltExecution;
     }
 
-    documentContext.document.copyAsRichTextWithPlainTextFallback(
-      selection: documentContext.composer.selection!,
+    documentContext.editor.document.copyAsRichTextWithPlainTextFallback(
+      selection: documentContext.editor.composer.selection!,
     );
 
     return ExecutionInstruction.haltExecution;
@@ -27,18 +28,19 @@ final copyAsRichTextWhenCmdCIsPressedOnMac = createShortcut(
 
 /// [SuperReader] shortcut to copy the selected content within the document
 /// as rich text, on Windows and Linux.
+// ignore: deprecated_member_use
 final copyAsRichTextWhenCtrlCIsPressedOnWindowsAndLinux = createShortcut(
   ({required SuperReaderContext documentContext, required KeyEvent keyEvent}) {
-    if (documentContext.composer.selection == null) {
+    if (documentContext.editor.composer.selection == null) {
       return ExecutionInstruction.continueExecution;
     }
-    if (documentContext.composer.selection!.isCollapsed) {
+    if (documentContext.editor.composer.selection!.isCollapsed) {
       // Nothing to copy, but we technically handled the task.
       return ExecutionInstruction.haltExecution;
     }
 
-    documentContext.document.copyAsRichTextWithPlainTextFallback(
-      selection: documentContext.composer.selection!,
+    documentContext.editor.document.copyAsRichTextWithPlainTextFallback(
+      selection: documentContext.editor.composer.selection!,
     );
 
     return ExecutionInstruction.haltExecution;

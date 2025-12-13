@@ -3,10 +3,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/src/infrastructure/platforms/android/selection_handles.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/selection_handles.dart';
+import 'package:super_editor/src/test/super_text_field_test/super_text_field_inspector.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_text_layout/super_text_layout.dart';
-
-import 'super_textfield_inspector.dart';
 
 /// Extensions on [WidgetTester] for interacting with a [SuperTextField] the way
 /// a user would.

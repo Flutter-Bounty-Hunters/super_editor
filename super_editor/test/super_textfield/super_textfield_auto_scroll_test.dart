@@ -4,8 +4,7 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:meta/meta.dart';
 import 'package:super_editor/src/super_textfield/metrics.dart';
 import 'package:super_editor/super_editor.dart';
-
-import 'super_textfield_robot.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
 const screenSizeWithoutKeyboard = Size(400, 800);
 const screenSizeWithKeyboard = Size(400, 300);

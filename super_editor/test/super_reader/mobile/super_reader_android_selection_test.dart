@@ -4,9 +4,8 @@ import 'package:super_editor/src/infrastructure/platforms/android/magnifier.dart
 import 'package:super_editor/src/infrastructure/platforms/android/selection_handles.dart';
 import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor/super_editor_test.dart';
-
-import '../reader_test_tools.dart';
+import 'package:super_editor/super_editor_test.dart' show SuperEditorRobot;
+import 'package:super_editor/super_reader_test.dart';
 
 void main() {
   group("SuperReader mobile selection >", () {

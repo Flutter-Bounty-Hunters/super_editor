@@ -4,7 +4,7 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/src/test/super_reader_test/super_reader_inspector.dart';
 
 import '../super_editor/test_documents.dart';
-import 'reader_test_tools.dart';
+import '../../lib/src/test/super_reader_test/reader_test_tools.dart';
 
 void main() {
   group("SuperReader", () {

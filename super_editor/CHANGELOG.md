@@ -1,3 +1,24 @@
+## [0.3.0-dev.46]
+### Dec 13, 2025
+* FIX: When pasting structured content, the first pasted node was getting lost.
+* FIX: When pasting structured content, if pasting a single non-text node, an extra blank paragraph was retained above it.
+* ADJUSTMENT: Implements content equivalency check for `TableBlockNode`.
+
+## [0.3.0-dev.45]
+### Dec 10, 2025
+* ADJUSTMENT: Make Android mobile handles use an eager gesture recognizer so that things like
+  drawers don't beat the handle drag gestures.
+* FIX: `SuperEditor` - When the Android handles change the selection, `SuperEditor` now passes
+  the correct "selection change type". Previously it was always hard-coded to "push caret".
+* FIX: `SuperMessage` - Re-render visual styles when the incoming `styles` property changes.
+
+## [0.3.0-dev.44]
+### Dec 8, 2025
+* FEATURE: Add mobile handle, magnifier, and toolbar to `SuperMessage`.
+* BREAKING: Rename `DocumentKeyboardAction` to `SuperEditorKeyboardAction`, also created a different definition 
+  for `DocumentKeyboardAction`
+* ADJUSTMENT: Moved a bunch of test tools from `/test` and `/test_goldens` directory into the `/lib`.
+
 ## [0.3.0-dev.43]
 ### Dec 2, 2025
 * FIX: `ImeFocusPolicy` wasn't unregistering its focus listener on disposal. This could result in a

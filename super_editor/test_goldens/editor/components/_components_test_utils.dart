@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
-
-import '../../test_tools_goldens.dart';
+import 'package:super_editor/super_test.dart';
 
 void testComponentGolden(String description, Widget componentBuilder, String fileName) {
   testGoldensOnAndroid(description, (tester) async {

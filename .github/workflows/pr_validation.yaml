@@ -193,6 +193,46 @@ jobs:
           name: golden-failures
           path: "**/failures/**/*.png"
 
+  analyze_super_editor_clipboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./super_editor_clipboard
+    steps:
+      # Checkout the PR branch
+      - uses: actions/checkout@v3
+
+      # Setup Flutter environment
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "master"
+
+      # Download all the packages that the app uses
+      - run: flutter pub get
+
+      # Enforce static analysis
+      - run: flutter analyze
+
+  test_super_editor_clipboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./super_editor_clipboard
+    steps:
+      # Checkout the PR branch
+      - uses: actions/checkout@v3
+
+      # Setup Flutter environment
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "master"
+
+      # Download all the packages that the app uses
+      - run: flutter pub get
+
+      # Run all tests
+      - run: flutter test
+
   analyze_super_keyboard:
     runs-on: ubuntu-latest
     defaults:

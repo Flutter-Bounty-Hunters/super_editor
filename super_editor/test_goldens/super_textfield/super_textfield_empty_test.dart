@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:super_editor/super_text_field.dart';
 
-import '../test_tools_goldens.dart';
-
 void main() {
   group("SuperTextField > empty >", () {
     // This desktop test is run on Android because it seems that the golden toolkit

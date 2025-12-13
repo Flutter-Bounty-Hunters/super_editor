@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
-
-import '../test_tools_user_input.dart';
-import 'supereditor_test_tools.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group('SuperEditor', () {

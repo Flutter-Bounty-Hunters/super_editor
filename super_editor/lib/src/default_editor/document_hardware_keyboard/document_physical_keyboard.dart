@@ -34,11 +34,11 @@ class SuperEditorHardwareKeyHandler extends StatefulWidget {
   /// All the actions that the user can execute with keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [DocumentKeyboardAction] is
+  /// from the beginning of the list, a [SuperEditorKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [DocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
-  final List<DocumentKeyboardAction> keyboardActions;
+  /// [SuperEditorKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [SuperEditorKeyboardAction].
+  final List<SuperEditorKeyboardAction> keyboardActions;
 
   /// Whether or not the [SuperEditorHardwareKeyHandler] should autofocus
   final bool autofocus;
@@ -120,14 +120,14 @@ class _SuperEditorHardwareKeyHandlerState extends State<SuperEditorHardwareKeyHa
 ///
 /// It is possible that an action does nothing and then returns
 /// `ExecutionInstruction.haltExecution` to prevent further execution.
-typedef DocumentKeyboardAction = ExecutionInstruction Function({
+typedef SuperEditorKeyboardAction = ExecutionInstruction Function({
   required SuperEditorContext editContext,
   required KeyEvent keyEvent,
 });
 
-/// A [DocumentKeyboardAction] that reports [ExecutionInstruction.blocked]
+/// A [SuperEditorKeyboardAction] that reports [ExecutionInstruction.blocked]
 /// for any key combination that matches one of the given [keys].
-DocumentKeyboardAction ignoreKeyCombos(List<ShortcutActivator> keys) {
+SuperEditorKeyboardAction ignoreKeyCombos(List<ShortcutActivator> keys) {
   return ({
     required SuperEditorContext editContext,
     required KeyEvent keyEvent,

@@ -5,9 +5,8 @@ import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_reader_test.dart';
-
-import '../../test/super_textfield/super_textfield_robot.dart';
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_test.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
 void main() {
   group('SuperTextfield > RTL mode >', () {

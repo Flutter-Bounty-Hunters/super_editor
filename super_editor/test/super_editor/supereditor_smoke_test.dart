@@ -3,8 +3,6 @@ import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
-import 'supereditor_test_tools.dart';
-
 void main() {
   group("SuperEditor smoke test", () {
     testWidgets("writes a document with multiple types of content", (tester) async {

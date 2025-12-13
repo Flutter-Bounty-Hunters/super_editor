@@ -6,8 +6,6 @@ import 'package:super_editor/src/infrastructure/render_sliver_ext.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
-import '../super_editor/supereditor_test_tools.dart';
-
 void main() {
   group("Content layers", () {
     testWidgets(

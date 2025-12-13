@@ -60,7 +60,7 @@ void main() {
 
 Future<void> _pumpShortcutsAndSuperEditor(
   WidgetTester tester,
-  List<DocumentKeyboardAction> keyboardActions,
+  List<SuperEditorKeyboardAction> keyboardActions,
   VoidCallback onShortcut,
 ) async {
   final document = MutableDocument.empty("1");

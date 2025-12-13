@@ -4,13 +4,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:super_editor/src/test/flutter_extensions/test_documents.dart';
+import 'package:super_editor/src/test/flutter_extensions/test_tools_user_input.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_keyboard/super_keyboard_test.dart';
 import 'package:text_table/text_table.dart';
-
-import '../test_tools_user_input.dart';
-import 'test_documents.dart';
 
 /// Extensions on [WidgetTester] that configure and pump [SuperEditor]
 /// document editors.
@@ -257,8 +256,8 @@ class TestSuperEditorConfigurator {
   }
 
   TestSuperEditorConfigurator withAddedKeyboardActions({
-    List<DocumentKeyboardAction> prepend = const [],
-    List<DocumentKeyboardAction> append = const [],
+    List<SuperEditorKeyboardAction> prepend = const [],
+    List<SuperEditorKeyboardAction> append = const [],
   }) {
     _config.prependedKeyboardActions.addAll(prepend);
     _config.appendedKeyboardActions.addAll(append);
@@ -792,8 +791,8 @@ class SuperEditorTestConfiguration {
   DeltaTextInputClientDecorator? imeOverrides;
   ValueNotifier<bool> isImeConnected = ValueNotifier<bool>(false);
   Map<String, SuperEditorSelectorHandler>? selectorHandlers;
-  final prependedKeyboardActions = <DocumentKeyboardAction>[];
-  final appendedKeyboardActions = <DocumentKeyboardAction>[];
+  final prependedKeyboardActions = <SuperEditorKeyboardAction>[];
+  final appendedKeyboardActions = <SuperEditorKeyboardAction>[];
   final addedComponents = <ComponentBuilder>[];
 
   DocumentFloatingToolbarBuilder? androidToolbarBuilder;
