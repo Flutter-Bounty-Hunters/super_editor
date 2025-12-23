@@ -186,7 +186,7 @@ class _EditorSelectionAndFocusPolicyState extends State<EditorSelectionAndFocusP
         widget.editor.execute([
           ChangeSelectionRequest(
             restoredSelection,
-            SelectionChangeType.placeCaret,
+            restoredSelection.isCollapsed ? SelectionChangeType.placeCaret : SelectionChangeType.expandSelection,
             SelectionReason.contentChange,
           ),
         ]);
