@@ -46,70 +46,91 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
     return MaterialApp(
       home: Scaffold(
         resizeToAvoidBottomInset: defaultTargetPlatform != TargetPlatform.android,
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildKeyboardStateIcon(),
-                const SizedBox(height: 12),
-                SuperKeyboardBuilder(
-                  builder: (context, keyboardState) {
-                    return Text("Keyboard state: $_keyboardState");
-                  },
+        body: Stack(
+          children: [
+            // Placeholder "X" behind content to show what we think is above the keyboard.
+            SuperKeyboardBuilder(builder: (context, keyboardState) {
+              final keyboardHeight = keyboardState.keyboardHeight ?? 0;
+
+              return Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: keyboardHeight > 0 ? keyboardHeight - MediaQuery.paddingOf(context).bottom : 0,
+                child: const Opacity(
+                  opacity: 0.1,
+                  child: Placeholder(),
                 ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder(
-                  valueListenable: SuperKeyboard.instance.mobileGeometry,
-                  builder: (context, value, child) {
-                    return Text(
-                        "Keyboard height: ${value.keyboardHeight != null ? "${value.keyboardHeight!.toInt()}" : "???"}");
-                  },
-                ),
-                const SizedBox(height: 48),
-                TextField(
-                  focusNode: _textFieldFocusNode,
-                  decoration: const InputDecoration(
-                    hintText: "Type some text",
+              );
+            }),
+            Positioned.fill(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildKeyboardStateIcon(),
+                      const SizedBox(height: 12),
+                      SuperKeyboardBuilder(
+                        builder: (context, keyboardState) {
+                          return Text("Keyboard state: $_keyboardState");
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ValueListenableBuilder(
+                        valueListenable: SuperKeyboard.instance.mobileGeometry,
+                        builder: (context, value, child) {
+                          return Text(
+                              "Keyboard height: ${value.keyboardHeight != null ? "${value.keyboardHeight!.toInt()}" : "???"}");
+                        },
+                      ),
+                      const SizedBox(height: 48),
+                      TextField(
+                        focusNode: _textFieldFocusNode,
+                        decoration: const InputDecoration(
+                          hintText: "Type some text",
+                        ),
+                        onTapOutside: (_) {
+                          if (_closeOnOutsideTap) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          // ignore: avoid_print
+                          print("Requesting text field focus");
+                          _textFieldFocusNode.requestFocus();
+
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            // ignore: avoid_print
+                            print("Unfocusing text field");
+                            _textFieldFocusNode.unfocus();
+                          });
+                        },
+                        child: const Text("Open/Close Rapidly"),
+                      ),
+                      _buildCloseOnFocusOption(),
+                      _buildFlutterLoggingOption(),
+                      _buildPlatformLoggingOption(),
+                      ValueListenableBuilder(
+                        valueListenable: SuperKeyboard.instance.mobileGeometry,
+                        builder: (context, value, child) {
+                          if (value.keyboardHeight == null) {
+                            return const SizedBox();
+                          }
+
+                          return SizedBox(height: value.keyboardHeight! / MediaQuery.of(context).devicePixelRatio);
+                        },
+                      ),
+                    ],
                   ),
-                  onTapOutside: (_) {
-                    if (_closeOnOutsideTap) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                    }
-                  },
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    // ignore: avoid_print
-                    print("Requesting text field focus");
-                    _textFieldFocusNode.requestFocus();
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      // ignore: avoid_print
-                      print("Unfocusing text field");
-                      _textFieldFocusNode.unfocus();
-                    });
-                  },
-                  child: const Text("Open/Close Rapidly"),
-                ),
-                _buildCloseOnFocusOption(),
-                _buildFlutterLoggingOption(),
-                _buildPlatformLoggingOption(),
-                ValueListenableBuilder(
-                  valueListenable: SuperKeyboard.instance.mobileGeometry,
-                  builder: (context, value, child) {
-                    if (value.keyboardHeight == null) {
-                      return const SizedBox();
-                    }
-
-                    return SizedBox(height: value.keyboardHeight! / MediaQuery.of(context).devicePixelRatio);
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
