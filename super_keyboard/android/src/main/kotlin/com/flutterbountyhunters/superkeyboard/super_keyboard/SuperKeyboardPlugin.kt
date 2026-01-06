@@ -1,6 +1,8 @@
 package com.flutterbountyhunters.superkeyboard.super_keyboard
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -203,9 +205,23 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
           // Report whether the keyboard has fully opened or fully closed.
           SuperKeyboardLog.i("super_keyboard", "Insets animation callback - onEnd - current keyboard state: $keyboardState")
           if (keyboardState == KeyboardState.Opening) {
-            SuperKeyboardLog.i("super_keyboard", "Sending new keyboard state: open")
-            keyboardState = KeyboardState.Open
-            sendMessageKeyboardOpened()
+            // It was discovered that on at least some Samsung devices, such as Galaxy S24 on API 14
+            // and API 16, `onEnd()` runs a frame before the final keyboard inset height is applied.
+            // Therefore, we always wait a frame to report the completion of the keyboard opening.
+            Handler(Looper.getMainLooper()).post {
+              SuperKeyboardLog.i("super_keyboard", "Sending new keyboard state: open")
+
+              // Update our cached measurements.
+              val insets = ViewCompat.getRootWindowInsets(binding.activity.window.decorView)
+              if (insets != null) {
+                // Note: I don't ever expect insets to be null here, but technically it's possible.
+                imeHeightInDpi = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom / dpi
+                bottomPaddingInDpi = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures()).bottom / dpi
+              }
+
+              keyboardState = KeyboardState.Open
+              sendMessageKeyboardOpened()
+            }
           } else if (keyboardState == KeyboardState.Closing) {
             SuperKeyboardLog.i("super_keyboard", "Sending new keyboard state: closing")
             keyboardState = KeyboardState.Closed
