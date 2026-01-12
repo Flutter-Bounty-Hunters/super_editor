@@ -1,6 +1,7 @@
 import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:super_editor/super_test.dart';
 import 'package:super_editor/super_text_field.dart';
 import 'package:super_editor/super_text_field_test.dart';
 
