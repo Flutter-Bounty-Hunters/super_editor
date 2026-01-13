@@ -43,14 +43,54 @@ Future<void> _pasteFromClipboard(Editor editor) async {
 
   final reader = await clipboard.read();
 
+  // Try to paste a bitmap image.
+  var didPaste = await _maybePasteImage(editor, reader);
+  if (didPaste) {
+    return;
+  }
+
   // Try to paste rich text (via HTML).
-  var didPaste = await _maybePasteHtml(editor, reader);
+  didPaste = await _maybePasteHtml(editor, reader);
   if (didPaste) {
     return;
   }
 
   // Fall back to plain text.
   _pastePlainText(editor, reader);
+}
+
+Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
+  if (reader.canProvide(Formats.jpeg)) {
+    reader.getFile(Formats.jpeg, (file) async {
+      // Do something with the PNG image
+      final imageData = await file.readAll();
+
+      editor.execute([
+        InsertNodeAtCaretRequest(
+          node: BitmapImageNode(id: Editor.createNodeId(), imageData: imageData),
+        ),
+      ]);
+    });
+
+    return true;
+  }
+
+  if (reader.canProvide(Formats.png)) {
+    reader.getFile(Formats.png, (file) async {
+      // Do something with the PNG image
+      final pngImageData = await file.readAll();
+
+      editor.execute([
+        InsertNodeAtCaretRequest(
+          node: BitmapImageNode(id: Editor.createNodeId(), imageData: pngImageData),
+        ),
+      ]);
+    });
+
+    return true;
+  }
+
+  return false;
 }
 
 Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
@@ -108,12 +148,16 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
     super.magnifierBuilder,
     super.createOverlayControlsClipper,
   }) {
+    print("SuperEditorIosControlsControllerWithNativePaste is taking over paste");
     shouldShowToolbar.addListener(_onToolbarVisibilityChange);
   }
 
   @override
   void dispose() {
     // In case we enabled custom native paste, disable it on disposal.
+    if (SuperEditorClipboardIosPlugin.isPasteOwner(this)) {
+      print("SuperEditorIosControlsControllerWithNativePaste is releasing paste");
+    }
     SuperEditorClipboardIosPlugin.disableCustomPaste(this);
     SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
 
@@ -150,10 +194,12 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   void _onToolbarVisibilityChange() {
     if (shouldShowToolbar.value) {
       // The native iOS toolbar is visible.
+      print("SuperEditorIosControlsControllerWithNativePaste is taking over paste on toolbar show");
       SuperEditorClipboardIosPlugin.takePasteOwnership(this);
       SuperEditorClipboardIosPlugin.enableCustomPaste(this, this);
     } else {
       // The native iOS toolbar is no longer visible.
+      print("SuperEditorIosControlsControllerWithNativePaste is releasing paste on toolbar hide");
       SuperEditorClipboardIosPlugin.disableCustomPaste(this);
       SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
     }
@@ -161,59 +207,8 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
 
   @override
   Future<void> onUserRequestedPaste() async {
-    print("Flutter side - user requested to paste");
-
-    final clipboard = SystemClipboard.instance;
-    if (clipboard == null) {
-      print(" - clipboard is null");
-      return; // Clipboard API is not supported on this platform.
-    }
-    final reader = await clipboard.read();
-
-    if (reader.canProvide(Formats.jpeg)) {
-      print(" - JPEG");
-      reader.getFile(Formats.jpeg, (file) async {
-        // Do something with the PNG image
-        print(" - File size: ${file.fileSize}");
-        final imageData = await file.readAll();
-
-        editor.execute([
-          InsertNodeAtCaretRequest(
-            node: BitmapImageNode(id: Editor.createNodeId(), imageData: imageData),
-          ),
-        ]);
-      });
-      return;
-    }
-    if (reader.canProvide(Formats.png)) {
-      print(" - PNG");
-      reader.getFile(Formats.png, (file) async {
-        // Do something with the PNG image
-        print(" - File size: ${file.fileSize}");
-        final pngImageData = await file.readAll();
-
-        editor.execute([
-          InsertNodeAtCaretRequest(
-            node: BitmapImageNode(id: Editor.createNodeId(), imageData: pngImageData),
-          ),
-        ]);
-      });
-      return;
-    }
-
-    if (reader.canProvide(Formats.htmlText)) {
-      final html = await reader.readValue(Formats.htmlText);
-      print(" - html: '$html'");
-      return;
-    }
-
-    if (reader.canProvide(Formats.plainText)) {
-      final text = await reader.readValue(Formats.plainText);
-      print(" - plain text: $text");
-      return;
-    }
-
-    print(" - didn't match anything");
+    print("User requested to paste - pasting from super_clipboard");
+    _pasteFromClipboard(editor);
   }
 }
 
