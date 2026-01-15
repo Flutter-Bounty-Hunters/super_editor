@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 /// Loggers for Super Keyboard, which can be activated by log level and by focal
-/// area, and can also print to a given [LogPrinter].
+/// area, and can also print to a given [SECLogPrinter].
 abstract class SECLog {
   static final superEditorClipboard = Logger("super_editor_clipboard");
   static final paste = Logger("super_editor_clipboard.paste");
@@ -12,7 +12,7 @@ abstract class SECLog {
 
   static StreamSubscription<LogRecord>? _logRecordSubscription;
 
-  static void startLogging([Level level = Level.ALL, LogPrinter? printer]) {
+  static void startLogging([Level level = Level.ALL, SECLogPrinter? printer]) {
     if (_logRecordSubscription != null) {
       _logRecordSubscription!.cancel();
       _logRecordSubscription = null;
@@ -38,7 +38,7 @@ abstract class SECLog {
   }
 }
 
-typedef LogPrinter = void Function(LogRecord);
+typedef SECLogPrinter = void Function(LogRecord);
 
 extension on DateTime {
   String toLogTime() {
