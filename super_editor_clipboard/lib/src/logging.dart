@@ -31,11 +31,11 @@ abstract class SECLog {
       _logRecordSubscription = null;
     }
   }
-}
 
-void defaultLogPrinter(LogRecord record) {
-  // ignore: avoid_print
-  print('${record.level.name}: ${record.time.toLogTime()}: ${record.message}');
+  static void defaultLogPrinter(LogRecord record) {
+    // ignore: avoid_print
+    print('${record.level.name}: ${record.time.toLogTime()}: ${record.message}');
+  }
 }
 
 typedef LogPrinter = void Function(LogRecord);
