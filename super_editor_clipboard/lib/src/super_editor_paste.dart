@@ -120,18 +120,6 @@ Future<bool> _maybePasteVideo(Editor editor, ClipboardReader reader) async {
   return false;
 }
 
-const _supportedVideoFormats = [
-  Formats.mp4,
-  Formats.mov,
-  Formats.mpeg,
-  Formats.webm,
-  Formats.avi,
-  Formats.m4v,
-  Formats.mkv,
-  Formats.wmv,
-  Formats.flv,
-];
-
 Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   final completer = Completer<bool>();
 

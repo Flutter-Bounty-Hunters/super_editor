@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
-import 'package:super_editor_clipboard/src/logging.dart';
 import 'package:super_editor_clipboard/src/plugin/ios/super_editor_clipboard_ios_plugin.dart';
 import 'package:super_editor_clipboard/src/super_editor_paste.dart';
 import 'package:super_keyboard/super_keyboard_test.dart';
