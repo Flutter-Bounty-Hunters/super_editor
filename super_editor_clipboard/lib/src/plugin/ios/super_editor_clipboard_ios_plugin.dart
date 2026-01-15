@@ -5,10 +5,13 @@ class SuperEditorClipboardIosPlugin {
   @visibleForTesting
   static final methodChannel = const MethodChannel('super_editor_clipboard.ios');
 
-  static const _messageToPlatformEnableCustomPaste = "enableCustomPaste";
-  static const _messageToPlatformDisableCustomPaste = "disableCustomPaste";
+  @visibleForTesting
+  static const messageToPlatformEnableCustomPaste = "enableCustomPaste";
+  @visibleForTesting
+  static const messageToPlatformDisableCustomPaste = "disableCustomPaste";
 
-  static const _messageFromPlatformPaste = "paste";
+  @visibleForTesting
+  static const messageFromPlatformPaste = "paste";
 
   /// Returns `true` if paste functionality currently has an owner, or `false` if nothing
   /// currently owns the native paste functionality.
@@ -68,12 +71,12 @@ class SuperEditorClipboardIosPlugin {
 
     _customPasteDelegate = delegate;
 
-    methodChannel.invokeMethod(_messageToPlatformEnableCustomPaste);
+    methodChannel.invokeMethod(messageToPlatformEnableCustomPaste);
     methodChannel.setMethodCallHandler(_onMessageFromPlatform);
   }
 
   static Future<void> _onMessageFromPlatform(MethodCall call) async {
-    if (call.method == _messageFromPlatformPaste) {
+    if (call.method == messageFromPlatformPaste) {
       if (_customPasteDelegate == null) {
         // TODO: Log a warning that we're missing a delegate
         return;
@@ -91,7 +94,7 @@ class SuperEditorClipboardIosPlugin {
     }
 
     _customPasteDelegate = null;
-    methodChannel.invokeMethod(_messageToPlatformDisableCustomPaste);
+    methodChannel.invokeMethod(messageToPlatformDisableCustomPaste);
   }
 }
 

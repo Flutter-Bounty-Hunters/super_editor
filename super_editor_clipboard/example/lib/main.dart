@@ -47,11 +47,7 @@ class _MyAppState extends State<MyApp> {
         appBar: AppBar(title: const Text('Native paste example app')),
         body: SuperEditorIosControlsScope(
           controller: _iosControlsController,
-          child: SuperEditor(
-            editor: _editor,
-            documentLayoutKey: _documentLayoutKey,
-            componentBuilders: [BitmapImageComponentBuilder(), ...defaultComponentBuilders],
-          ),
+          child: SuperEditor(editor: _editor, documentLayoutKey: _documentLayoutKey),
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor_clipboard/src/editor_paste.dart';
+import 'package:super_editor_clipboard/src/logging.dart';
 import 'package:super_editor_clipboard/src/plugin/ios/super_editor_clipboard_ios_plugin.dart';
 
 /// Pastes rich text from the system clipboard when the user presses CMD+V on
@@ -34,16 +35,31 @@ ExecutionInstruction pasteRichTextOnCmdCtrlV({
   return ExecutionInstruction.haltExecution;
 }
 
-Future<void> _pasteFromClipboard(Editor editor) async {
+Future<void> _pasteFromClipboard(Editor editor, [CustomPasteDataInserter? customPasteDataInserter]) async {
   final clipboard = SystemClipboard.instance;
   if (clipboard == null) {
     return;
   }
 
   final reader = await clipboard.read();
+  var didPaste = false;
+
+  // Try to read and paste a custom data type, if the app provided an inserter.
+  if (customPasteDataInserter != null) {
+    didPaste = await customPasteDataInserter(editor, reader);
+  }
+  if (didPaste) {
+    return;
+  }
 
   // Try to paste a bitmap image.
-  var didPaste = await _maybePasteImage(editor, reader);
+  didPaste = await _maybePasteImage(editor, reader);
+  if (didPaste) {
+    return;
+  }
+
+  // Try to paste a video.
+  didPaste = await _maybePasteVideo(editor, reader);
   if (didPaste) {
     return;
   }
@@ -59,38 +75,62 @@ Future<void> _pasteFromClipboard(Editor editor) async {
 }
 
 Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
-  if (reader.canProvide(Formats.jpeg)) {
-    reader.getFile(Formats.jpeg, (file) async {
-      // Do something with the PNG image
-      final imageData = await file.readAll();
+  for (final bitmapFormat in _supportedBitmapImageFormats) {
+    if (reader.canProvide(bitmapFormat)) {
+      // We can read this bitmap type. Read it, and insert it.
+      reader.getFile(bitmapFormat, (file) async {
+        // Read the bitmap image data.
+        final imageData = await file.readAll();
 
-      editor.execute([
-        InsertNodeAtCaretRequest(
-          node: BitmapImageNode(id: Editor.createNodeId(), imageData: imageData),
-        ),
-      ]);
-    });
+        // Decode the image so that we can get the size. The size is important because it's what
+        // facilitates auto-scrolling to the bottom of an image that exceeds the current viewport
+        // height.
+        final image = await decodeImageFromList(imageData);
 
-    return true;
-  }
+        // Insert the bitmap image into the Document.
+        editor.execute([
+          InsertNodeAtCaretRequest(
+            node: BitmapImageNode(
+              id: Editor.createNodeId(),
+              imageData: imageData,
+              expectedBitmapSize: ExpectedSize(image.width, image.height),
+            ),
+          ),
+        ]);
+      });
 
-  if (reader.canProvide(Formats.png)) {
-    reader.getFile(Formats.png, (file) async {
-      // Do something with the PNG image
-      final pngImageData = await file.readAll();
-
-      editor.execute([
-        InsertNodeAtCaretRequest(
-          node: BitmapImageNode(id: Editor.createNodeId(), imageData: pngImageData),
-        ),
-      ]);
-    });
-
-    return true;
+      return true;
+    }
   }
 
   return false;
 }
+
+const _supportedBitmapImageFormats = [
+  Formats.png,
+  Formats.jpeg,
+  Formats.heic,
+  Formats.gif,
+  Formats.bmp,
+  Formats.webp,
+];
+
+Future<bool> _maybePasteVideo(Editor editor, ClipboardReader reader) async {
+  // TODO: Implement video support.
+  return false;
+}
+
+const _supportedVideoFormats = [
+  Formats.mp4,
+  Formats.mov,
+  Formats.mpeg,
+  Formats.webm,
+  Formats.avi,
+  Formats.m4v,
+  Formats.mkv,
+  Formats.wmv,
+  Formats.flv,
+];
 
 Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   final completer = Completer<bool>();
@@ -141,13 +181,13 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   SuperEditorIosControlsControllerWithNativePaste({
     required this.editor,
     required this.documentLayoutResolver,
+    CustomPasteDataInserter? customPasteDataInserter,
     super.useIosSelectionHeuristics = true,
     super.handleColor,
     super.floatingCursorController,
     super.magnifierBuilder,
     super.createOverlayControlsClipper,
-  }) {
-    print("SuperEditorIosControlsControllerWithNativePaste is taking over paste");
+  }) : _customPasteDataInserter = customPasteDataInserter {
     shouldShowToolbar.addListener(_onToolbarVisibilityChange);
   }
 
@@ -155,7 +195,7 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   void dispose() {
     // In case we enabled custom native paste, disable it on disposal.
     if (SuperEditorClipboardIosPlugin.isPasteOwner(this)) {
-      print("SuperEditorIosControlsControllerWithNativePaste is releasing paste");
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste");
     }
     SuperEditorClipboardIosPlugin.disableCustomPaste(this);
     SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
@@ -163,6 +203,8 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
     shouldShowToolbar.removeListener(_onToolbarVisibilityChange);
     super.dispose();
   }
+
+  final CustomPasteDataInserter? _customPasteDataInserter;
 
   @protected
   final Editor editor;
@@ -193,20 +235,21 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   void _onToolbarVisibilityChange() {
     if (shouldShowToolbar.value) {
       // The native iOS toolbar is visible.
-      print("SuperEditorIosControlsControllerWithNativePaste is taking over paste on toolbar show");
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is taking over paste on toolbar show");
       SuperEditorClipboardIosPlugin.takePasteOwnership(this);
       SuperEditorClipboardIosPlugin.enableCustomPaste(this, this);
     } else {
       // The native iOS toolbar is no longer visible.
-      print("SuperEditorIosControlsControllerWithNativePaste is releasing paste on toolbar hide");
-      SuperEditorClipboardIosPlugin.disableCustomPaste(this);
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste on toolbar hide");
       SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
     }
   }
 
   @override
   Future<void> onUserRequestedPaste() async {
-    print("User requested to paste - pasting from super_clipboard");
-    _pasteFromClipboard(editor);
+    SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
+    _pasteFromClipboard(editor, _customPasteDataInserter);
   }
 }
+
+typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);

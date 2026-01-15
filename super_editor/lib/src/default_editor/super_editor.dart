@@ -1431,6 +1431,7 @@ const defaultComponentBuilders = <ComponentBuilder>[
   BlockquoteComponentBuilder(),
   ParagraphComponentBuilder(),
   ListItemComponentBuilder(),
+  BitmapImageComponentBuilder(),
   ImageComponentBuilder(),
   HorizontalRuleComponentBuilder(),
 ];
