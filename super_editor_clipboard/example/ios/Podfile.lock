@@ -1,0 +1,58 @@
+PODS:
+  - device_info_plus (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - irondash_engine_context (0.0.1):
+    - Flutter
+  - super_editor_clipboard (0.0.1):
+    - Flutter
+  - super_keyboard (0.0.1):
+    - Flutter
+  - super_native_extensions (0.0.1):
+    - Flutter
+  - url_launcher_ios (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - irondash_engine_context (from `.symlinks/plugins/irondash_engine_context/ios`)
+  - super_editor_clipboard (from `.symlinks/plugins/super_editor_clipboard/ios`)
+  - super_keyboard (from `.symlinks/plugins/super_keyboard/ios`)
+  - super_native_extensions (from `.symlinks/plugins/super_native_extensions/ios`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+
+EXTERNAL SOURCES:
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  irondash_engine_context:
+    :path: ".symlinks/plugins/irondash_engine_context/ios"
+  super_editor_clipboard:
+    :path: ".symlinks/plugins/super_editor_clipboard/ios"
+  super_keyboard:
+    :path: ".symlinks/plugins/super_keyboard/ios"
+  super_native_extensions:
+    :path: ".symlinks/plugins/super_native_extensions/ios"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+
+SPEC CHECKSUMS:
+  device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  irondash_engine_context: 8e58ca8e0212ee9d1c7dc6a42121849986c88486
+  super_editor_clipboard: b50bb56d64f8e168a6d25982793ebe1d3f44d2e5
+  super_keyboard: 016de6ce9ab826f9a0b185608209d6a3b556d577
+  super_native_extensions: b763c02dc3a8fd078389f410bf15149179020cb4
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2
