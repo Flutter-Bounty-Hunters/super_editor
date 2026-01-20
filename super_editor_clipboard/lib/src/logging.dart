@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 
-/// Loggers for Super Keyboard, which can be activated by log level and by focal
+/// Loggers for Super Editor Clipboard, which can be activated by log level and by focal
 /// area, and can also print to a given [SECLogPrinter].
 abstract class SECLog {
   static final superEditorClipboard = Logger("super_editor_clipboard");
