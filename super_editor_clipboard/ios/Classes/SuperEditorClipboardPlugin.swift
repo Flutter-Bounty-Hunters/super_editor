@@ -9,7 +9,7 @@ public class SuperEditorClipboardPlugin: NSObject, FlutterPlugin {
   static var doCustomPaste = false
 
   public static func register(with registrar: FlutterPluginRegistrar) {
-    print("Registering SuperEditorClipboardPlugin")
+    log("Registering SuperEditorClipboardPlugin")
     let channel = FlutterMethodChannel(name: "super_editor_clipboard.ios", binaryMessenger: registrar.messenger())
     self.channel = channel
 
@@ -20,13 +20,13 @@ public class SuperEditorClipboardPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    print("Received call on iOS side: \(call.method)")
+    SuperEditorClipboardPlugin.log("Received call on iOS side: \(call.method)")
     switch call.method {
     case "enableCustomPaste":
-      print("iOS platform - enabling custom paste")
+      SuperEditorClipboardPlugin.log("iOS platform - enabling custom paste")
       SuperEditorClipboardPlugin.doCustomPaste = true
     case "disableCustomPaste":
-      print("iOS platform - disabling custom paste")
+      SuperEditorClipboardPlugin.log("iOS platform - disabling custom paste")
       SuperEditorClipboardPlugin.doCustomPaste = false
     default:
       result(FlutterMethodNotImplemented)
@@ -36,7 +36,7 @@ public class SuperEditorClipboardPlugin: NSObject, FlutterPlugin {
   private static func swizzleFlutterPaste() {
     // 1. Locate the private Flutter engine class
     guard let flutterClass = NSClassFromString("FlutterTextInputView") else {
-      print("RichPastePlugin: Could not find FlutterTextInputView")
+      log("RichPastePlugin: Could not find FlutterTextInputView")
       return
     }
 
@@ -68,7 +68,7 @@ public class SuperEditorClipboardPlugin: NSObject, FlutterPlugin {
   // 'self' inside this method will actually be the FlutterTextInputView instance.
   @objc func customPaste(_ sender: Any?) {
     if (!SuperEditorClipboardPlugin.doCustomPaste) {
-      print("Running regular Flutter paste")
+      SuperEditorClipboardPlugin.log("Running regular Flutter paste")
       // FALLBACK:
       // This calls the ORIGINAL paste logic.
       // Because we swapped the methods, calling 'customPaste' on 'self'
@@ -80,20 +80,16 @@ public class SuperEditorClipboardPlugin: NSObject, FlutterPlugin {
       return;
     }
 
-    print("Running custom paste")
+    SuperEditorClipboardPlugin.log("Running custom paste")
     SuperEditorClipboardPlugin.channel?.invokeMethod("paste", arguments: nil)
+  }
 
-//    let pasteboard = UIPasteboard.general
-//
-//    // INTERCEPTION LOGIC:
-//    // Check for Image URL string or Image Data
-//    if let content = pasteboard.string, content.hasSuffix(".png") || content.hasSuffix(".jpg") {
-//      // Send back to Dart
-////      RichPastePlugin.channel?.invokeMethod("onRichPaste", arguments: ["type": "image_url", "data": content])
-//
-//      // If we handle it, we return early to prevent the engine from pasting text
-//      return
-//    }
+  public static let isLoggingEnabled = false
+
+  internal static func log(_ message: String) {
+    if isLoggingEnabled {
+      print("[SuperEditorClipboardPlugin] \(message)")
+    }
   }
 }
 
