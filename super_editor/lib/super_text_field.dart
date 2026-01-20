@@ -8,5 +8,3 @@ export 'src/super_textfield/infrastructure/text_field_tap_handlers.dart';
 
 // Tools for building new text fields.
 export 'src/super_textfield/infrastructure/text_field_border.dart';
-
-export 'src/test/flutter_extensions/test_tools_goldens.dart';
