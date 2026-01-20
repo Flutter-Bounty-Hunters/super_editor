@@ -58,12 +58,6 @@ Future<void> _pasteFromClipboard(Editor editor, [CustomPasteDataInserter? custom
     return;
   }
 
-  // Try to paste a video.
-  didPaste = await _maybePasteVideo(editor, reader);
-  if (didPaste) {
-    return;
-  }
-
   // Try to paste rich text (via HTML).
   didPaste = await _maybePasteHtml(editor, reader);
   if (didPaste) {
@@ -114,11 +108,6 @@ const _supportedBitmapImageFormats = [
   Formats.bmp,
   Formats.webp,
 ];
-
-Future<bool> _maybePasteVideo(Editor editor, ClipboardReader reader) async {
-  // TODO: Implement video support.
-  return false;
-}
 
 Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   final completer = Completer<bool>();
