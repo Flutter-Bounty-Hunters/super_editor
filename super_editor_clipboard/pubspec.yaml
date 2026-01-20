@@ -1,6 +1,6 @@
 name: super_editor_clipboard
 description: "Rich text copy/paste extensions on super_editor."
-version: 0.2.2
+version: 0.2.3
 repository: https://github.com/superlistapp/super_editor/
 
 environment:
@@ -15,16 +15,16 @@ dependencies:
   html2md: ^1.3.2
   logging: ^1.3.0
   super_clipboard: ^0.9.1
-  super_editor: ^0.3.0-dev.47
+  super_editor: ^0.3.0-dev.48
   super_keyboard: ^0.3.1
 
-dependency_overrides:
-  super_editor:
-    path: ../super_editor
-  super_editor_markdown:
-    path: ../super_editor_markdown
-  super_keyboard:
-    path: ../super_keyboard
+#dependency_overrides:
+#  super_editor:
+#    path: ../super_editor
+#  super_editor_markdown:
+#    path: ../super_editor_markdown
+#  super_keyboard:
+#    path: ../super_keyboard
 
 dev_dependencies:
   flutter_test:
