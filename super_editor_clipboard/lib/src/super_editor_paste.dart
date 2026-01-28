@@ -30,12 +30,116 @@ ExecutionInstruction pasteRichTextOnCmdCtrlV({
   }
 
   // Cmd/Ctrl+V detected - handle clipboard paste
-  _pasteFromClipboard(editContext.editor);
+  pasteIntoEditorFromNativeClipboard(editContext.editor);
 
   return ExecutionInstruction.haltExecution;
 }
 
-Future<void> _pasteFromClipboard(Editor editor, [CustomPasteDataInserter? customPasteDataInserter]) async {
+/// A [SuperEditorIosControlsController] which adds a custom implementation when the user
+/// presses "paste" on the native iOS popover toolbar.
+///
+/// As of writing, Jan 2026, Flutter directly implements what happens when the user presses "paste" on
+/// the native iOS popover toolbar. The Flutter implementation only pastes plain text, which prevents
+/// pasting images or HTML or Markdown.
+///
+/// This controller uses the [SuperEditorClipboardIosPlugin] to intercept calls to "paste"
+/// before they reach Flutter, and redirects those calls to this controller. This controller
+/// then uses `super_clipboard` to inspect what's being pasted, and then take the appropriate
+/// [Editor] action.
+class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosControlsController
+    implements CustomPasteDelegate {
+  SuperEditorIosControlsControllerWithNativePaste({
+    required this.editor,
+    required this.documentLayoutResolver,
+    CustomPasteDataInserter? customPasteDataInserter,
+    super.useIosSelectionHeuristics = true,
+    super.handleColor,
+    super.floatingCursorController,
+    super.magnifierBuilder,
+    super.createOverlayControlsClipper,
+  }) : _customPasteDataInserter = customPasteDataInserter {
+    shouldShowToolbar.addListener(_onToolbarVisibilityChange);
+  }
+
+  @override
+  void dispose() {
+    // In case we enabled custom native paste, disable it on disposal.
+    if (SuperEditorClipboardIosPlugin.isPasteOwner(this)) {
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste");
+    }
+    SuperEditorClipboardIosPlugin.disableCustomPaste(this);
+    SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
+
+    shouldShowToolbar.removeListener(_onToolbarVisibilityChange);
+    super.dispose();
+  }
+
+  final CustomPasteDataInserter? _customPasteDataInserter;
+
+  @protected
+  final Editor editor;
+
+  @protected
+  final DocumentLayoutResolver documentLayoutResolver;
+
+  @override
+  DocumentFloatingToolbarBuilder? get toolbarBuilder => (context, mobileToolbarKey, focalPoint) {
+        if (editor.composer.selection == null) {
+          return const SizedBox();
+        }
+
+        return iOSSystemPopoverEditorToolbarWithFallbackBuilder(
+          context,
+          mobileToolbarKey,
+          focalPoint,
+          CommonEditorOperations(
+            document: editor.document,
+            editor: editor,
+            composer: editor.composer,
+            documentLayoutResolver: documentLayoutResolver,
+          ),
+          SuperEditorIosControlsScope.rootOf(context),
+        );
+      };
+
+  void _onToolbarVisibilityChange() {
+    if (shouldShowToolbar.value) {
+      // The native iOS toolbar is visible.
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is taking over paste on toolbar show");
+      SuperEditorClipboardIosPlugin.takePasteOwnership(this);
+      SuperEditorClipboardIosPlugin.enableCustomPaste(this, this);
+    } else {
+      // The native iOS toolbar is no longer visible.
+      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste on toolbar hide");
+      SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
+    }
+  }
+
+  @override
+  Future<void> onUserRequestedPaste() async {
+    SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
+    pasteIntoEditorFromNativeClipboard(editor, customInserter: _customPasteDataInserter);
+  }
+}
+
+typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);
+
+/// Reads the native OS clipboard and pastes the content into the given [editor] at the
+/// current selection.
+///
+/// If the [editor] has no selection, this method does nothing.
+///
+/// The supported clipboard data types is determined by the implementation of this method, and
+/// available [EditRequest]s in the Super Editor API. I.e., there are probably a number of
+/// unsupported content types.
+Future<void> pasteIntoEditorFromNativeClipboard(
+  Editor editor, {
+  CustomPasteDataInserter? customInserter,
+}) async {
+  if (editor.composer.selection == null) {
+    return;
+  }
+
   final clipboard = SystemClipboard.instance;
   if (clipboard == null) {
     return;
@@ -45,8 +149,8 @@ Future<void> _pasteFromClipboard(Editor editor, [CustomPasteDataInserter? custom
   var didPaste = false;
 
   // Try to read and paste a custom data type, if the app provided an inserter.
-  if (customPasteDataInserter != null) {
-    didPaste = await customPasteDataInserter(editor, reader);
+  if (customInserter != null) {
+    didPaste = await customInserter(editor, reader);
   }
   if (didPaste) {
     return;
@@ -141,92 +245,3 @@ void _pastePlainText(Editor editor, ClipboardReader reader) {
     }
   });
 }
-
-/// A [SuperEditorIosControlsController] which adds a custom implementation when the user
-/// presses "paste" on the native iOS popover toolbar.
-///
-/// As of writing, Jan 2026, Flutter directly implements what happens when the user presses "paste" on
-/// the native iOS popover toolbar. The Flutter implementation only pastes plain text, which prevents
-/// pasting images or HTML or Markdown.
-///
-/// This controller uses the [SuperEditorClipboardIosPlugin] to intercept calls to "paste"
-/// before they reach Flutter, and redirects those calls to this controller. This controller
-/// then uses `super_clipboard` to inspect what's being pasted, and then take the appropriate
-/// [Editor] action.
-class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosControlsController
-    implements CustomPasteDelegate {
-  SuperEditorIosControlsControllerWithNativePaste({
-    required this.editor,
-    required this.documentLayoutResolver,
-    CustomPasteDataInserter? customPasteDataInserter,
-    super.useIosSelectionHeuristics = true,
-    super.handleColor,
-    super.floatingCursorController,
-    super.magnifierBuilder,
-    super.createOverlayControlsClipper,
-  }) : _customPasteDataInserter = customPasteDataInserter {
-    shouldShowToolbar.addListener(_onToolbarVisibilityChange);
-  }
-
-  @override
-  void dispose() {
-    // In case we enabled custom native paste, disable it on disposal.
-    if (SuperEditorClipboardIosPlugin.isPasteOwner(this)) {
-      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste");
-    }
-    SuperEditorClipboardIosPlugin.disableCustomPaste(this);
-    SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
-
-    shouldShowToolbar.removeListener(_onToolbarVisibilityChange);
-    super.dispose();
-  }
-
-  final CustomPasteDataInserter? _customPasteDataInserter;
-
-  @protected
-  final Editor editor;
-
-  @protected
-  final DocumentLayoutResolver documentLayoutResolver;
-
-  @override
-  DocumentFloatingToolbarBuilder? get toolbarBuilder => (context, mobileToolbarKey, focalPoint) {
-        if (editor.composer.selection == null) {
-          return const SizedBox();
-        }
-
-        return iOSSystemPopoverEditorToolbarWithFallbackBuilder(
-          context,
-          mobileToolbarKey,
-          focalPoint,
-          CommonEditorOperations(
-            document: editor.document,
-            editor: editor,
-            composer: editor.composer,
-            documentLayoutResolver: documentLayoutResolver,
-          ),
-          SuperEditorIosControlsScope.rootOf(context),
-        );
-      };
-
-  void _onToolbarVisibilityChange() {
-    if (shouldShowToolbar.value) {
-      // The native iOS toolbar is visible.
-      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is taking over paste on toolbar show");
-      SuperEditorClipboardIosPlugin.takePasteOwnership(this);
-      SuperEditorClipboardIosPlugin.enableCustomPaste(this, this);
-    } else {
-      // The native iOS toolbar is no longer visible.
-      SECLog.pasteIOS.fine("SuperEditorIosControlsControllerWithNativePaste is releasing paste on toolbar hide");
-      SuperEditorClipboardIosPlugin.releasePasteOwnership(this);
-    }
-  }
-
-  @override
-  Future<void> onUserRequestedPaste() async {
-    SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
-    _pasteFromClipboard(editor, _customPasteDataInserter);
-  }
-}
-
-typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);

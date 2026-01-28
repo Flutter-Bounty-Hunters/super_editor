@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  follow_the_leader: ^0.5.2
   super_clipboard: ^0.9.1
   super_editor: ^0.3.0-dev.47
   super_editor_clipboard:
