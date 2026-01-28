@@ -30,116 +30,9 @@ ExecutionInstruction pasteRichTextOnCmdCtrlV({
   }
 
   // Cmd/Ctrl+V detected - handle clipboard paste
-  _pasteFromClipboard(editContext.editor);
+  pasteIntoEditorFromNativeClipboard(editContext.editor);
 
   return ExecutionInstruction.haltExecution;
-}
-
-Future<void> _pasteFromClipboard(Editor editor, [CustomPasteDataInserter? customPasteDataInserter]) async {
-  final clipboard = SystemClipboard.instance;
-  if (clipboard == null) {
-    return;
-  }
-
-  final reader = await clipboard.read();
-  var didPaste = false;
-
-  // Try to read and paste a custom data type, if the app provided an inserter.
-  if (customPasteDataInserter != null) {
-    didPaste = await customPasteDataInserter(editor, reader);
-  }
-  if (didPaste) {
-    return;
-  }
-
-  // Try to paste a bitmap image.
-  didPaste = await _maybePasteImage(editor, reader);
-  if (didPaste) {
-    return;
-  }
-
-  // Try to paste rich text (via HTML).
-  didPaste = await _maybePasteHtml(editor, reader);
-  if (didPaste) {
-    return;
-  }
-
-  // Fall back to plain text.
-  _pastePlainText(editor, reader);
-}
-
-Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
-  for (final bitmapFormat in _supportedBitmapImageFormats) {
-    if (reader.canProvide(bitmapFormat)) {
-      // We can read this bitmap type. Read it, and insert it.
-      reader.getFile(bitmapFormat, (file) async {
-        // Read the bitmap image data.
-        final imageData = await file.readAll();
-
-        // Decode the image so that we can get the size. The size is important because it's what
-        // facilitates auto-scrolling to the bottom of an image that exceeds the current viewport
-        // height.
-        final image = await decodeImageFromList(imageData);
-
-        // Insert the bitmap image into the Document.
-        editor.execute([
-          InsertNodeAtCaretRequest(
-            node: BitmapImageNode(
-              id: Editor.createNodeId(),
-              imageData: imageData,
-              expectedBitmapSize: ExpectedSize(image.width, image.height),
-            ),
-          ),
-        ]);
-      });
-
-      return true;
-    }
-  }
-
-  return false;
-}
-
-const _supportedBitmapImageFormats = [
-  Formats.png,
-  Formats.jpeg,
-  Formats.heic,
-  Formats.gif,
-  Formats.bmp,
-  Formats.webp,
-];
-
-Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
-  final completer = Completer<bool>();
-
-  reader.getValue(
-    Formats.htmlText,
-    (html) {
-      if (html == null) {
-        completer.complete(false);
-        return;
-      }
-
-      // Do the paste.
-      editor.pasteHtml(editor, html);
-
-      completer.complete(true);
-    },
-    onError: (_) {
-      completer.complete(false);
-    },
-  );
-
-  final didPaste = await completer.future;
-  return didPaste;
-}
-
-void _pastePlainText(Editor editor, ClipboardReader reader) {
-  reader.getValue(Formats.plainText, (value) {
-    if (value != null) {
-      editor.execute([InsertPlainTextAtCaretRequest(value)]);
-    }
-  });
 }
 
 /// A [SuperEditorIosControlsController] which adds a custom implementation when the user
@@ -225,8 +118,141 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   @override
   Future<void> onUserRequestedPaste() async {
     SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
-    _pasteFromClipboard(editor, _customPasteDataInserter);
+    pasteIntoEditorFromNativeClipboard(editor, customInserter: _customPasteDataInserter);
   }
 }
 
 typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);
+
+/// Reads the native OS clipboard and pastes the content into the given [editor] at the
+/// current selection.
+///
+/// If the [editor] has no selection, this method does nothing.
+///
+/// The supported clipboard data types is determined by the implementation of this method, and
+/// available [EditRequest]s in the Super Editor API. I.e., there are probably a number of
+/// unsupported content types.
+Future<void> pasteIntoEditorFromNativeClipboard(
+  Editor editor, {
+  CustomPasteDataInserter? customInserter,
+}) async {
+  print("pasteIntoEditorFromNativeClipboard");
+  if (editor.composer.selection == null) {
+    return;
+  }
+
+  final clipboard = SystemClipboard.instance;
+  if (clipboard == null) {
+    return;
+  }
+
+  print("Reading clipboard");
+  final reader = await clipboard.read();
+  print("Done reading clipbpoard");
+  var didPaste = false;
+
+  // Try to read and paste a custom data type, if the app provided an inserter.
+  if (customInserter != null) {
+    print("Trying custom inserter");
+    didPaste = await customInserter(editor, reader);
+    print("Done with custom inserter: $didPaste");
+  }
+  if (didPaste) {
+    return;
+  }
+
+  // Try to paste a bitmap image.
+  print("Trying to paste an image");
+  didPaste = await _maybePasteImage(editor, reader);
+  print("Done trying to paste image: $didPaste");
+  if (didPaste) {
+    return;
+  }
+
+  // Try to paste rich text (via HTML).
+  print("Trying to paste HTML");
+  didPaste = await _maybePasteHtml(editor, reader);
+  print("Done trying to paste HTML: $didPaste");
+  if (didPaste) {
+    return;
+  }
+
+  // Fall back to plain text.
+  print("Trying to paste text");
+  _pastePlainText(editor, reader);
+  print("Done pasting text");
+}
+
+Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
+  for (final bitmapFormat in _supportedBitmapImageFormats) {
+    if (reader.canProvide(bitmapFormat)) {
+      // We can read this bitmap type. Read it, and insert it.
+      reader.getFile(bitmapFormat, (file) async {
+        // Read the bitmap image data.
+        final imageData = await file.readAll();
+
+        // Decode the image so that we can get the size. The size is important because it's what
+        // facilitates auto-scrolling to the bottom of an image that exceeds the current viewport
+        // height.
+        final image = await decodeImageFromList(imageData);
+
+        // Insert the bitmap image into the Document.
+        editor.execute([
+          InsertNodeAtCaretRequest(
+            node: BitmapImageNode(
+              id: Editor.createNodeId(),
+              imageData: imageData,
+              expectedBitmapSize: ExpectedSize(image.width, image.height),
+            ),
+          ),
+        ]);
+      });
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+const _supportedBitmapImageFormats = [
+  Formats.png,
+  Formats.jpeg,
+  Formats.heic,
+  Formats.gif,
+  Formats.bmp,
+  Formats.webp,
+];
+
+Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
+  final completer = Completer<bool>();
+
+  reader.getValue(
+    Formats.htmlText,
+    (html) {
+      if (html == null) {
+        completer.complete(false);
+        return;
+      }
+
+      // Do the paste.
+      editor.pasteHtml(editor, html);
+
+      completer.complete(true);
+    },
+    onError: (_) {
+      completer.complete(false);
+    },
+  );
+
+  final didPaste = await completer.future;
+  return didPaste;
+}
+
+void _pastePlainText(Editor editor, ClipboardReader reader) {
+  reader.getValue(Formats.plainText, (value) {
+    if (value != null) {
+      editor.execute([InsertPlainTextAtCaretRequest(value)]);
+    }
+  });
+}
