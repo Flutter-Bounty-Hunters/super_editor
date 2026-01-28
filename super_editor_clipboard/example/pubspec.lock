@@ -270,7 +270,7 @@ packages:
     source: sdk
     version: "0.0.0"
   follow_the_leader:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: follow_the_leader
       sha256: "2e4c4ebe6b3f1942b2385904b118ba8ba117fae0b30c8c453be0b64a271dd07a"
@@ -674,14 +674,14 @@ packages:
       path: "../../super_editor"
       relative: true
     source: path
-    version: "0.3.0-dev.47"
+    version: "0.3.0-dev.48"
   super_editor_clipboard:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.2.2"
+    version: "0.2.4"
   super_keyboard:
     dependency: transitive
     description:
