@@ -136,7 +136,6 @@ Future<void> pasteIntoEditorFromNativeClipboard(
   Editor editor, {
   CustomPasteDataInserter? customInserter,
 }) async {
-  print("pasteIntoEditorFromNativeClipboard");
   if (editor.composer.selection == null) {
     return;
   }
@@ -146,41 +145,31 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     return;
   }
 
-  print("Reading clipboard");
   final reader = await clipboard.read();
-  print("Done reading clipbpoard");
   var didPaste = false;
 
   // Try to read and paste a custom data type, if the app provided an inserter.
   if (customInserter != null) {
-    print("Trying custom inserter");
     didPaste = await customInserter(editor, reader);
-    print("Done with custom inserter: $didPaste");
   }
   if (didPaste) {
     return;
   }
 
   // Try to paste a bitmap image.
-  print("Trying to paste an image");
   didPaste = await _maybePasteImage(editor, reader);
-  print("Done trying to paste image: $didPaste");
   if (didPaste) {
     return;
   }
 
   // Try to paste rich text (via HTML).
-  print("Trying to paste HTML");
   didPaste = await _maybePasteHtml(editor, reader);
-  print("Done trying to paste HTML: $didPaste");
   if (didPaste) {
     return;
   }
 
   // Fall back to plain text.
-  print("Trying to paste text");
   _pastePlainText(editor, reader);
-  print("Done pasting text");
 }
 
 Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
