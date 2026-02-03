@@ -249,9 +249,10 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
 
     final nodeIndex = document.getNodeIndexById(node.id);
     final nodeBelow = nodeIndex < document.nodeCount - 1 ? document.getNodeAt(nodeIndex + 1) : null;
-    if (nodeBelow != null && (nodeBelow is! ListItemNode || nodeBelow.type != node.type)) {
+    if (nodeBelow != null && nodeBelow is! TaskNode && (nodeBelow is! ListItemNode || nodeBelow.type != node.type)) {
       // This list item is the last item in the list. Add an extra
-      // blank line after it.
+      // blank line after it. Don't add a blank line if the next node is a TaskNode,
+      // because tasks and list items can be mixed without blank lines.
       buffer.writeln('');
     }
 
