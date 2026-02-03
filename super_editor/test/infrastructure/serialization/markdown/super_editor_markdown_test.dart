@@ -888,6 +888,64 @@ with multiple lines
 
         expect(serialized, 'Paragraph1');
       });
+
+      test('unordered list item followed by task followed by unordered list item', () {
+        final doc = MutableDocument(nodes: [
+          ListItemNode(
+            id: '1',
+            itemType: ListItemType.unordered,
+            text: AttributedText('boss 1'),
+          ),
+          TaskNode(
+            id: '2',
+            text: AttributedText('hello'),
+            isComplete: false,
+          ),
+          ListItemNode(
+            id: '3',
+            itemType: ListItemType.unordered,
+            text: AttributedText('boss'),
+          ),
+        ]);
+
+        final serialized = serializeDocumentToMarkdown(doc);
+
+        expect(
+          serialized,
+          '''  * boss 1
+- [ ] hello
+  * boss''',
+        );
+      });
+
+      test('task followed by list item followed by task', () {
+        final doc = MutableDocument(nodes: [
+          TaskNode(
+            id: '1',
+            text: AttributedText('task 1'),
+            isComplete: false,
+          ),
+          ListItemNode(
+            id: '2',
+            itemType: ListItemType.unordered,
+            text: AttributedText('list item'),
+          ),
+          TaskNode(
+            id: '3',
+            text: AttributedText('task 2'),
+            isComplete: true,
+          ),
+        ]);
+
+        final serialized = serializeDocumentToMarkdown(doc);
+
+        expect(
+          serialized,
+          '''- [ ] task 1
+  * list item
+- [x] task 2''',
+        );
+      });
     });
 
     group('deserialization', () {
@@ -1787,6 +1845,22 @@ First Paragraph.
 
         expect(doc.first, isA<ParagraphNode>());
         expect((doc.first as ParagraphNode).text.toPlainText(), '');
+      });
+
+      test('unordered list item followed by task followed by unordered list item', () {
+        const markdown = '''* boss 1
+- [ ] hello
+* boss''';
+
+        final document = deserializeMarkdownToDocument(markdown);
+
+        expect(document.nodeCount, 3);
+        expect(document.getNodeAt(0)!, isA<ListItemNode>());
+        expect((document.getNodeAt(0)! as ListItemNode).text.toPlainText(), 'boss 1');
+        expect(document.getNodeAt(1)!, isA<TaskNode>());
+        expect((document.getNodeAt(1)! as TaskNode).text.toPlainText(), 'hello');
+        expect(document.getNodeAt(2)!, isA<ListItemNode>());
+        expect((document.getNodeAt(2)! as ListItemNode).text.toPlainText(), 'boss');
       });
     });
   });

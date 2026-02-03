@@ -6,6 +6,7 @@ import 'package:example/demos/demo_app_shortcuts.dart';
 import 'package:example/demos/demo_attributed_text.dart';
 import 'package:example/demos/demo_document_loses_focus.dart';
 import 'package:example/demos/demo_empty_document.dart';
+import 'package:example/demos/demo_markdown_deserialization.dart';
 import 'package:example/demos/demo_markdown_serialization.dart';
 import 'package:example/demos/demo_paragraphs.dart';
 import 'package:example/demos/demo_rtl.dart';
@@ -261,6 +262,13 @@ final _menu = <_MenuGroup>[
         title: 'Markdown Serialization Demo',
         pageBuilder: (context) {
           return MarkdownSerializationDemo();
+        },
+      ),
+      _MenuItem(
+        icon: Icons.description,
+        title: 'Markdown Deserialization Demo',
+        pageBuilder: (context) {
+          return MarkdownDeserializationDemo();
         },
       ),
       _MenuItem(
