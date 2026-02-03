@@ -684,11 +684,11 @@ Paragraph3""");
         expect(
           serializeDocumentToMarkdown(doc),
           '''
-  * Unordered 1
-  * Unordered 2
-    * Unordered 2.1
-    * Unordered 2.2
-  * Unordered 3''',
+* Unordered 1
+* Unordered 2
+  * Unordered 2.1
+  * Unordered 2.2
+* Unordered 3''',
         );
       });
 
@@ -701,7 +701,7 @@ Paragraph3""");
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), '  * **Unordered** 1');
+        expect(serializeDocumentToMarkdown(doc), '* **Unordered** 1');
       });
 
       test('ordered list items', () {
@@ -738,11 +738,11 @@ Paragraph3""");
         expect(
           serializeDocumentToMarkdown(doc),
           '''
-  1. Ordered 1
-  1. Ordered 2
-    1. Ordered 2.1
-    1. Ordered 2.2
-  1. Ordered 3''',
+1. Ordered 1
+1. Ordered 2
+  1. Ordered 2.1
+  1. Ordered 2.2
+1. Ordered 3''',
         );
       });
 
@@ -755,7 +755,7 @@ Paragraph3""");
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), '  1. **Ordered** 1');
+        expect(serializeDocumentToMarkdown(doc), '1. **Ordered** 1');
       });
 
       test('tasks', () {
@@ -948,17 +948,17 @@ with multiple lines
           ListItemNode(
             id: '1',
             itemType: ListItemType.unordered,
-            text: AttributedText('boss 1'),
+            text: AttributedText('First item'),
           ),
           TaskNode(
             id: '2',
-            text: AttributedText('hello'),
+            text: AttributedText('A task'),
             isComplete: false,
           ),
           ListItemNode(
             id: '3',
             itemType: ListItemType.unordered,
-            text: AttributedText('boss'),
+            text: AttributedText('Second item'),
           ),
         ]);
 
@@ -966,9 +966,9 @@ with multiple lines
 
         expect(
           serialized,
-          '''  * boss 1
-- [ ] hello
-  * boss''',
+          '''* First item
+- [ ] A task
+* Second item''',
         );
       });
 
@@ -996,7 +996,7 @@ with multiple lines
         expect(
           serialized,
           '''- [ ] task 1
-  * list item
+* list item
 - [x] task 2''',
         );
       });
@@ -2110,22 +2110,22 @@ First Paragraph.
       test(
           'unordered list item followed by task followed by unordered list item',
           () {
-        const markdown = '''* boss 1
-- [ ] hello
-* boss''';
+        const markdown = '''* First item
+- [ ] A task
+* Second item''';
 
         final document = deserializeMarkdownToDocument(markdown);
 
         expect(document.nodeCount, 3);
         expect(document.getNodeAt(0)!, isA<ListItemNode>());
         expect((document.getNodeAt(0)! as ListItemNode).text.toPlainText(),
-            'boss 1');
+            'First item');
         expect(document.getNodeAt(1)!, isA<TaskNode>());
         expect(
-            (document.getNodeAt(1)! as TaskNode).text.toPlainText(), 'hello');
+            (document.getNodeAt(1)! as TaskNode).text.toPlainText(), 'A task');
         expect(document.getNodeAt(2)!, isA<ListItemNode>());
         expect((document.getNodeAt(2)! as ListItemNode).text.toPlainText(),
-            'boss');
+            'Second item');
       });
     });
   });

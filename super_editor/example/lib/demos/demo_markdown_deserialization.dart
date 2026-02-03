@@ -106,15 +106,15 @@ const _initialMarkdown = '''# Mixed Lists Demo
 
 This demonstrates list items mixed with tasks:
 
-* boss 1
-- [ ] hello
-* boss
+* First item
+- [ ] Review document
+* Second item
 
 ## Another example
 
-- [ ] task 1
-* list item
-- [x] task 2
+- [ ] Send email
+* Meeting notes
+- [x] Complete report
 
 Regular paragraph after the list.
 ''';

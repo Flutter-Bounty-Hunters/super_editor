@@ -242,7 +242,7 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
 
     final buffer = StringBuffer();
 
-    final indent = List.generate(node.indent + 1, (index) => '  ').join('');
+    final indent = List.generate(node.indent, (index) => '  ').join('');
     final symbol = node.type == ListItemType.unordered ? '*' : '1.';
 
     buffer.write('$indent$symbol ${textToConvert.toMarkdown()}');
