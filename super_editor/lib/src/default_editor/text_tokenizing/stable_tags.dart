@@ -724,6 +724,7 @@ class TagUserReaction extends EditReaction {
             existingComposingTag.indexedTag.startOffset + 1,
             existingComposingTag.indexedTag.endOffset,
           ),
+          existingComposingTag.indexedTag.tag.trigger,
           existingComposingTag.indexedTag.tag.token,
         ),
       );
@@ -758,6 +759,7 @@ class TagUserReaction extends EditReaction {
           nonAttributedTagAroundCaret.indexedTag.startOffset + 1,
           nonAttributedTagAroundCaret.indexedTag.endOffset,
         ),
+        nonAttributedTagAroundCaret.indexedTag.tag.trigger,
         nonAttributedTagAroundCaret.indexedTag.tag.token,
       ),
     );
@@ -1094,9 +1096,10 @@ class StableTagIndex with ChangeNotifier implements Editable {
 }
 
 class ComposingStableTag {
-  const ComposingStableTag(this.contentBounds, this.token);
+  const ComposingStableTag(this.contentBounds, this.trigger, this.token);
 
   final DocumentRange contentBounds;
+  final String trigger;
   final String token;
 
   @override
@@ -1105,13 +1108,14 @@ class ComposingStableTag {
       other is ComposingStableTag &&
           runtimeType == other.runtimeType &&
           contentBounds == other.contentBounds &&
+          trigger == other.trigger &&
           token == other.token;
 
   @override
-  int get hashCode => contentBounds.hashCode ^ token.hashCode;
+  int get hashCode => contentBounds.hashCode ^ trigger.hashCode ^ token.hashCode;
 
   @override
-  String toString() => "[ComposingStableTag] - '$token', bounds: $contentBounds";
+  String toString() => "[ComposingStableTag] - '$trigger', '$token', bounds: $contentBounds";
 }
 
 /// An [EditReaction] that prevents partial selection of a stable user tag.
