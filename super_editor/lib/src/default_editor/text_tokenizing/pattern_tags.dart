@@ -437,18 +437,19 @@ class PatternTagReaction extends EditReaction {
     editorPatternTagsLog.finer("Found ${patternTags.length} pattern tag attributions in text node '${node.id}'");
     for (final patternTag in patternTags) {
       final tagContent = node.text.substring(patternTag.start, patternTag.end + 1);
-      editorPatternTagsLog.finer("Inspecting $tagContent at ${patternTag.start} -> ${patternTag.end}");
+      editorPatternTagsLog.finer("Inspecting '$tagContent' at ${patternTag.start} -> ${patternTag.end}");
 
-      if (!_tagRule.doesTextContainTriggers(tagContent.substring(1))) {
+      final tagTriggers = _tagRule.findAllTriggers(tagContent);
+      if (tagTriggers.length == 1) {
         // There's only one trigger ("#") in this tag, and it's at the beginning. No need
         // to split the tag.
         editorPatternTagsLog.finer("No need to split this tag. Moving to next one.");
         continue;
       }
 
-      // This tag has multiple triggers ("#") in it. We need to split this tag into multiple
-      // pieces.
-      editorPatternTagsLog.finer("There are multiple triggers in this tag. Splitting.");
+      // This tag either has no trigger, or has multiple triggers ("#") in it. We need to
+      // remove this tag, or split this tag into multiple pieces.
+      editorPatternTagsLog.finer("There are zero triggers, or multiple triggers in this tag. Removing or splitting.");
 
       // Remove the existing attribution, which covers multiple pattern tags.
       spanRemovals.add(patternTag.range);
