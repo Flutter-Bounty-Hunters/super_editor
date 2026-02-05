@@ -40,8 +40,11 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 /// of a user's desire to take an action. It's not a persistent reference, like
 /// a user tag, or a hash tag.
 class ActionTagsPlugin extends SuperEditorPlugin {
+  static const defaultActionTagId = "composingActionTag";
+
   ActionTagsPlugin({
     TagRule? tagRule,
+    this.actionTagId = defaultActionTagId,
   }) : _tagRule = tagRule ?? defaultActionTagRule {
     _requestHandlers = <EditRequestHandler>[
       (editor, request) => request is SubmitComposingActionTagRequest //
@@ -64,6 +67,10 @@ class ActionTagsPlugin extends SuperEditorPlugin {
 
   final TagRule _tagRule;
 
+  /// The ID which is used to register the [composingActionTag] with an [Editor]'s
+  /// context, allowing anyone with the [Editor] to query the action tag.
+  final String actionTagId;
+
   /// The action tag that the user is currently composing.
   ValueListenable<IndexedTag?> get composingActionTag => _composingActionTag;
   final _composingActionTag = ValueNotifier<IndexedTag?>(null);
@@ -73,7 +80,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   @override
   void attach(Editor editor) {
     editor
-      ..context.put(_composingActionTagKey, _composingActionTagEditable)
+      ..context.put(actionTagId, _composingActionTagEditable)
       ..requestHandlers.insertAll(0, _requestHandlers)
       ..reactionPipeline.insertAll(0, _reactions);
   }
@@ -81,7 +88,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(_composingActionTagKey, _composingActionTagEditable)
+      ..context.remove(actionTagId, _composingActionTagEditable)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
       ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
@@ -544,10 +551,8 @@ TagAroundPosition? _findTagUpstream({
   );
 }
 
-const _composingActionTagKey = "composing_action_tag";
-
-extension on EditContext {
-  ComposingActionTag get composingActionTag => find<ComposingActionTag>(_composingActionTagKey);
+extension ActionTagPluginDefaults on EditContext {
+  ComposingActionTag get composingActionTag => find<ComposingActionTag>(ActionTagsPlugin.defaultActionTagId);
 }
 
 class ComposingActionTag with Editable {
