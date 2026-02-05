@@ -1517,6 +1517,40 @@ with multiple lines
         expect(serialized, markdown);
       });
 
+      test('mixed list items and tasks with nested list item under task', () {
+        const markdown = '''  * List item
+  - [ ] Task
+    * List item 2
+  * List item 3''';
+
+        final document = deserializeMarkdownToDocument(markdown);
+
+        expect(document.nodeCount, 4);
+
+        // First list item at indent 0
+        expect(document.getNodeAt(0), isA<ListItemNode>());
+        expect((document.getNodeAt(0) as ListItemNode).text.toPlainText(), 'List item');
+        expect((document.getNodeAt(0) as ListItemNode).type, ListItemType.unordered);
+        expect((document.getNodeAt(0) as ListItemNode).indent, 0);
+
+        // Task at indent 0
+        expect(document.getNodeAt(1), isA<TaskNode>());
+        expect((document.getNodeAt(1) as TaskNode).text.toPlainText(), 'Task');
+        expect((document.getNodeAt(1) as TaskNode).isComplete, isFalse);
+
+        // Nested list item at indent 1
+        expect(document.getNodeAt(2), isA<ListItemNode>());
+        expect((document.getNodeAt(2) as ListItemNode).text.toPlainText(), 'List item 2');
+        expect((document.getNodeAt(2) as ListItemNode).type, ListItemType.unordered);
+        expect((document.getNodeAt(2) as ListItemNode).indent, 1);
+
+        // List item at indent 0
+        expect(document.getNodeAt(3), isA<ListItemNode>());
+        expect((document.getNodeAt(3) as ListItemNode).text.toPlainText(), 'List item 3');
+        expect((document.getNodeAt(3) as ListItemNode).type, ListItemType.unordered);
+        expect((document.getNodeAt(3) as ListItemNode).indent, 0);
+      });
+
       test('example doc 1', () {
         final document = deserializeMarkdownToDocument(exampleMarkdownDoc1);
 
