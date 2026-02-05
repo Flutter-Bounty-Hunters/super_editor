@@ -41,8 +41,8 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 /// a user tag, or a hash tag.
 class ActionTagsPlugin extends SuperEditorPlugin {
   ActionTagsPlugin({
-    TagRule tagRule = defaultActionTagRule,
-  }) : _tagRule = tagRule {
+    TagRule? tagRule,
+  }) : _tagRule = tagRule ?? defaultActionTagRule {
     _requestHandlers = <EditRequestHandler>[
       (editor, request) => request is SubmitComposingActionTagRequest //
           ? SubmitComposingActionTagCommand()
@@ -54,7 +54,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
 
     _reactions = [
       ActionTagComposingReaction(
-        tagRule: tagRule,
+        tagRule: _tagRule,
         onUpdateComposingActionTag: (composingTag) {
           _composingActionTag.value = composingTag;
         },
@@ -112,7 +112,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   }
 }
 
-const defaultActionTagRule = TagRule(trigger: "/", excludedCharacters: {" "});
+final defaultActionTagRule = TagRule(trigger: "/", excludedCharacters: {" "});
 
 class SubmitComposingActionTagRequest implements EditRequest {
   const SubmitComposingActionTagRequest();
@@ -386,17 +386,19 @@ class ActionTagComposingReaction extends EditReaction {
 
     for (final range in cancelledTagRanges) {
       final cancelledText = node.text.substring(range.start, range.end + 1); // +1 because substring is exclusive
-      if (cancelledText == _tagRule.trigger) {
+      if (_tagRule.isTrigger(cancelledText)) {
         // This is a legitimate cancellation attribution.
         continue;
       }
 
       DocumentSelection? addedRange;
-      if (cancelledText.contains(_tagRule.trigger)) {
-        // This cancelled range includes more than just a trigger. Reduce it back
-        // down to the trigger.
-        final triggerIndex = cancelledText.indexOf(_tagRule.trigger);
-        addedRange = node.selectionBetween(triggerIndex, triggerIndex);
+      for (final trigger in _tagRule.triggers) {
+        if (cancelledText.contains(trigger)) {
+          // This cancelled range includes more than just a trigger. Reduce it back
+          // down to the trigger.
+          final triggerIndex = cancelledText.indexOf(trigger);
+          addedRange = node.selectionBetween(triggerIndex, triggerIndex);
+        }
       }
 
       changeRequests.addAll([
@@ -511,7 +513,7 @@ TagAroundPosition? _findTagUpstream({
       return null;
     }
 
-    if (currentCharacter == tagRule.trigger) {
+    if (tagRule.isTrigger(currentCharacter)) {
       // The character we are reading is the trigger.
       // We move the iteratorUpstream one last time to include the trigger in the tokenRange and stop looking any further upstream
       iteratorUpstream.moveBack();
@@ -523,7 +525,7 @@ TagAroundPosition? _findTagUpstream({
   final tokenRange = SpanRange(tokenStartOffset, splitIndex);
 
   final tagText = text.substringInRange(tokenRange);
-  if (!tagText.startsWith(tagRule.trigger)) {
+  if (!tagRule.doesCandidateHaveTrigger(tagText)) {
     return null;
   }
 
@@ -534,7 +536,7 @@ TagAroundPosition? _findTagUpstream({
 
   return TagAroundPosition(
     indexedTag: IndexedTag(
-      Tag(tagRule.trigger, tagText.substring(1)),
+      Tag(tagRule.extractTriggerFrom(tagText)!, tagText.substring(1)),
       nodeId,
       tokenStartOffset,
     ),

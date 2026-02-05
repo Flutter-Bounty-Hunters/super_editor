@@ -42,8 +42,8 @@ class PatternTagPlugin extends SuperEditorPlugin {
   static const patternTagIndexKey = "patternTagIndex";
 
   PatternTagPlugin({
-    TagRule tagRule = hashTagRule,
-  })  : _tagRule = tagRule,
+    TagRule? tagRule,
+  })  : _tagRule = tagRule ?? hashTagRule,
         tagIndex = PatternTagIndex() {
     _patternTagReaction = PatternTagReaction(
       tagRule: _tagRule,
@@ -51,7 +51,7 @@ class PatternTagPlugin extends SuperEditorPlugin {
   }
 
   /// The rule for what this plugin considers to be a tag.
-  final TagRule _tagRule;
+  late final TagRule _tagRule;
 
   /// Index of all pattern tags in the document.
   final PatternTagIndex tagIndex;
@@ -105,7 +105,7 @@ class PatternTagPlugin extends SuperEditorPlugin {
 ///
 /// Any rule can be used for pattern tags. This rule is provided as a convenience
 /// due to the popularity of hash tags.
-const hashTagRule = TagRule(trigger: "#", excludedCharacters: {" ", "."});
+final hashTagRule = TagRule(trigger: "#", excludedCharacters: {" ", "."});
 
 extension PatternTagIndexEditable on EditContext {
   /// Returns the [PatternTagIndex] that the [PatternTagPlugin] added to the attached [Editor].
@@ -201,10 +201,10 @@ class PatternTagIndex with ChangeNotifier implements Editable {
 ///
 class PatternTagReaction extends EditReaction {
   PatternTagReaction({
-    TagRule tagRule = hashTagRule,
-  }) : _tagRule = tagRule;
+    TagRule? tagRule,
+  }) : _tagRule = tagRule ?? hashTagRule;
 
-  final TagRule _tagRule;
+  late final TagRule _tagRule;
 
   @override
   void react(EditContext editContext, RequestDispatcher requestDispatcher, List<EditEvent> changeList) {
@@ -229,6 +229,12 @@ class PatternTagReaction extends EditReaction {
     _removeInvalidTags(editContext, requestDispatcher, changeList);
 
     _updateTagIndex(editContext, changeList);
+
+    final tags = editContext.patternTagIndex.getAllTags();
+    editorPatternTagsLog.finer("At end of reaction, all pattern tags:");
+    for (final tag in tags) {
+      editorPatternTagsLog.finer(" - '${tag.tag.trigger}' -> '${tag.tag.token}'");
+    }
   }
 
   /// Finds a pattern tag near the caret and adjusts the attribution bounds so that the
@@ -345,15 +351,15 @@ class PatternTagReaction extends EditReaction {
       editorPatternTagsLog.fine("There's no tag around the caret, fizzling");
       return;
     }
-    if (!tagAroundCaret.indexedTag.tag.raw.startsWith(_tagRule.trigger)) {
+    if (!_tagRule.doesCandidateHaveTrigger(tagAroundCaret.indexedTag.tag.raw)) {
       // Tags must start with the trigger, e.g., "#", but the preceding word doesn't. Return.
-      editorPatternTagsLog.fine("Token doesn't start with ${_tagRule.trigger}, fizzling");
+      editorPatternTagsLog.fine("Token doesn't start with triggers (${_tagRule.triggers}), fizzling");
       return;
     }
     if (tagAroundCaret.indexedTag.tag.raw.length <= 1) {
       // The token only contains the trigger, e.g., "#". We require at least one valid character after
       // the trigger to consider it a hash tag.
-      editorPatternTagsLog.fine("Token has no content after ${_tagRule.trigger}, fizzling");
+      editorPatternTagsLog.fine("Token has no content after '${tagAroundCaret.indexedTag.tag.raw[0]}', fizzling");
       return;
     }
 
@@ -433,7 +439,7 @@ class PatternTagReaction extends EditReaction {
       final tagContent = node.text.substring(patternTag.start, patternTag.end + 1);
       editorPatternTagsLog.finer("Inspecting $tagContent at ${patternTag.start} -> ${patternTag.end}");
 
-      if (tagContent.lastIndexOf(_tagRule.trigger) == 0) {
+      if (!_tagRule.doesCandidateHaveTrigger(tagContent.substring(1))) {
         // There's only one trigger ("#") in this tag, and it's at the beginning. No need
         // to split the tag.
         editorPatternTagsLog.finer("No need to split this tag. Moving to next one.");
@@ -450,23 +456,21 @@ class PatternTagReaction extends EditReaction {
           "Removing multi-tag span: ${patternTag.start} -> ${patternTag.end}, '${node.text.substring(patternTag.start, patternTag.end + 1)}'");
 
       // Add a new attribution for each individual pattern tag.
-      int triggerSymbolIndex = tagContent.indexOf(_tagRule.trigger);
-      while (triggerSymbolIndex >= 0) {
-        final nextTriggerSymbolIndex = tagContent.indexOf(_tagRule.trigger, triggerSymbolIndex + 1);
-        final tagEnd = nextTriggerSymbolIndex > 0 ? nextTriggerSymbolIndex - 1 : tagContent.length - 1;
+      final allTriggers = _tagRule.findAllTriggers(tagContent);
+      for (int i = 0; i < allTriggers.length; i += 1) {
+        final tagStart = allTriggers[i].$1;
+        final tagEnd = i < allTriggers.length - 1 ? allTriggers[i + 1].$1 - 1 : tagContent.length - 1;
 
-        if (tagEnd - triggerSymbolIndex > 0) {
+        if (tagEnd - tagStart > 0) {
           // There's a trigger, followed by at least one non-trigger character. Therefore, this
           // is a legitimate pattern tag. Give it an attribution.
           editorPatternTagsLog.finer(
-              "Adding a split tag span: ${patternTag.start + triggerSymbolIndex} -> ${patternTag.start + tagEnd}, '${node.text.substring(patternTag.start + triggerSymbolIndex, patternTag.start + tagEnd + 1)}'");
+              "Adding a split tag span: ${patternTag.start + tagStart} -> ${patternTag.start + tagEnd}, '${node.text.substring(patternTag.start + tagStart, patternTag.start + tagEnd + 1)}'");
           spanCreations.add(SpanRange(
-            patternTag.start + triggerSymbolIndex,
+            patternTag.start + tagStart,
             patternTag.start + tagEnd,
           ));
         }
-
-        triggerSymbolIndex = nextTriggerSymbolIndex;
       }
     }
 
@@ -544,7 +548,9 @@ class PatternTagReaction extends EditReaction {
 
       for (final tag in allTags) {
         final tagText = textNode.text.substring(tag.start, tag.end + 1);
-        if (!tagText.startsWith(_tagRule.trigger) || tagText == _tagRule.trigger) {
+        if (!_tagRule.doesCandidateHaveTrigger(tagText) || _tagRule.isTrigger(tagText)) {
+          // Either this text has no trigger, or this text is only a trigger with no value,
+          // neither of which is a tag. Remove the tag attribution.
           editorPatternTagsLog.info("Removing tag with value: '$tagText'");
           removeTagRequests.add(
             RemoveTextAttributionsRequest(
