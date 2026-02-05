@@ -1491,6 +1491,32 @@ with multiple lines
         expect((document.getNodeAt(3)! as TaskNode).isComplete, isTrue);
       });
 
+      test('round-trip mixed list items and tasks', () {
+        const markdown = '''  * First item
+  - [ ] A task
+  * Second item''';
+
+        final document = deserializeMarkdownToDocument(markdown);
+
+        expect(document.nodeCount, 3);
+
+        expect(document.getNodeAt(0), isA<ListItemNode>());
+        expect((document.getNodeAt(0) as ListItemNode).text.toPlainText(), 'First item');
+        expect((document.getNodeAt(0) as ListItemNode).type, ListItemType.unordered);
+
+        expect(document.getNodeAt(1), isA<TaskNode>());
+        expect((document.getNodeAt(1) as TaskNode).text.toPlainText(), 'A task');
+        expect((document.getNodeAt(1) as TaskNode).isComplete, isFalse);
+
+        expect(document.getNodeAt(2), isA<ListItemNode>());
+        expect((document.getNodeAt(2) as ListItemNode).text.toPlainText(), 'Second item');
+        expect((document.getNodeAt(2) as ListItemNode).type, ListItemType.unordered);
+
+        final serialized = serializeDocumentToMarkdown(document);
+
+        expect(serialized, markdown);
+      });
+
       test('example doc 1', () {
         final document = deserializeMarkdownToDocument(exampleMarkdownDoc1);
 
