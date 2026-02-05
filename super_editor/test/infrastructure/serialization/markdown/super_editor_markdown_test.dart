@@ -747,11 +747,11 @@ Paragraph3""");
         expect(
           serializeDocumentToMarkdown(doc),
           '''
-- [x] Task 1
-- [ ] Task 2  
+  - [x] Task 1
+  - [ ] Task 2  
 with multiple lines
-- [ ] Task 3
-- [x] Task 4''',
+  - [ ] Task 3
+  - [x] Task 4''',
         );
       });
 
@@ -764,7 +764,7 @@ with multiple lines
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), '- [ ] **Task** 1');
+        expect(serializeDocumentToMarkdown(doc), '  - [ ] **Task** 1');
       });
 
       test('example doc', () {
