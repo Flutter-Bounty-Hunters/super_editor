@@ -571,7 +571,7 @@ class TagUserReaction extends EditReaction {
       for (final tag in allComposingTags) {
         final tagText = textNode.text.substring(tag.start, tag.end + 1);
 
-        if (!_tagRule.doesCandidateHaveTrigger(tagText)) {
+        if (!_tagRule.doesTextStartWithTrigger(tagText)) {
           editorStableTagsLog.info("Removing tag with value: '$tagText'");
 
           onUpdateComposingStableTag?.call(null);

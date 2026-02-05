@@ -248,8 +248,6 @@ void main() {
       });
 
       testWidgetsOnAllPlatforms("can create pattern tags back to back (no space)", (tester) async {
-        initLoggers(Level.ALL, {editorPatternTagsLog});
-
         await _pumpTestEditor(
           tester,
           singleParagraphEmptyDoc(),

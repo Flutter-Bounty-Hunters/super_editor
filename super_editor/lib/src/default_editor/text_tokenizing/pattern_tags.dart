@@ -351,7 +351,7 @@ class PatternTagReaction extends EditReaction {
       editorPatternTagsLog.fine("There's no tag around the caret, fizzling");
       return;
     }
-    if (!_tagRule.doesCandidateHaveTrigger(tagAroundCaret.indexedTag.tag.raw)) {
+    if (!_tagRule.doesTextStartWithTrigger(tagAroundCaret.indexedTag.tag.raw)) {
       // Tags must start with the trigger, e.g., "#", but the preceding word doesn't. Return.
       editorPatternTagsLog.fine("Token doesn't start with triggers (${_tagRule.triggers}), fizzling");
       return;
@@ -439,7 +439,7 @@ class PatternTagReaction extends EditReaction {
       final tagContent = node.text.substring(patternTag.start, patternTag.end + 1);
       editorPatternTagsLog.finer("Inspecting $tagContent at ${patternTag.start} -> ${patternTag.end}");
 
-      if (!_tagRule.doesCandidateHaveTrigger(tagContent.substring(1))) {
+      if (!_tagRule.doesTextContainTriggers(tagContent.substring(1))) {
         // There's only one trigger ("#") in this tag, and it's at the beginning. No need
         // to split the tag.
         editorPatternTagsLog.finer("No need to split this tag. Moving to next one.");
@@ -548,7 +548,7 @@ class PatternTagReaction extends EditReaction {
 
       for (final tag in allTags) {
         final tagText = textNode.text.substring(tag.start, tag.end + 1);
-        if (!_tagRule.doesCandidateHaveTrigger(tagText) || _tagRule.isTrigger(tagText)) {
+        if (!_tagRule.doesTextStartWithTrigger(tagText) || _tagRule.isTrigger(tagText)) {
           // Either this text has no trigger, or this text is only a trigger with no value,
           // neither of which is a tag. Remove the tag attribution.
           editorPatternTagsLog.info("Removing tag with value: '$tagText'");

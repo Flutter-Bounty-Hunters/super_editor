@@ -70,7 +70,7 @@ class TagFinder {
     final tokenRange = SpanRange(tokenStartOffset, splitIndex + iteratorDownstream.stringBeforeLength);
 
     final tagText = text.substringInRange(tokenRange);
-    if (!tagRule.doesCandidateHaveTrigger(tagText)) {
+    if (!tagRule.doesTextStartWithTrigger(tagText)) {
       return null;
     }
 
@@ -202,11 +202,26 @@ class TagRule {
     triggers = {trigger};
   }
 
+  /// The set of `String`s that constitute the start of a "tag", within the context
+  /// of this rule.
   late final Set<String> triggers;
 
-  bool isTrigger(String trigger) => triggers.contains(trigger);
+  /// Returns `true` if the given [text] matches any one of this rule's [triggers].
+  bool isTrigger(String text) => triggers.contains(text);
 
-  bool doesCandidateHaveTrigger(String candidate) => extractTriggerFrom(candidate) != null;
+  /// Returns `true` if the given [text] starts with any one of this rule's [triggers].
+  bool doesTextStartWithTrigger(String text) => extractTriggerFrom(text) != null;
+
+  /// Returns `true` if the given [text] contains any [triggers] anywhere within the
+  /// text, or `false` if it doesn't.
+  bool doesTextContainTriggers(String text) {
+    for (final trigger in triggers) {
+      if (text.contains(trigger)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Searches [candidate] for triggers, starting from the beginning, to the end, and
   /// returns a list with every trigger and that trigger's index in [candidate].
@@ -272,7 +287,7 @@ class TagRule {
   ///     "flutter" returns `false`.
   ///
   bool isTag(String candidate) {
-    if (!doesCandidateHaveTrigger(candidate)) {
+    if (!doesTextStartWithTrigger(candidate)) {
       return false;
     }
 

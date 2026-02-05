@@ -525,7 +525,7 @@ TagAroundPosition? _findTagUpstream({
   final tokenRange = SpanRange(tokenStartOffset, splitIndex);
 
   final tagText = text.substringInRange(tokenRange);
-  if (!tagRule.doesCandidateHaveTrigger(tagText)) {
+  if (!tagRule.doesTextStartWithTrigger(tagText)) {
     return null;
   }
 
