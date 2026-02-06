@@ -554,6 +554,8 @@ TagAroundPosition? _findTagUpstream({
 
 extension ActionTagPluginDefaults on EditContext {
   ComposingActionTag get composingActionTag => find<ComposingActionTag>(ActionTagsPlugin.defaultActionTagId);
+
+  ComposingActionTag? get maybeComposingActionTag => findMaybe<ComposingActionTag>(ActionTagsPlugin.defaultActionTagId);
 }
 
 class ComposingActionTag with ChangeNotifier implements Editable {
