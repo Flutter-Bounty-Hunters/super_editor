@@ -45,7 +45,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   ActionTagsPlugin({
     TagRule? tagRule,
     this.actionTagId = defaultActionTagId,
-  }) : _tagRule = tagRule ?? defaultActionTagRule {
+  }) : this.tagRule = tagRule ?? defaultActionTagRule {
     _requestHandlers = <EditRequestHandler>[
       (editor, request) => request is SubmitComposingActionTagRequest //
           ? SubmitComposingActionTagCommand()
@@ -57,7 +57,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
 
     _reactions = [
       ActionTagComposingReaction(
-        tagRule: _tagRule,
+        tagRule: this.tagRule,
         onUpdateComposingActionTag: (composingTag) {
           composingActionTag.value = composingTag;
         },
@@ -69,7 +69,9 @@ class ActionTagsPlugin extends SuperEditorPlugin {
     composingActionTag.dispose();
   }
 
-  final TagRule _tagRule;
+  /// The tag rule, which is used to identify when a user's input qualifies as an
+  /// action tag.
+  final TagRule tagRule;
 
   /// The ID which is used to register the [composingActionTag] with an [Editor]'s
   /// context, allowing anyone with the [Editor] to query the action tag.
@@ -113,7 +115,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
     }
 
     editContext.editor.execute([
-      CancelComposingActionTagRequest(_tagRule),
+      CancelComposingActionTagRequest(tagRule),
     ]);
 
     return ExecutionInstruction.haltExecution;
