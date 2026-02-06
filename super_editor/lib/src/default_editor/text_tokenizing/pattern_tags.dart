@@ -50,6 +50,10 @@ class PatternTagPlugin extends SuperEditorPlugin {
     );
   }
 
+  void dispose() {
+    tagIndex.dispose();
+  }
+
   /// The rule for what this plugin considers to be a tag.
   late final TagRule _tagRule;
 

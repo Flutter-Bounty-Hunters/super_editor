@@ -59,10 +59,14 @@ class ActionTagsPlugin extends SuperEditorPlugin {
       ActionTagComposingReaction(
         tagRule: _tagRule,
         onUpdateComposingActionTag: (composingTag) {
-          _composingActionTag.value = composingTag;
+          composingActionTag.value = composingTag;
         },
       ),
     ];
+  }
+
+  void dispose() {
+    composingActionTag.dispose();
   }
 
   final TagRule _tagRule;
@@ -72,15 +76,12 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   final String actionTagId;
 
   /// The action tag that the user is currently composing.
-  ValueListenable<IndexedTag?> get composingActionTag => _composingActionTag;
-  final _composingActionTag = ValueNotifier<IndexedTag?>(null);
-
-  final _composingActionTagEditable = ComposingActionTag();
+  final composingActionTag = ComposingActionTag();
 
   @override
   void attach(Editor editor) {
     editor
-      ..context.put(actionTagId, _composingActionTagEditable)
+      ..context.put(actionTagId, composingActionTag)
       ..requestHandlers.insertAll(0, _requestHandlers)
       ..reactionPipeline.insertAll(0, _reactions);
   }
@@ -88,7 +89,7 @@ class ActionTagsPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(actionTagId, _composingActionTagEditable)
+      ..context.remove(actionTagId, composingActionTag)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
       ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
@@ -555,8 +556,50 @@ extension ActionTagPluginDefaults on EditContext {
   ComposingActionTag get composingActionTag => find<ComposingActionTag>(ActionTagsPlugin.defaultActionTagId);
 }
 
-class ComposingActionTag with Editable {
-  IndexedTag? value;
+class ComposingActionTag with ChangeNotifier implements Editable {
+  IndexedTag? get value => _value;
+  IndexedTag? _value;
+  set value(IndexedTag? newValue) {
+    if (newValue == value) {
+      return;
+    }
+
+    _value = newValue;
+
+    _onChange();
+  }
+
+  bool _isInATransaction = false;
+  bool _didChange = false;
+
+  @override
+  void onTransactionStart() {
+    _isInATransaction = true;
+    _didChange = false;
+  }
+
+  void _onChange() {
+    if (!_isInATransaction) {
+      notifyListeners();
+      return;
+    }
+
+    _didChange = true;
+  }
+
+  @override
+  void onTransactionEnd(List<EditEvent> edits) {
+    _isInATransaction = false;
+    if (_didChange) {
+      _didChange = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void reset() {
+    _value = null;
+  }
 }
 
 typedef OnUpdateComposingActionTag = void Function(IndexedTag? composingActionTag);

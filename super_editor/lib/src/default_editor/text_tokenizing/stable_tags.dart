@@ -79,6 +79,10 @@ class StableTagPlugin extends SuperEditorPlugin {
     ];
   }
 
+  void dispose() {
+    tagIndex.dispose();
+  }
+
   late final TagRule _tagRule;
 
   /// Index of all stable tags in the document, which changes as the user adds and removes tags.
