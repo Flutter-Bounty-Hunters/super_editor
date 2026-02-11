@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
-
-import '../test_tools_user_input.dart';
-import 'supereditor_test_tools.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group('SuperEditor', () {
@@ -50,6 +48,112 @@ void main() {
 
         expect(SuperEditorInspector.hasFocus(), true);
       }, variant: inputAndGestureVariants);
+    });
+
+    group("restores selection after re-focus", () {
+      testWidgetsOnAllPlatforms("when selection is collapsed", (tester) async {
+        final focusNode = FocusNode();
+        await _pumpFocusChangeLayoutWithSingleParagraph(tester, editorFocusNode: focusNode);
+
+        // Place caret in the middle of a word.
+        await tester.placeCaretInParagraph('1', 8);
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 8),
+            ),
+          ),
+        );
+
+        // Focus the textfield.
+        await tester.tap(find.byType(TextField));
+        await tester.pumpAndSettle();
+
+        // Ensure selection was cleared.
+        expect(SuperEditorInspector.findDocumentSelection(), isNull);
+
+        // Focus the editor.
+        focusNode.requestFocus();
+        await tester.pumpAndSettle();
+
+        // Ensure selection was restored.
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 8),
+            ),
+          ),
+        );
+      });
+
+      testWidgetsOnAllPlatforms("when selection is expanded", (tester) async {
+        final editorFocusNode = FocusNode();
+        final testContext = await _pumpFocusChangeLayoutWithSingleParagraph(tester, editorFocusNode: editorFocusNode);
+
+        // Tap on editor to give it focus.
+        await tester.placeCaretInParagraph('1', 0);
+
+        // Select some text.
+        testContext.editor.execute([
+          const ChangeSelectionRequest(
+            DocumentSelection(
+              base: DocumentPosition(
+                nodeId: '1',
+                nodePosition: TextNodePosition(offset: 0),
+              ),
+              extent: DocumentPosition(
+                nodeId: '1',
+                nodePosition: TextNodePosition(offset: 8),
+              ),
+            ),
+            SelectionChangeType.expandSelection,
+            SelectionReason.userInteraction,
+          ),
+        ]);
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection(
+            base: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+            extent: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 8),
+            ),
+          ),
+        );
+
+        // Focus the textfield.
+        await tester.tap(find.byType(TextField));
+        await tester.pumpAndSettle();
+
+        // Ensure selection was cleared.
+        expect(SuperEditorInspector.findDocumentSelection(), isNull);
+
+        // Focus the editor.
+        editorFocusNode.requestFocus();
+        await tester.pumpAndSettle();
+
+        // Ensure selection was restored.
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection(
+            base: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+            extent: DocumentPosition(
+              nodeId: '1',
+              nodePosition: TextNodePosition(offset: 8),
+            ),
+          ),
+        );
+      });
     });
 
     group("throws away stale selection after re-focus", () {
@@ -157,7 +261,7 @@ void main() {
                   nodePosition: TextNodePosition(offset: 8),
                 ),
               ),
-              SelectionChangeType.placeCaret,
+              SelectionChangeType.expandSelection,
               SelectionReason.userInteraction,
             ),
           ]);
@@ -221,7 +325,7 @@ void main() {
                   nodePosition: TextNodePosition(offset: 8),
                 ),
               ),
-              SelectionChangeType.placeCaret,
+              SelectionChangeType.expandSelection,
               SelectionReason.userInteraction,
             ),
           ]);
@@ -593,6 +697,11 @@ Future<TestDocumentContext> _pumpFocusChangeLayoutWithSingleParagraph(
       .withSingleParagraph()
       .withInputSource(TextInputSource.ime)
       .withFocusNode(editorFocusNode)
+      // We include StableTagPlugin because its reaction checks the selection change type,
+      // and at one point (#2792) Super Editor was reporting "place caret" when restoring
+      // an expanded selection. This broke the plugin. So while we don't actually care about
+      // this plugin for this test suite, we want to ensure that it doesn't throw any exceptions.
+      .withPlugin(StableTagPlugin())
       .withCustomWidgetTreeBuilder(
         (superEditor) => MaterialApp(
           home: Scaffold(

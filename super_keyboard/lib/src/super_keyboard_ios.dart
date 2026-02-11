@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:logging/logging.dart';
 import 'package:super_keyboard/src/keyboard.dart';
+import 'package:super_keyboard/src/logging.dart';
 
 class SuperKeyboardIOSBuilder extends StatefulWidget {
   const SuperKeyboardIOSBuilder({
@@ -65,10 +65,8 @@ class SuperKeyboardIOS {
     return _instance!;
   }
 
-  static final log = Logger("super_keyboard.ios");
-
   SuperKeyboardIOS._() {
-    log.info("Initializing iOS plugin for super_keyboard");
+    SKLog.ios.info("Initializing iOS plugin for super_keyboard");
     assert(
       defaultTargetPlatform == TargetPlatform.iOS,
       "You shouldn't initialize SuperKeyboardIOS when not on an iOS platform. Current: $defaultTargetPlatform",
@@ -78,6 +76,22 @@ class SuperKeyboardIOS {
 
   final _methodChannel = const MethodChannel('super_keyboard_ios');
 
+  /// Enable platform-side logging, e.g., iOS logs.
+  ///
+  /// Optionally, log messages on the platform side can be forwarded to Dart
+  /// so that they can be printed by the current [SKLog]. To do this, pass
+  /// `true` for [sendPlatformLogsToDart]. When `false`, platform logs are
+  /// printed on the platform side using whatever the standard logger is, e.g.,
+  /// `Log` on Android and `print` on iOS. Defaults to `false`.
+  Future<void> enablePlatformLogging({bool sendPlatformLogsToDart = false}) async {
+    await _methodChannel.invokeMethod("startLogging", {"sendPlatformLogsToDart": sendPlatformLogsToDart});
+  }
+
+  /// Disable platform-side logging, e.g., iOS logs.
+  Future<void> disablePlatformLogging() async {
+    await _methodChannel.invokeMethod("stopLogging");
+  }
+
   ValueListenable<MobileWindowGeometry> get geometry => _geometry;
   final _geometry = ValueNotifier<MobileWindowGeometry>(const MobileWindowGeometry());
 
@@ -86,14 +100,13 @@ class SuperKeyboardIOS {
   void removeListener(SuperKeyboardIOSListener listener) => _listeners.remove(listener);
 
   Future<void> _onPlatformMessage(MethodCall message) async {
-    assert(() {
-      log.fine("iOS platform message: '${message.method}', args: ${message.arguments}");
-      return true;
-    }());
+    // assert(() {
+    //   SKLog.ios.fine("iOS platform message: '${message.method}', args: ${message.arguments}");
+    //   return true;
+    // }());
 
     switch (message.method) {
       case "keyboardWillShow":
-        log.info("keyboardWillShow");
         _geometry.value = _geometry.value.updateWith(
           MobileWindowGeometry(
             keyboardState: KeyboardState.opening,
@@ -107,7 +120,6 @@ class SuperKeyboardIOS {
         }
         break;
       case "keyboardDidShow":
-        log.info("keyboardDidShow");
         _geometry.value = _geometry.value.updateWith(
           MobileWindowGeometry(
             keyboardState: KeyboardState.open,
@@ -121,10 +133,8 @@ class SuperKeyboardIOS {
         }
         break;
       case "keyboardWillChangeFrame":
-        log.info("keyboardWillChangeFrame - keyboard type: ${message.arguments['keyboardType']}");
         break;
       case "keyboardWillHide":
-        log.info("keyboardWillHide");
         _geometry.value = _geometry.value.updateWith(
           MobileWindowGeometry(
             keyboardState: KeyboardState.closing,
@@ -138,7 +148,6 @@ class SuperKeyboardIOS {
         }
         break;
       case "keyboardDidHide":
-        log.info("keyboardDidHide");
         _geometry.value = _geometry.value.updateWith(
           MobileWindowGeometry(
             keyboardState: KeyboardState.closed,
@@ -151,7 +160,15 @@ class SuperKeyboardIOS {
           listener.onKeyboardDidHide();
         }
         break;
+      case "log":
+        _printIOSLog(message);
+        break;
     }
+  }
+
+  void _printIOSLog(MethodCall channelMessage) {
+    final logMessage = "SK iOS: ${channelMessage.arguments["message"] ?? "EMPTY MESSAGE"}";
+    SKLog.ios.info(logMessage);
   }
 }
 

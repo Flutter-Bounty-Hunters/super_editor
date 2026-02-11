@@ -4,8 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   // These golden tests are being skipped on macOS because the text seems to be

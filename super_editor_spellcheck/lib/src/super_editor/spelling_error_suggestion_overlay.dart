@@ -212,6 +212,10 @@ class _SpellingErrorSuggestionOverlayState
   }
 
   void _onSelectionChange() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       // Re-compute layout data. The layout needs to be re-computed regardless
       // of any conditions that follow this comment.
@@ -255,12 +259,20 @@ class _SpellingErrorSuggestionOverlayState
   }
 
   void _onDocumentChange(DocumentChangeLog changeLog) {
+    if (!mounted) {
+      return;
+    }
+
     // After the document changes, the currently visible suggestions
     // might not be valid anymore. Hide the popover.
     hideSuggestionsPopover();
   }
 
   void _onSpellingSuggestionsChange() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       // Re-compute layout data.
     });
@@ -449,11 +461,8 @@ class _SpellingErrorSuggestionOverlayState
       case TargetPlatform.iOS:
         return Follower.withAligner(
           link: widget.selectedWordLink,
-          aligner: CupertinoPopoverToolbarAligner(_boundsKey),
-          boundary: ScreenFollowerBoundary(
-            screenSize: MediaQuery.sizeOf(context),
-            devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          ),
+          aligner: CupertinoPopoverToolbarAligner(),
+          boundary: const ScreenFollowerBoundary(),
           child: child,
         );
       case TargetPlatform.android:
@@ -488,10 +497,7 @@ class _SpellingErrorSuggestionOverlayState
               leaderAnchor: leaderAnchor,
               followerAnchor: followerAnchor,
               offset: offset,
-              boundary: ScreenFollowerBoundary(
-                screenSize: MediaQuery.sizeOf(context),
-                devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-              ),
+              boundary: const ScreenFollowerBoundary(),
               child: child,
             ),
           ],
@@ -502,10 +508,7 @@ class _SpellingErrorSuggestionOverlayState
           leaderAnchor: Alignment.bottomLeft,
           followerAnchor: Alignment.topLeft,
           offset: const Offset(0, 16),
-          boundary: ScreenFollowerBoundary(
-            screenSize: MediaQuery.sizeOf(context),
-            devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          ),
+          boundary: const ScreenFollowerBoundary(),
           child: child,
         );
     }

@@ -7,11 +7,7 @@ import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/blinking_caret.dart';
-import 'package:super_editor/src/test/ime.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_inspector.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
-
-import 'supereditor_test_tools.dart';
+import 'package:super_editor/super_editor_test.dart';
 
 void main() {
   group('SuperEditor', () {

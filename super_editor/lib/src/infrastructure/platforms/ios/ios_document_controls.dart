@@ -104,14 +104,12 @@ class _IosFloatingToolbarOverlayState extends State<IosFloatingToolbarOverlay> w
       link: widget.toolbarFocalPoint,
       boundary: WidgetFollowerBoundary(
         boundaryKey: _boundsKey,
-        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       ),
       child: Follower.withAligner(
         link: widget.toolbarFocalPoint,
-        aligner: CupertinoPopoverToolbarAligner(_boundsKey),
+        aligner: CupertinoPopoverToolbarAligner(),
         boundary: WidgetFollowerBoundary(
           boundaryKey: _boundsKey,
-          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
         ),
         child: widget.floatingToolbarBuilder(context, DocumentKeys.mobileToolbar, widget.toolbarFocalPoint),
       ),
@@ -768,17 +766,28 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
       // The computeLayoutData method is called during the layer's build, which means that the
       // layer's RenderBox is outdated, because it wasn't laid out yet for the current frame.
       // Use the content's RenderBox, which was already laid out for the current frame.
-      final contentBox = documentContext.findRenderObject() as RenderSliver?;
-      if (contentBox != null && contentBox.hasSize && caretRect.left + caretWidth >= contentBox.size.width) {
-        // Ajust the caret position to make it entirely visible because it's currently placed
-        // partially or entirely outside of the layers' bounds. This can happen for downstream selections
-        // of block components that take all the available width.
-        caretRect = Rect.fromLTWH(
-          contentBox.size.width - caretWidth,
-          caretRect.top,
-          caretRect.width,
-          caretRect.height,
-        );
+      final contentBox = documentContext.findRenderObject();
+      if (contentBox != null) {
+        double? contentWidth;
+        if (contentBox is RenderSliver && contentBox.hasSize && caretRect.left + caretWidth >= contentBox.size.width) {
+          contentWidth = contentBox.size.width;
+        } else if (contentBox is RenderBox &&
+            contentBox.hasSize &&
+            caretRect.left + caretWidth >= contentBox.size.width) {
+          contentWidth = contentBox.size.width;
+        }
+
+        if (contentWidth != null) {
+          // Adjust the caret position to make it entirely visible because it's currently placed
+          // partially or entirely outside of the layers' bounds. This can happen for downstream selections
+          // of block components that take all the available width.
+          caretRect = Rect.fromLTWH(
+            contentWidth - caretWidth,
+            caretRect.top,
+            caretRect.width,
+            caretRect.height,
+          );
+        }
       }
 
       return DocumentSelectionLayout(

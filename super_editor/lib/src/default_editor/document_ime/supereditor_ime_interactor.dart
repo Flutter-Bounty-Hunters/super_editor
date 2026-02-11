@@ -8,6 +8,7 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/edit_context.dart';
 import 'package:super_editor/src/default_editor/debug_visualization.dart';
 import 'package:super_editor/src/default_editor/document_gestures_touch_ios.dart';
+import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/actions.dart';
@@ -42,6 +43,7 @@ class SuperEditorImeInteractor extends StatefulWidget {
     this.clearSelectionWhenEditorLosesFocus = true,
     this.clearSelectionWhenImeConnectionCloses = true,
     this.softwareKeyboardController,
+    this.inputRole,
     this.imePolicies = const SuperEditorImePolicies(),
     this.imeConfiguration = const SuperEditorImeConfiguration(),
     this.imeOverrides,
@@ -95,6 +97,8 @@ class SuperEditorImeInteractor extends StatefulWidget {
   /// might conflict with teh automated behavior.
   final SoftwareKeyboardController? softwareKeyboardController;
 
+  final String? inputRole;
+
   /// Policies that dictate when and how `SuperEditor` should interact with the
   /// platform IME.
   final SuperEditorImePolicies imePolicies;
@@ -122,11 +126,11 @@ class SuperEditorImeInteractor extends StatefulWidget {
   /// keyboard keys.
   ///
   /// [keyboardActions] operates as a Chain of Responsibility. Starting
-  /// from the beginning of the list, a [DocumentKeyboardAction] is
+  /// from the beginning of the list, a [SuperEditorKeyboardAction] is
   /// given the opportunity to handle the currently pressed keys. If that
-  /// [DocumentKeyboardAction] reports the keys as handled, then execution
-  /// stops. Otherwise, execution continues to the next [DocumentKeyboardAction].
-  final List<DocumentKeyboardAction> hardwareKeyboardActions;
+  /// [SuperEditorKeyboardAction] reports the keys as handled, then execution
+  /// stops. Otherwise, execution continues to the next [SuperEditorKeyboardAction].
+  final List<SuperEditorKeyboardAction> hardwareKeyboardActions;
 
   /// Controls "floating cursor" behavior for iOS devices.
   ///
@@ -152,11 +156,87 @@ class SuperEditorImeInteractor extends StatefulWidget {
 
 @visibleForTesting
 class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> implements ImeInputOwner {
+  static bool _willCheckUniqueInputsNextFrame = false;
+
+  static final _registeredInputsThisFrame = <(SuperImeInputId inputId, StackTrace stacktrace)>[];
+
+  /// Ensures that there are no other inputs with the same [inputId] at the end of the current
+  /// Flutter frame.
+  ///
+  /// At the end of the frame, if 2+ inputs registered with the same [SuperImeInputId.role],
+  /// an exception is thrown, which includes the stack traces for each of those registrations,
+  /// so that developers can debug why it happened.
+  static _registerInput(SuperImeInputId inputId) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    _registeredInputsThisFrame.add((inputId, StackTrace.current));
+
+    if (!_willCheckUniqueInputsNextFrame) {
+      _willCheckUniqueInputsNextFrame = true;
+      WidgetsBinding.instance.addPostFrameCallback(_verifyUniqueInputs);
+    }
+  }
+
+  static void _unregisterInput(SuperImeInputId inputId) {
+    final startLength = _registeredInputsThisFrame.length;
+    _registeredInputsThisFrame.removeWhere((entry) => entry.$1.instance == inputId.instance);
+
+    assert(
+      startLength != _registeredInputsThisFrame.length,
+      "An IME interactor tried to unregister itself with the global tracker, but we "
+      "didn't find it in the global tracker. Either it was never added, or it was "
+      "already removed. Either way, this is a programming mistake that needs to be "
+      "corrected by the caller.",
+    );
+  }
+
+  static void _verifyUniqueInputs(Duration _) {
+    // Clear flag so the next time the "ensure" method is called, we''
+    // register another post frame callback.
+    _willCheckUniqueInputsNextFrame = false;
+
+    final inputsByRole = <String?, List<(SuperImeInputId, StackTrace)>>{};
+
+    for (final input in _registeredInputsThisFrame) {
+      inputsByRole[input.$1.role] ??= [];
+      inputsByRole[input.$1.role]!.add(input);
+    }
+
+    final duplicates = <(SuperImeInputId, StackTrace)>[];
+    for (final entry in inputsByRole.entries) {
+      if (entry.value.length < 2) {
+        // No duplicate inputs here.
+        continue;
+      }
+
+      duplicates.addAll(entry.value);
+    }
+
+    if (duplicates.isEmpty) {
+      // No duplicate inputs anywhere this frame. All good. We're done.
+      return;
+    }
+
+    // We found some number of duplicates. Write them all out to an exception message.
+    throw Exception([
+      "Found ${duplicates.length} duplicate input IDs this frame:",
+      for (final input in duplicates) ...[
+        "Input: ${input.$1.role} (${input.$1.instance})",
+        "This duplicate input was built at this moment:",
+        input.$2,
+        "------ END OF ${input.$1.role} (${input.$1.instance}) ----",
+      ],
+    ].join("\n"));
+  }
+
   late FocusNode _focusNode;
 
   SuperEditorIosControlsController? _controlsController;
 
-  final _imeConnection = ValueNotifier<TextInputConnection?>(null);
+  late SuperImeInputId _myImeId;
+  final _ownedImeConnection = ValueNotifier<TextInputConnection?>(null);
   late TextInputConfiguration _textInputConfiguration;
   late DocumentImeInputClient _documentImeClient;
   // The _imeClient is setup in one of two ways at any given time:
@@ -170,7 +250,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   // implementation of DocumentImeInputClient. If we find a less confusing
   // way to handle that scenario, then get rid of this property.
   final _documentImeConnection = ValueNotifier<TextInputConnection?>(null);
-  late TextDeltasDocumentEditor _textDeltasDocumentEditor;
 
   @override
   void initState() {
@@ -181,12 +260,13 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     print("IME interactor is IME connection attached? ${_imeConnection.value?.attached}");
     _focusNode = (widget.focusNode ?? FocusNode());
 
-    _setupImeConnection();
+    _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
+    _registerInput(_myImeId);
+    SuperIme.instance.addListener(_onSharedImeChange);
+    _setupDocumentImeInputClient();
 
     _imeClient = DeltaTextInputClientDecorator();
     _configureImeClientDecorators();
-
-    _imeConnection.addListener(_onImeConnectionChange);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print(
@@ -216,18 +296,41 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     print("IME interactor - didUpdateWidget");
     super.didUpdateWidget(oldWidget);
 
+    if (widget.focusNode != oldWidget.focusNode) {
+      if (oldWidget.focusNode == null) {
+        _focusNode.dispose();
+      }
+    }
+
+    if (widget.inputRole != oldWidget.inputRole) {
+      final didOwnIme = SuperIme.instance.isOwner(_myImeId);
+
+      // We changed roles. Release our previous claim to the shared IME.
+      SuperIme.instance.releaseOwnership(_myImeId);
+
+      // Create a new IME input ID with the new role.
+      _unregisterInput(_myImeId);
+      _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
+      _registerInput(_myImeId);
+
+      if (didOwnIme) {
+        // Re-take IME ownership.
+        SuperIme.instance.takeOwnership(_myImeId);
+      }
+    }
+
     if (widget.editContext != oldWidget.editContext) {
-      _setupImeConnection();
+      _setupDocumentImeInputClient();
+      _onSharedImeChange();
       _documentImeClient.floatingCursorController =
           widget.floatingCursorController ?? _controlsController?.floatingCursorController;
-      _imeConnection.notifyListeners();
     }
 
     if (widget.imeConfiguration != oldWidget.imeConfiguration) {
       print("IME interactor - updating IME configuration");
       _textInputConfiguration = widget.imeConfiguration.toTextInputConfiguration(viewId: View.of(context).viewId);
       if (isAttachedToIme) {
-        _imeConnection.value!.updateConfig(_textInputConfiguration);
+        SuperIme.instance.getImeConnectionForOwner(_myImeId)!.updateConfig(_textInputConfiguration);
       }
     }
 
@@ -239,19 +342,27 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   @override
   void dispose() {
-    print("IME interactor - dispose");
-    print("IME interaction - is attached at time of disposal: ${_imeConnection.value?.attached}");
-    _imeConnection.removeListener(_onImeConnectionChange);
-    print("IME interactor - Closing IME connection (${_imeConnection.value})");
-    _imeConnection.value?.close();
-
-    widget.imeOverrides?.client = null;
-    _imeClient.client = null;
-    _documentImeClient.dispose();
+    SuperIme.instance.removeListener(_onSharedImeChange);
+    if (SuperIme.instance.isOwner(_myImeId)) {
+      // We are the current owner of the IME. Close the IME as we dispose ourselves.
+      // Note: If this disposal were part of a subtree move somewhere else, the other
+      // version of this widget would have already registered itself as the IME owner
+      // in its `initState()` method.
+      SuperIme.instance.releaseOwnership(_myImeId);
+    }
+    _unregisterInput(_myImeId);
 
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
+
+    if (true == widget.imeOverrides?.isCurrentClient(_documentImeClient)) {
+      // We're still the owner/client of the IME overrides. Null it out to
+      // remove the reference to us.
+      widget.imeOverrides?.client = null;
+    }
+    _imeClient.client = null;
+    _documentImeClient.dispose();
 
     super.dispose();
   }
@@ -261,44 +372,56 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   DeltaTextInputClient get imeClient => _imeClient;
 
   @visibleForTesting
-  bool get isAttachedToIme => _imeConnection.value?.attached ?? false;
+  bool get isAttachedToIme => SuperIme.instance.isInputAttachedToOS(_myImeId);
 
-  void _setupImeConnection() {
-    _createTextDeltasDocumentEditor();
-    _createDocumentImeClient();
+  TextInputConnection get imeConnection {
+    assert(SuperIme.instance.isOwner(_myImeId),
+        "The imeConnection getter should only be called when you know you're the owner. You're not.");
+    assert(SuperIme.instance.getImeConnectionForOwner(_myImeId) != null,
+        "The imeConnection getter should only be called when you know there's an IME connection. There isn't.");
+
+    return SuperIme.instance.getImeConnectionForOwner(_myImeId)!;
   }
 
-  void _createTextDeltasDocumentEditor() {
-    _textDeltasDocumentEditor = TextDeltasDocumentEditor(
-      editor: widget.editContext.editor,
-      document: widget.editContext.document,
-      documentLayoutResolver: () => widget.editContext.documentLayout,
-      selection: widget.editContext.composer.selectionNotifier,
-      composerPreferences: widget.editContext.composer.preferences,
-      composingRegion: widget.editContext.composer.composingRegion,
-      commonOps: widget.editContext.commonOps,
-      onPerformAction: (action) => _imeClient.performAction(action),
-    );
-  }
-
-  void _createDocumentImeClient() {
+  void _setupDocumentImeInputClient() {
     _documentImeClient = DocumentImeInputClient(
       selection: widget.editContext.composer.selectionNotifier,
       composingRegion: widget.editContext.composer.composingRegion,
-      textDeltasDocumentEditor: _textDeltasDocumentEditor,
-      imeConnection: _imeConnection,
+      textDeltasDocumentEditor: TextDeltasDocumentEditor(
+        editor: widget.editContext.editor,
+        document: widget.editContext.document,
+        documentLayoutResolver: () => widget.editContext.documentLayout,
+        selection: widget.editContext.composer.selectionNotifier,
+        composerPreferences: widget.editContext.composer.preferences,
+        composingRegion: widget.editContext.composer.composingRegion,
+        commonOps: widget.editContext.commonOps,
+        onPerformAction: (action) => _imeClient.performAction(action),
+      ),
+      imeConnection: _ownedImeConnection,
       onPerformSelector: _onPerformSelector,
     );
   }
 
-  void _onImeConnectionChange() {
-    if (_imeConnection.value == null) {
+  void _onSharedImeChange() {
+    if (!SuperIme.instance.isOwner(_myImeId)) {
+      // We don't own the IME. Update our accounting.
+      _ownedImeConnection.value = null;
+
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
       widget.isImeConnected?.value = false;
       return;
     }
 
+    if (!SuperIme.instance.isInputAttachedToOS(_myImeId)) {
+      // We own the IME, but our connection to the OS was closed.
+      _documentImeConnection.value = null;
+      widget.imeOverrides?.client = null;
+      widget.isImeConnected?.value = false;
+      return;
+    }
+
+    _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;
 
@@ -366,7 +489,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       transform = renderSliver.getTransformTo(null);
     }
 
-    _imeConnection.value!.setEditableSizeAndTransform(size, transform);
+    SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setEditableSizeAndTransform(size, transform);
   }
 
   void _reportCaretRectToIme() {
@@ -379,7 +502,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     final caretRect = _computeCaretRectInViewportSpace();
     if (caretRect != null) {
-      _imeConnection.value!.setCaretRect(caretRect);
+      SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setCaretRect(caretRect);
     }
   }
 
@@ -413,7 +536,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     DocumentComponent? selectedComponent = docLayout.getComponentByNodeId(selection.extent.nodeId);
     if (selectedComponent is ProxyDocumentComponent) {
-      // The selected componente is a proxy.
+      // The selected component is a proxy.
       // If this component displays text, the text component is bounded to childDocumentComponentKey.
       selectedComponent = selectedComponent.childDocumentComponentKey.currentState as DocumentComponent?;
     }
@@ -429,13 +552,13 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     final style = selectedComponent.getTextStyleAt(nodePosition.offset);
-    _imeConnection.value!.setStyle(
-      fontFamily: style.fontFamily,
-      fontSize: style.fontSize,
-      fontWeight: style.fontWeight,
-      textDirection: selectedComponent.textDirection ?? TextDirection.ltr,
-      textAlign: selectedComponent.textAlign ?? TextAlign.left,
-    );
+    SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setStyle(
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          textDirection: selectedComponent.textDirection ?? TextDirection.ltr,
+          textAlign: selectedComponent.textAlign ?? TextAlign.left,
+        );
   }
 
   /// Compute the caret rect in the editor's content space.
@@ -509,7 +632,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   @override
   Widget build(BuildContext context) {
     return SuperEditorImeDebugVisuals(
-      imeConnection: _imeConnection,
+      imeConnection: _ownedImeConnection,
       child: IntentBlocker(
         intents: CurrentPlatform.isApple ? appleBlockedIntents : nonAppleBlockedIntents,
         child: SuperEditorHardwareKeyHandler(
@@ -521,7 +644,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
             focusNode: _focusNode,
             editor: widget.editContext.editor,
             selection: widget.editContext.composer.selectionNotifier,
-            imeConnection: _imeConnection,
+            inputId: _myImeId,
             imeClientFactory: () => _imeClient,
             imeConfiguration: _textInputConfiguration,
             openKeyboardOnSelectionChange: widget.imePolicies.openKeyboardOnSelectionChange,
@@ -530,7 +653,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
             clearSelectionWhenImeConnectionCloses: widget.clearSelectionWhenImeConnectionCloses,
             child: ImeFocusPolicy(
               focusNode: _focusNode,
-              imeConnection: _imeConnection,
+              inputId: _myImeId,
               imeClientFactory: () => _imeClient,
               imeConfiguration: _textInputConfiguration,
               openImeOnPrimaryFocusGain: widget.imePolicies.openKeyboardOnGainPrimaryFocus,
@@ -539,7 +662,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
               closeImeOnNonPrimaryFocusLost: widget.imePolicies.closeImeOnNonPrimaryFocusLost,
               child: SoftwareKeyboardOpener(
                 controller: widget.softwareKeyboardController,
-                imeConnection: _imeConnection,
+                inputId: _myImeId,
                 createImeClient: () => _imeClient,
                 createImeConfiguration: () => _textInputConfiguration,
                 child: widget.child,

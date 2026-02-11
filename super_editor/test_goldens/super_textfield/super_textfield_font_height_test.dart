@@ -4,9 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:super_editor/src/super_textfield/desktop/desktop_textfield.dart';
 import 'package:super_editor/src/super_textfield/infrastructure/attributed_text_editing_controller.dart';
-
-import '../../test/super_textfield/super_textfield_robot.dart';
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_test.dart';
+import 'package:super_editor/super_text_field_test.dart';
 
 void main() {
   group('SuperTextField > single line > with custom font height', () {

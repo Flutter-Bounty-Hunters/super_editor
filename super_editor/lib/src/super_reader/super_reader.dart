@@ -26,6 +26,7 @@ import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/default_editor/unknown_component.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
+import 'package:super_editor/src/infrastructure/content_layers_for_slivers.dart';
 import 'package:super_editor/src/infrastructure/document_gestures_interaction_overrides.dart';
 import 'package:super_editor/src/infrastructure/documents/document_scaffold.dart';
 import 'package:super_editor/src/infrastructure/documents/document_scroller.dart';
@@ -60,7 +61,7 @@ class SuperReader extends StatefulWidget {
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperReaderDocumentOverlayBuilders,
     List<ComponentBuilder>? componentBuilders,
-    List<ReadOnlyDocumentKeyboardAction>? keyboardActions,
+    List<SuperReaderKeyboardAction>? keyboardActions,
     SelectionStyles? selectionStyle,
     this.gestureMode,
     this.contentTapDelegateFactory = superReaderLaunchLinkTapHandlerFactory,
@@ -74,7 +75,7 @@ class SuperReader extends StatefulWidget {
     this.shrinkWrap = false,
   })  : stylesheet = stylesheet ?? readOnlyDefaultStylesheet,
         selectionStyles = selectionStyle ?? readOnlyDefaultSelectionStyle,
-        keyboardActions = keyboardActions ?? readOnlyDefaultKeyboardActions,
+        keyboardActions = keyboardActions ?? superReaderDefaultKeyboardActions,
         componentBuilders = componentBuilders != null
             ? [...componentBuilders, const UnknownComponentBuilder()]
             : [...readOnlyDefaultComponentBuilders, const UnknownComponentBuilder()],
@@ -167,7 +168,7 @@ class SuperReader extends StatefulWidget {
   ///
   /// These actions are only used when in [TextInputSource.keyboard]
   /// mode.
-  final List<ReadOnlyDocumentKeyboardAction> keyboardActions;
+  final List<SuperReaderKeyboardAction> keyboardActions;
 
   /// The [SuperReader] gesture mode, e.g., mouse or touch.
   final DocumentGestureMode? gestureMode;

@@ -1,3 +1,5 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/selection_aware_viewmodel.dart';
@@ -80,7 +82,6 @@ class ImageNode extends BlockNode {
     );
   }
 
-  @override
   ImageNode copy() {
     return ImageNode(
       id: id,
@@ -297,4 +298,289 @@ class ExpectedSize {
 
   @override
   int get hashCode => width.hashCode ^ height.hashCode;
+}
+
+/// A [ComponentBuilder] that builds [BitmapImageComponent]s based on [BitmapImageNode]s.
+///
+/// These nodes and components work specifically with bitmap images, whose data is available in-memory
+/// as a [Uint8List].
+class BitmapImageComponentBuilder implements ComponentBuilder {
+  const BitmapImageComponentBuilder();
+
+  @override
+  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+    if (node is! BitmapImageNode) {
+      return null;
+    }
+
+    return BitmapImageComponentViewModel(
+      nodeId: node.id,
+      createdAt: node.metadata[NodeMetadata.createdAt],
+      imageData: node.imageData,
+      expectedSize: node.expectedBitmapSize,
+      selectionColor: const Color(0x00000000),
+    );
+  }
+
+  @override
+  Widget? createComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    SingleColumnLayoutComponentViewModel componentViewModel,
+  ) {
+    if (componentViewModel is! BitmapImageComponentViewModel) {
+      return null;
+    }
+
+    return BitmapImageComponent(
+      componentKey: componentContext.componentKey,
+      imageData: componentViewModel.imageData,
+      expectedSize: componentViewModel.expectedSize,
+      selection: componentViewModel.selection?.nodeSelection as UpstreamDownstreamNodeSelection?,
+      selectionColor: componentViewModel.selectionColor,
+      opacity: componentViewModel.opacity,
+    );
+  }
+}
+
+class BitmapImageComponentViewModel extends SingleColumnLayoutComponentViewModel with SelectionAwareViewModelMixin {
+  BitmapImageComponentViewModel({
+    required super.nodeId,
+    super.createdAt,
+    super.maxWidth,
+    super.padding = EdgeInsets.zero,
+    super.opacity = 1.0,
+    required this.imageData,
+    this.expectedSize,
+    DocumentNodeSelection? selection,
+    Color selectionColor = Colors.transparent,
+  }) {
+    this.selection = selection;
+    this.selectionColor = selectionColor;
+  }
+
+  Uint8List imageData;
+  ExpectedSize? expectedSize;
+
+  @override
+  BitmapImageComponentViewModel copy() {
+    return BitmapImageComponentViewModel(
+      nodeId: nodeId,
+      createdAt: createdAt,
+      maxWidth: maxWidth,
+      padding: padding,
+      opacity: opacity,
+      imageData: imageData,
+      expectedSize: expectedSize,
+      selection: selection,
+      selectionColor: selectionColor,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      super == other &&
+          other is BitmapImageComponentViewModel &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          createdAt == other.createdAt &&
+          selection == other.selection &&
+          selectionColor == other.selectionColor &&
+          imageData.isSameAs(other.imageData);
+
+  @override
+  int get hashCode =>
+      super.hashCode ^
+      nodeId.hashCode ^
+      createdAt.hashCode ^
+      imageData.hashCode ^
+      selection.hashCode ^
+      selectionColor.hashCode;
+}
+
+/// Displays an image in a document.
+class BitmapImageComponent extends StatelessWidget {
+  const BitmapImageComponent({
+    super.key,
+    required this.componentKey,
+    required this.imageData,
+    this.expectedSize,
+    this.selectionColor = Colors.blue,
+    this.selection,
+    this.opacity = 1.0,
+  });
+
+  final GlobalKey componentKey;
+  final Uint8List imageData;
+  final ExpectedSize? expectedSize;
+  final Color selectionColor;
+  final UpstreamDownstreamNodeSelection? selection;
+
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.basic,
+      hitTestBehavior: HitTestBehavior.translucent,
+      child: IgnorePointer(
+        child: Center(
+          child: SelectableBox(
+            selection: selection,
+            selectionColor: selectionColor,
+            child: BoxComponent(
+              key: componentKey,
+              opacity: opacity,
+              child: Image.memory(
+                imageData,
+                fit: BoxFit.contain,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (frame != null) {
+                    // The image is already loaded. Use the image as is.
+                    return child;
+                  }
+
+                  if (expectedSize != null && expectedSize!.width != null && expectedSize!.height != null) {
+                    // Both width and height were provide.
+                    // Preserve the aspect ratio of the original image.
+                    return AspectRatio(
+                      aspectRatio: expectedSize!.aspectRatio,
+                      child: SizedBox(width: expectedSize!.width!.toDouble(), height: expectedSize!.height!.toDouble()),
+                    );
+                  }
+
+                  // The image is still loading and only one dimension was provided.
+                  // Use the given dimension.
+                  return SizedBox(width: expectedSize?.width?.toDouble(), height: expectedSize?.height?.toDouble());
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// [DocumentNode] that represents an image at a URL.
+@immutable
+class BitmapImageNode extends BlockNode {
+  BitmapImageNode({
+    required this.id,
+    required this.imageData,
+    this.expectedBitmapSize,
+    this.altText = '',
+    super.metadata,
+  }) {
+    initAddToMetadata({NodeMetadata.blockType: const NamedAttribution("image")});
+  }
+
+  @override
+  final String id;
+
+  final Uint8List imageData;
+
+  /// The expected size of the image.
+  ///
+  /// Used to size the component while the image is still being loaded,
+  /// so the content don't shift after the image is loaded.
+  ///
+  /// It's technically permissible to provide only a single expected dimension,
+  /// however providing only a single dimension won't provide enough information
+  /// to size an image component before the image is loaded. Providing only a
+  /// width in a vertical layout won't have any visual effect. Providing only a height
+  /// in a vertical layout will likely take up more space or less space than the final
+  /// image because the final image will probably be scaled. Therefore, to take
+  /// advantage of [ExpectedSize], you should try to provide both dimensions.
+  final ExpectedSize? expectedBitmapSize;
+
+  final String altText;
+
+  @override
+  String? copyContent(dynamic selection) {
+    // There's no obvious String serialization for a bitmap image.
+    return null;
+  }
+
+  @override
+  bool hasEquivalentContent(DocumentNode other) {
+    return other is BitmapImageNode && altText == other.altText && imageData.isSameAs(other.imageData);
+  }
+
+  @override
+  DocumentNode copyWithAddedMetadata(Map<String, dynamic> newProperties) {
+    return BitmapImageNode(
+      id: id,
+      imageData: imageData,
+      expectedBitmapSize: expectedBitmapSize,
+      altText: altText,
+      metadata: {...metadata, ...newProperties},
+    );
+  }
+
+  @override
+  DocumentNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
+    return BitmapImageNode(
+      id: id,
+      imageData: imageData,
+      expectedBitmapSize: expectedBitmapSize,
+      altText: altText,
+      metadata: newMetadata,
+    );
+  }
+
+  BitmapImageNode copy() {
+    return BitmapImageNode(
+      id: id,
+      imageData: imageData,
+      expectedBitmapSize: expectedBitmapSize,
+      altText: altText,
+      metadata: Map.from(metadata),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BitmapImageNode &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          altText == other.altText &&
+          imageData.isSameAs(other.imageData);
+
+  @override
+  int get hashCode => id.hashCode ^ imageData.hashCode ^ altText.hashCode;
+}
+
+extension on Uint8List {
+  /// Returns `true` if this [Uint8List] is identical in data to [other].
+  bool isSameAs(Uint8List other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    if (this.lengthInBytes != other.lengthInBytes) {
+      return false;
+    }
+
+    // Treat the underlying buffer as a list of 64-bit integers
+    // to compare 8 bytes at a time.
+    final words1 = buffer.asUint64List();
+    final words2 = other.buffer.asUint64List();
+
+    for (var i = 0; i < words1.length; i++) {
+      if (words1[i] != words2[i]) {
+        return false;
+      }
+    }
+
+    // Compare any remaining bytes (if length wasn't a multiple of 8)
+    for (var i = words1.lengthInBytes; i < lengthInBytes; i++) {
+      if (this[i] != other[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

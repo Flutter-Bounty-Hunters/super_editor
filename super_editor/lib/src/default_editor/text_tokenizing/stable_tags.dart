@@ -95,7 +95,7 @@ class StableTagPlugin extends SuperEditorPlugin {
   @override
   void detach(Editor editor) {
     editor
-      ..context.remove(StableTagPlugin.stableTagIndexKey)
+      ..context.remove(StableTagPlugin.stableTagIndexKey, tagIndex)
       ..requestHandlers.removeWhere((item) => _requestHandlers.contains(item))
       ..reactionPipeline.removeWhere((item) => _reactions.contains(item));
   }
@@ -105,7 +105,7 @@ class StableTagPlugin extends SuperEditorPlugin {
   late final List<EditReaction> _reactions;
 
   @override
-  List<DocumentKeyboardAction> get keyboardActions => [_cancelOnEscape];
+  List<SuperEditorKeyboardAction> get keyboardActions => [_cancelOnEscape];
   ExecutionInstruction _cancelOnEscape({
     required SuperEditorContext editContext,
     required KeyEvent keyEvent,

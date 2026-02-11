@@ -53,9 +53,9 @@ dependencies:
     git:
       url: https://github.com/superlistapp/super_editor.git
       path: super_text_layout
-  super_keyboard: ^0.2.0
-  follow_the_leader: 0.0.4+8
-  overlord: 0.0.3+5
+  super_keyboard: ^0.3.0
+  follow_the_leader: 0.5.2
+  overlord: 0.4.2
 
 dependency_overrides:
   # Override to local mono-repo path so devs can test this repo

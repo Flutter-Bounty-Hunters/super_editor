@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
+import 'package:super_keyboard/super_keyboard.dart';
 
 /// A scaffold for a chat experience in which a conversation thread is
 /// displayed, with a message editor mounted to the bottom of the chat area.
@@ -325,7 +326,7 @@ class MessagePageElement extends RenderObjectElement {
 
   @override
   void mount(Element? parent, Object? newSlot) {
-    messagePageElementLog.info('ChatScaffoldElement - mounting');
+    messagePageElementLog.info('MessagePageElement - mounting');
     super.mount(parent, newSlot);
 
     _content = inflateWidget(
@@ -341,7 +342,7 @@ class MessagePageElement extends RenderObjectElement {
 
   @override
   void activate() {
-    messagePageElementLog.info('ContentLayersElement - activating');
+    messagePageElementLog.info('MessagePageElement - activating');
     _didActivateSinceLastBuild = false;
     super.activate();
   }
@@ -351,7 +352,7 @@ class MessagePageElement extends RenderObjectElement {
 
   @override
   void deactivate() {
-    messagePageElementLog.info('ContentLayersElement - deactivating');
+    messagePageElementLog.info('MessagePageElement - deactivating');
     _didDeactivateSinceLastBuild = false;
     super.deactivate();
   }
@@ -361,7 +362,7 @@ class MessagePageElement extends RenderObjectElement {
 
   @override
   void unmount() {
-    messagePageElementLog.info('ContentLayersElement - unmounting');
+    messagePageElementLog.info('MessagePageElement - unmounting');
     super.unmount();
   }
 
@@ -395,7 +396,7 @@ class MessagePageElement extends RenderObjectElement {
   }
 
   void buildContent(double bottomSpacing) {
-    messagePageElementLog.info('ContentLayersElement ($hashCode) - (re)building layers');
+    messagePageElementLog.info('MessagePageElement ($hashCode) - (re)building content');
     widget.controller?.debugMostRecentBottomSpacing.value = bottomSpacing;
 
     owner!.buildScope(this, () {
@@ -445,6 +446,11 @@ class MessagePageElement extends RenderObjectElement {
 
   @override
   void insertRenderObjectChild(RenderObject child, Object? slot) {
+    assert(
+      _isChatScaffoldSlot(slot!),
+      'Invalid ChatScaffold child slot: $slot',
+    );
+
     renderObject.insertChild(child, slot!);
   }
 
@@ -721,6 +727,20 @@ class RenderMessagePageScaffold extends RenderBox {
   }
 
   void _onDragEnd() {
+    if (SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.closing) {
+      // To avoid a stuttering collapse animation, when dragging ends and the keyboard
+      // is closing, we immediately jump to a collapsed preview mode. If we animated
+      // like normal, then on every frame as the keyboard gets shorter, we have to
+      // restart the animation simulation, which results in a stuttering, buggy animation.
+      _velocityStopwatch.stop();
+
+      _isExpandingOrCollapsing = false;
+      _desiredDragHeight = null;
+      _controller.desiredSheetMode = MessagePageSheetMode.collapsed;
+      _controller.collapsedMode = MessagePageSheetCollapsedMode.preview;
+      return;
+    }
+
     _velocityStopwatch.stop();
 
     final velocity = _velocityTracker.getVelocityEstimate()?.pixelsPerSecond.dy ?? 0;
@@ -730,6 +750,7 @@ class RenderMessagePageScaffold extends RenderBox {
 
   void _startBottomSheetHeightSimulation({
     required double velocity,
+    MessagePageSheetMode? desiredSheetMode,
   }) {
     _ticker.stop();
 
@@ -738,13 +759,14 @@ class RenderMessagePageScaffold extends RenderBox {
       MessagePageSheetCollapsedMode.intrinsic => min(_intrinsicHeight, _bottomSheetCollapsedMaximumHeight),
     };
 
-    _controller.desiredSheetMode = velocity.abs() > 500 //
-        ? velocity < 0
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed
-        : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
-            ? MessagePageSheetMode.expanded
-            : MessagePageSheetMode.collapsed;
+    _controller.desiredSheetMode = desiredSheetMode ??
+        (velocity.abs() > 500 //
+            ? velocity < 0
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed
+            : (_expandedHeight - _desiredDragHeight!).abs() < (_desiredDragHeight! - minimizedHeight).abs()
+                ? MessagePageSheetMode.expanded
+                : MessagePageSheetMode.collapsed);
 
     _updateBottomSheetHeightSimulation(velocity: velocity);
   }
@@ -800,6 +822,7 @@ class RenderMessagePageScaffold extends RenderBox {
     );
     messagePageLayoutLog.info(' - Final height: $_simulationGoalHeight');
     messagePageLayoutLog.info(' - Initial velocity: $velocity');
+
     _simulation = SpringSimulation(
       const SpringDescription(
         mass: 1,
@@ -1094,6 +1117,7 @@ class RenderMessagePageScaffold extends RenderBox {
           _controller.collapsedMode == MessagePageSheetCollapsedMode.preview ? _previewHeight : _intrinsicHeight,
           _bottomSheetCollapsedMaximumHeight);
       final animatedHeight = _animatedHeight.clamp(minimumHeight, _bottomSheetMaximumHeight);
+
       _bottomSheet!.layout(
         bottomSheetConstraints.copyWith(
           minHeight: max(animatedHeight - 1, 0),
@@ -1107,7 +1131,9 @@ class RenderMessagePageScaffold extends RenderBox {
       messagePageLayoutLog.info(
         ' - drag height: $_desiredDragHeight, minimized height: $minimizedHeight',
       );
+
       final minimumHeight = min(minimizedHeight, _bottomSheetCollapsedMaximumHeight);
+
       final strictHeight = _desiredDragHeight!.clamp(minimumHeight, _bottomSheetMaximumHeight);
 
       messagePageLayoutLog.info(' - bounded drag height: $strictHeight');
@@ -1137,10 +1163,9 @@ class RenderMessagePageScaffold extends RenderBox {
       messagePageLayoutLog.info('>>>>>>>> Minimized');
       messagePageLayoutLog.info('Running standard editor layout with constraints: $bottomSheetConstraints');
       _bottomSheet!.layout(
-        // bottomSheetConstraints,
         bottomSheetConstraints.copyWith(
           minHeight: 0,
-          maxHeight: _bottomSheetCollapsedMaximumHeight,
+          maxHeight: min(_bottomSheetCollapsedMaximumHeight, _bottomSheetMaximumHeight),
         ),
         parentUsesSize: true,
       );

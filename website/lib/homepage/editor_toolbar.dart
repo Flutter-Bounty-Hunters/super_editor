@@ -73,7 +73,7 @@ class _EditorToolbarState extends State<EditorToolbar> {
   void initState() {
     super.initState();
 
-    _toolbarAligner = CupertinoPopoverToolbarAligner(widget.editorViewportKey);
+    _toolbarAligner = CupertinoPopoverToolbarAligner();
 
     _popoverFocusNode = FocusNode();
 
@@ -90,7 +90,6 @@ class _EditorToolbarState extends State<EditorToolbar> {
 
     _screenBoundary = WidgetFollowerBoundary(
       boundaryKey: widget.editorViewportKey,
-      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
     );
   }
 

@@ -12,21 +12,19 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  follow_the_leader: ^0.0.4+7
+  follow_the_leader: ^0.5.1
   super_editor:
     path: ../../super_editor
   super_text_layout:
     path: ../../super_text_layout
-  google_fonts: ^6.2.1
-  overlord: ^0.0.3+5
+  google_fonts: ^6.3.2
+  overlord: ^0.4.2
 
 dependency_overrides:
   # Override to local mono-repo path so devs can test this repo
   # against changes that they're making to other mono-repo packages
   super_editor:
     path: ../../super_editor
-  super_editor_markdown:
-    path: ../../super_editor_markdown
   super_text_layout:
     path: ../../super_text_layout
   attributed_text:

@@ -1,3 +1,105 @@
+## [0.3.0-dev.48]
+### Jan 19, 2026
+* FEATURE: Added `BitmapImageNode`, which holds in-memory images, supplementing `ImageNode`, which only handles URLs.
+* FIX: Get builds on web working again by conditionally exporting test dependencies.
+
+## [0.3.0-dev.47]
+### Dec 22, 2025
+* FIX: When restoring selection after re-gaining focus, correctly report the `SelectionChangeType`.
+
+## [0.3.0-dev.46]
+### Dec 13, 2025
+* FIX: When pasting structured content, the first pasted node was getting lost.
+* FIX: When pasting structured content, if pasting a single non-text node, an extra blank paragraph was retained above it.
+* ADJUSTMENT: Implements content equivalency check for `TableBlockNode`.
+
+## [0.3.0-dev.45]
+### Dec 10, 2025
+* ADJUSTMENT: Make Android mobile handles use an eager gesture recognizer so that things like
+  drawers don't beat the handle drag gestures.
+* FIX: `SuperEditor` - When the Android handles change the selection, `SuperEditor` now passes
+  the correct "selection change type". Previously it was always hard-coded to "push caret".
+* FIX: `SuperMessage` - Re-render visual styles when the incoming `styles` property changes.
+
+## [0.3.0-dev.44]
+### Dec 8, 2025
+* FEATURE: Add mobile handle, magnifier, and toolbar to `SuperMessage`.
+* BREAKING: Rename `DocumentKeyboardAction` to `SuperEditorKeyboardAction`, also created a different definition 
+  for `DocumentKeyboardAction`
+* ADJUSTMENT: Moved a bunch of test tools from `/test` and `/test_goldens` directory into the `/lib`.
+
+## [0.3.0-dev.43]
+### Dec 2, 2025
+* FIX: `ImeFocusPolicy` wasn't unregistering its focus listener on disposal. This could result in a
+  defunct `ImeFocusPolicy` responding to focus changes as if it still existed, interfering with a new,
+  visible `SuperEditor`.
+
+## [0.3.0-dev.42]
+### Nov 26, 2025
+* ADJUSTMENT: `MarkdownTableComponent`s now let you specify a column width policy, and a fit policy.
+* FEATURE: Added a `GlobalScrollLock` to prevent two-dimensional scrolling with trackpad and Magic Mouse
+  when the user expects only a single axis to scroll. E.g., scrolling a document vertically vs scrolling
+  a table component horizontally.
+  * Used by `SingleAxisTrackpadAndWheelScroller` to implement single-axis trackpad and scroll wheel scrolling.
+  * Override your existing gesture-based scrollables with a `DeferToTrackpadsAndMouseWheelsScrollBehavior` to
+    get them to defer to the `GlobalScrollLock`, too.
+
+## [0.3.0-dev.41]
+### Nov 24, 2025
+* BREAKING: Centralized all `SuperEditor` IME connections. This change was made in an attempt to fix
+            some non-reproducible issues where the IME keyboard would lose connection to a `SuperEditor`.
+   * To upgrade to this version, you need to give each of your `SuperEditor` widgets a unique `inputRole`.
+     The specific value of the `inputRole` doesn't matter, so long as different `SuperEditor`s in your app
+     use different values.
+* BREAKING: Moved all `super_editor_quill` code into `super_editor`. Will now
+  deprecate `super_editor_quill` in favor of just using `super_editor`.
+* FEATURE: Create a `SuperMessage` widget, which is an intrinsically sized document, like a
+  `SuperReader` with intrinsic sizing and no scrolling. Made for chat use-cases.
+
+## [0.3.0-dev.40]
+### Nov 13, 2025
+* BREAKING: Moved all `super_editor_markdown` code into `super_editor`. Will now
+   deprecate `super_editor_markdown` in favor of just using `super_editor`.
+
+## [0.3.0-dev.39]
+### Nov 13, 2025
+* FIX: `MessagePageScaffold` bottom sheet animation glitches fixed.
+* ADJUSTMENT: `MessagePageScaffold` now has an optional maximum intrinsic height when 
+   not in "expanded" mode.
+* FIX: When an `Editable` or listener responding to an `Editable` can now immediately 
+   submit `Editor` requests without blowing up.
+* ADJUSTMENT: Don't require a `MutableDocument` or `MutableDocumentComposer` when calling
+   `createDefaultEditor()`.
+* FIX: Move remaining `OverlayController.show()` calls to post frame callbacks.
+
+## [0.3.0-dev.38]
+### Nov 9, 2025
+* BREAKING, FIX: Rework `SuperEditorPlugin` lifecycle because we discovered that when
+   one `SuperEditor` widget gets replaced by another, the new widget runs `initState()`
+   before the old widget runs `dispose()`. This resulted in plugins ending up in a detached
+   state when they should have been attached. This release adds some reference counting
+   so that detachment only happens when it truly should.
+* BREAKING, ADJUSTMENT: Related to the plugin lifecycle work, `EditContext.remove()` was
+   adjusted to prevent accidentally removing a resource that was just added. The API change
+   now expects you to pass the key to remove, and the value you want to remove for that key.
+   If the current value doesn't match what is provided, then the removal doesn't happen.
+
+## [0.3.0-dev.37]
+### Nov 5, 2025
+* ADJUSTMENT: Upgrade `super_keyboard` to `v0.3.0`.
+* ADJUSTMENT: Upgrade `follow_the_leader` to `v0.5.2`.
+
+## [0.3.0-dev.36]
+### Oct 29, 2025
+* ADJUSTMENT: Change Android toolbar to look like latest Android OS version.
+* FIX: When loading a document that contains text with tag triggers, e.g. "/",
+       don't attempt to compose tags when placing the caret near the trigger.
+
+## [0.3.0-dev.35]
+### Oct 7, 2025
+* FIX: Detach plugins in `SuperEditor` `dispose()`.
+* FIX: Crash when pushing route with `delegatedTransition`.
+
 ## [0.3.0-dev.34]
 ### Sept 23, 2025
 * FIX: `MessagePageScaffold` fix its `Element` so that subtrees correctly activate and deactivate.

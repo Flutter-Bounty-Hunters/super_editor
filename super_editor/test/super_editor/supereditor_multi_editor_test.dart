@@ -5,8 +5,6 @@ import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 
-import 'supereditor_test_tools.dart';
-
 void main() {
   group("SuperEditor > multiple editors >", () {
     testWidgetsOnAllPlatforms("can select both editors", (tester) async {
@@ -15,8 +13,8 @@ void main() {
 
       await _buildTextScaleScaffold(
         tester,
-        editor1: _buildSuperEditor(tester, key: editor1Key),
-        editor2: _buildSuperEditor(tester, key: editor2Key),
+        editor1: _buildSuperEditor(tester, "super-editor-1", key: editor1Key),
+        editor2: _buildSuperEditor(tester, "super-editor-2", key: editor2Key),
       );
 
       // Select different text in each editor.
@@ -188,13 +186,15 @@ void main() {
 }
 
 Widget _buildSuperEditor(
-  WidgetTester tester, {
+  WidgetTester tester,
+  String inputRole, {
   Key? key,
 }) {
   return tester //
       .createDocument()
       .withSingleParagraph()
       .withKey(key)
+      .withInputRole(inputRole)
       // Testing concurrent selections across multiple editors requires
       // that each editor leave their selection alone when losing focus
       // or closing the IME.
@@ -259,8 +259,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
   late MutableDocumentComposer _composer2;
   late Editor _docEditor2;
 
-  late Document _activeDocument;
-  late DocumentComposer _activeComposer;
   late Editor _activeDocumentEditor;
 
   @override
@@ -274,13 +272,14 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
     _composer2 = widget.composer2 ?? MutableDocumentComposer();
     _docEditor2 = createDefaultDocumentEditor(document: _doc2, composer: _composer2);
 
-    _activeDocument = _doc1;
-    _activeComposer = _composer1;
     _activeDocumentEditor = _docEditor1;
   }
 
   @override
   void dispose() {
+    _docEditor1.dispose();
+    _docEditor2.dispose();
+
     super.dispose();
   }
 
@@ -293,6 +292,9 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
             _buildDocSelector(),
             Expanded(
               child: SuperEditor(
+                // Note: We give this `SuperEditor` the "global" input role because even though
+                //       we're switching its backing `Editor`, we aren't switching between visibly
+                //       different `SuperEditor`s.
                 editor: _activeDocumentEditor,
                 stylesheet: defaultStylesheet.copyWith(
                   documentPadding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
@@ -313,8 +315,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
           key: const ValueKey("Editor1"),
           onPressed: () {
             setState(() {
-              _activeDocument = _doc1;
-              _activeComposer = _composer1;
               _activeDocumentEditor = _docEditor1;
             });
           },
@@ -325,8 +325,6 @@ class _SwitchEditorsDemoState extends State<_SwitchEditorsDemo> {
           key: const ValueKey("Editor2"),
           onPressed: () {
             setState(() {
-              _activeDocument = _doc2;
-              _activeComposer = _composer2;
               _activeDocumentEditor = _docEditor2;
             });
           },

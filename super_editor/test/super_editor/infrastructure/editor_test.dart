@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:super_editor/super_editor_test.dart';
 
-import '../../super_editor/supereditor_test_tools.dart';
 import '../../super_editor/test_documents.dart';
 
 void main() {
@@ -141,6 +141,42 @@ void main() {
 
         expect(changeList, isNotNull);
         expect(changeList!.length, 13 * 2); // 13 commands * 2 events per command
+      });
+
+      test('editables (and their listeners) can request changes after transaction ends', () {
+        final editor = Editor(
+          editables: {
+            Editor.documentKey: MutableDocument.empty("1"),
+            Editor.composerKey: MutableDocumentComposer(
+              initialSelection: const DocumentSelection.collapsed(
+                position: DocumentPosition(
+                  nodeId: "1",
+                  nodePosition: TextNodePosition(offset: 0),
+                ),
+              ),
+            ),
+          },
+          requestHandlers: List.from(defaultRequestHandlers),
+        );
+
+        // Add our Editable, which makes a change after it detects a paragraph
+        // that equals "H".
+        editor.context.put("my-editable", _ReactionaryEditable(editor));
+
+        // Make a change, which will cause our Editable to make more changes.
+        editor.execute([
+          InsertTextRequest(
+            documentPosition: const DocumentPosition(
+              nodeId: "1",
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+            textToInsert: "H",
+            attributions: const {},
+          ),
+        ]);
+
+        // Ensure our listener ran, and successfully edited the document.
+        expect((editor.document.first as TextNode).text.toPlainText(), "He");
       });
 
       test('runs reactions after a command', () {
@@ -422,6 +458,53 @@ void main() {
 
         // Ensure that our reaction ran once, but only once.
         expect(reactionRunCount, 1);
+      });
+
+      test('listener can request changes after transaction ends', () {
+        late final Editor editor;
+        final editorChangeListener = FunctionalEditListener((changes) {
+          editor.execute([
+            InsertTextRequest(
+              documentPosition: const DocumentPosition(
+                nodeId: "1",
+                nodePosition: TextNodePosition(offset: 1),
+              ),
+              textToInsert: "e",
+              attributions: const {},
+            ),
+          ]);
+        });
+
+        editor = Editor(
+          editables: {
+            Editor.documentKey: MutableDocument.empty("1"),
+            Editor.composerKey: MutableDocumentComposer(
+              initialSelection: const DocumentSelection.collapsed(
+                position: DocumentPosition(
+                  nodeId: "1",
+                  nodePosition: TextNodePosition(offset: 0),
+                ),
+              ),
+            ),
+          },
+          requestHandlers: List.from(defaultRequestHandlers),
+          listeners: [editorChangeListener],
+        );
+
+        // Make a change, which will cause our listener to run.
+        editor.execute([
+          InsertTextRequest(
+            documentPosition: const DocumentPosition(
+              nodeId: "1",
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+            textToInsert: "H",
+            attributions: const {},
+          ),
+        ]);
+
+        // Ensure our listener ran, and successfully edited the document.
+        expect((editor.document.first as TextNode).text.toPlainText(), "He");
       });
 
       test('inserts character at caret', () {
@@ -733,5 +816,41 @@ class _ExpandingCommand extends EditCommand {
         );
       }
     }
+  }
+}
+
+/// An [Editable], which upon transaction end, looks for a first paragraph
+/// with a value of "H", and then inserts an "e" after it.
+///
+/// Used to verify that [Editable]s can submit editor requests at the end
+/// of a transaction - or that an [Editable] can emit its own change events,
+/// which cause other areas of the app to submit new [Editor] requests.
+class _ReactionaryEditable extends Editable {
+  _ReactionaryEditable(this._editor);
+
+  final Editor _editor;
+
+  @override
+  void onTransactionEnd(List<EditEvent> edits) {
+    final paragraph = _editor.document.first;
+    if (paragraph is! ParagraphNode) {
+      return;
+    }
+
+    if (paragraph.text.toPlainText() != "H") {
+      return;
+    }
+
+    // Make a reactionary change.
+    _editor.execute([
+      InsertTextRequest(
+        documentPosition: const DocumentPosition(
+          nodeId: "1",
+          nodePosition: TextNodePosition(offset: 1),
+        ),
+        textToInsert: "e",
+        attributions: const {},
+      ),
+    ]);
   }
 }

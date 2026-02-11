@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 
 /// Markdown serialization demo.
 ///

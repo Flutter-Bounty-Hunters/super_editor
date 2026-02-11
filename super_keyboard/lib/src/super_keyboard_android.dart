@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:logging/logging.dart';
-import 'package:super_keyboard/src/keyboard.dart';
+import 'package:super_keyboard/super_keyboard.dart';
 
 class SuperKeyboardAndroidBuilder extends StatefulWidget {
   const SuperKeyboardAndroidBuilder({
@@ -66,10 +65,7 @@ class SuperKeyboardAndroid {
     return _instance!;
   }
 
-  static final log = Logger("super_keyboard.android");
-
   SuperKeyboardAndroid._() {
-    log.info("Initializing Android plugin for super_keyboard");
     assert(
       defaultTargetPlatform == TargetPlatform.android,
       "You shouldn't initialize SuperKeyboardAndroid when not on an Android platform. Current: $defaultTargetPlatform",
@@ -79,9 +75,18 @@ class SuperKeyboardAndroid {
 
   final _methodChannel = const MethodChannel('super_keyboard_android');
 
-  /// Enable/disable platform-side logging, e.g., Android logs.
-  Future<void> enablePlatformLogging(bool isEnabled) async {
-    await _methodChannel.invokeMethod(isEnabled ? "startLogging" : "stopLogging");
+  /// Enable platform-side logging, e.g., Android logs.
+  ///
+  /// Optionally, log messages on the platform side can be forwarded to Dart
+  /// so that they can be printed by the current [SKLog]. To do this, pass
+  /// `true` for [sendPlatformLogsToDart]. Defaults to `false`.
+  Future<void> enablePlatformLogging({bool sendPlatformLogsToDart = false}) async {
+    await _methodChannel.invokeMethod("startLogging", {"sendPlatformLogsToDart": sendPlatformLogsToDart});
+  }
+
+  /// Disable platform-side logging, e.g., Android logs.
+  Future<void> disablePlatformLogging() async {
+    await _methodChannel.invokeMethod("stopLogging");
   }
 
   ValueListenable<MobileWindowGeometry> get geometry => _geometry;
@@ -92,7 +97,6 @@ class SuperKeyboardAndroid {
   void removeListener(SuperKeyboardAndroidListener listener) => _listeners.remove(listener);
 
   Future<void> _onPlatformMessage(MethodCall message) async {
-    log.fine("Android platform message: '${message.method}', args: ${message.arguments}");
     switch (message.method) {
       case "keyboardOpening":
         _geometry.value = _geometry.value.updateWith(
@@ -164,8 +168,28 @@ class SuperKeyboardAndroid {
           ),
         );
         break;
+      case "log":
+        _printAndroidLog(message);
+        break;
       default:
-        log.warning("Unknown Android plugin platform message: $message");
+        SKLog.android.warning("Unknown Android plugin platform message: $message");
+    }
+  }
+
+  void _printAndroidLog(MethodCall channelMessage) {
+    final level = channelMessage.arguments["level"] as String?;
+    final logMessage = "SK Android: ${channelMessage.arguments["message"] ?? "EMPTY MESSAGE"}";
+    switch (level) {
+      case "v":
+        SKLog.android.finer(logMessage);
+      case "d":
+        SKLog.android.fine(logMessage);
+      case "i":
+        SKLog.android.info(logMessage);
+      case "w":
+        SKLog.android.warning(logMessage);
+      case "e":
+        SKLog.android.shout(logMessage);
     }
   }
 }

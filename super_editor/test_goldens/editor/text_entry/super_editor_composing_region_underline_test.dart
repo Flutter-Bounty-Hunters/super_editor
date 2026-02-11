@@ -2,9 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
-
-import '../../test_tools_goldens.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group("SuperEditor > text entry > composing region >", () {

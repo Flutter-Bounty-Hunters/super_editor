@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
-
-import '../../test/super_editor/supereditor_test_tools.dart';
-import '../test_tools_goldens.dart';
+import 'package:super_editor/super_editor_test.dart';
+import 'package:super_editor/super_test.dart';
 
 void main() {
   group("SuperEditor selection >", () {
