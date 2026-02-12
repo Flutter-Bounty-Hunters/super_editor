@@ -254,10 +254,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   @override
   void initState() {
     super.initState();
-    print("IME interactor - initState");
-    print("IME interactor IME connection holder: ${_imeConnection.hashCode}");
-    print("IME interactor IME connection: ${_imeConnection.value}");
-    print("IME interactor is IME connection attached? ${_imeConnection.value?.attached}");
     _focusNode = (widget.focusNode ?? FocusNode());
 
     _myImeId = SuperImeInputId(role: widget.inputRole, instance: this);
