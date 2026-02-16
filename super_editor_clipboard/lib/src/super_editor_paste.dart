@@ -136,12 +136,15 @@ Future<void> pasteIntoEditorFromNativeClipboard(
   Editor editor, {
   CustomPasteDataInserter? customInserter,
 }) async {
+  SECLog.paste.fine("Pasting from native clipboard");
   if (editor.composer.selection == null) {
+    SECLog.paste.fine(" - no selection");
     return;
   }
 
   final clipboard = SystemClipboard.instance;
   if (clipboard == null) {
+    SECLog.paste.fine(" - no clipboard");
     return;
   }
 
@@ -153,23 +156,27 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     didPaste = await customInserter(editor, reader);
   }
   if (didPaste) {
+    SECLog.paste.fine(" - pasted using custom inserter");
     return;
   }
 
   // Try to paste a bitmap image.
   didPaste = await _maybePasteImage(editor, reader);
   if (didPaste) {
+    SECLog.paste.fine(" - pasted an image");
     return;
   }
 
   // Try to paste rich text (via HTML).
   didPaste = await _maybePasteHtml(editor, reader);
   if (didPaste) {
+    SECLog.paste.fine(" - pasted HTML");
     return;
   }
 
   // Fall back to plain text.
-  _pastePlainText(editor, reader);
+  SECLog.paste.fine(" - pasting plain text");
+  await _pastePlainText(editor, reader);
 }
 
 Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
@@ -214,34 +221,57 @@ const _supportedBitmapImageFormats = [
 ];
 
 Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
-  final completer = Completer<bool>();
-
-  reader.getValue(
-    Formats.htmlText,
-    (html) {
-      if (html == null) {
-        completer.complete(false);
-        return;
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.htmlText)) {
+      final html = await item.readValue(Formats.htmlText);
+      if (html != null) {
+        editor.pasteHtml(editor, html);
+        return true;
       }
+    }
+  }
 
-      // Do the paste.
-      editor.pasteHtml(editor, html);
+  return false;
 
-      completer.complete(true);
-    },
-    onError: (_) {
-      completer.complete(false);
-    },
-  );
-
-  final didPaste = await completer.future;
-  return didPaste;
+  // // Check if HTML is available before attempting to read it.
+  // // If we don't check, getValue's callback may never be invoked,
+  // // leaving the completer hanging forever.
+  // if (!reader.canProvide(Formats.htmlText)) {
+  //   return false;
+  // }
+  //
+  // final completer = Completer<bool>();
+  //
+  // reader.getValue(
+  //   Formats.htmlText,
+  //   (html) {
+  //     if (html == null) {
+  //       completer.complete(false);
+  //       return;
+  //     }
+  //
+  //     // Do the paste.
+  //     editor.pasteHtml(editor, html);
+  //
+  //     completer.complete(true);
+  //   },
+  //   onError: (_) {
+  //     completer.complete(false);
+  //   },
+  // );
+  //
+  // final didPaste = await completer.future;
+  // return didPaste;
 }
 
-void _pastePlainText(Editor editor, ClipboardReader reader) {
-  reader.getValue(Formats.plainText, (value) {
-    if (value != null) {
-      editor.execute([InsertPlainTextAtCaretRequest(value)]);
+Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.plainText)) {
+      final text = await item.readValue(Formats.plainText);
+      if (text != null) {
+        editor.execute([InsertPlainTextAtCaretRequest(text)]);
+        return;
+      }
     }
-  });
+  }
 }
