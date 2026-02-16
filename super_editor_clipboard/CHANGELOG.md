@@ -1,3 +1,8 @@
+## [0.2.6]
+### Feb 16, 2026
+* Fix method that uses `super_clipboard` to paste ito an `Editor`. Something about how we
+  were using the APIs was resulting in mobile paste doing nothing. Now it should be working.
+
 ## [0.2.5]
 ### Jan 28, 2026
 * Expose public method for native clipboard pasting into `Editor`: `pasteIntoEditorFromNativeClipboard`.
