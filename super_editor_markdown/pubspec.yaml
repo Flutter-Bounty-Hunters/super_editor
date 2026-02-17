@@ -24,9 +24,9 @@ dependencies:
   markdown: ^7.2.1
   collection: ^1.15.0
 
-#dependency_overrides:
-#  # Override to local mono-repo path so devs can test this repo
-#  # against changes that they're making to other mono-repo packages
+dependency_overrides:
+ # Override to local mono-repo path so devs can test this repo
+ # against changes that they're making to other mono-repo packages
  super_editor:
    path: ../super_editor
 #  super_text_layout:
