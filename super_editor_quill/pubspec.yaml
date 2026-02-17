@@ -32,9 +32,9 @@ dependencies:
   matcher: ^0.12.16+1
   text_table: ^4.0.3
 
-#dependency_overrides:
-#  super_editor:
-#    path: ../super_editor
+dependency_overrides:
+ super_editor:
+   path: ../super_editor
 #  super_text_layout:
 #    path: ../super_text_layout
 #  attributed_text:
