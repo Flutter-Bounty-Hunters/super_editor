@@ -31,6 +31,8 @@ class SuperText extends StatefulWidget {
     this.layerBeneathBuilder,
     this.layerAboveBuilder,
     this.debugTrackTextBuilds = false,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
   }) : super(key: key);
 
   /// The text to display in this [SuperText] widget.
@@ -58,6 +60,17 @@ class SuperText extends StatefulWidget {
   ///
   /// Defaults to `MediaQuery.textScalerOf`.
   final TextScaler? textScaler;
+
+  /// The maximum number of lines to display.
+  ///
+  /// If null, the text will be displayed without truncation.
+  /// If set, the text will be limited to the specified number of lines.
+  final int? maxLines;
+
+  /// How to handle text overflow.
+  ///
+  /// Defaults to [TextOverflow.clip].
+  final TextOverflow overflow;
 
   @override
   State<SuperText> createState() => SuperTextState();
@@ -93,6 +106,8 @@ class SuperTextState extends ProseTextState<SuperText> with ProseTextBlock {
         textDirection: widget.textDirection,
         textScaler: widget.textScaler ?? MediaQuery.textScalerOf(context),
         onMarkNeedsLayout: _invalidateParagraph,
+        maxLines: widget.maxLines,
+        overflow: widget.overflow,
       ),
       background: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
@@ -299,6 +314,8 @@ class LayoutAwareRichText extends RichText {
     TextDirection textDirection = TextDirection.ltr,
     TextScaler textScaler = TextScaler.noScaling,
     required this.onMarkNeedsLayout,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
   }) : super(
           key: key,
           text: text,
@@ -310,6 +327,12 @@ class LayoutAwareRichText extends RichText {
   /// Callback invoked when the underlying [RenderParagraph] invalidates
   /// its layout.
   final VoidCallback onMarkNeedsLayout;
+
+  /// The maximum number of lines to display.
+  final int? maxLines;
+
+  /// How to handle text overflow.
+  final TextOverflow overflow;
 
   @override
   RenderLayoutAwareParagraph createRenderObject(BuildContext context) {

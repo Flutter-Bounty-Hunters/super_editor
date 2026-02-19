@@ -545,3 +545,65 @@ Widget _buildScaffold({
     ),
   );
 }
+
+  group("SuperText with maxLines", () {
+    testWidgets("renders text with maxLines constraint", (tester) async {
+      await tester.pumpWidget(
+        _buildScaffold(
+          child: SuperText(
+            key: superTextKey,
+            richText: threeLineTextSpan,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
+
+      expect(find.byType(SuperText), findsOneWidget);
+    });
+
+    testWidgets("renders text without maxLines when null", (tester) async {
+      await tester.pumpWidget(
+        _buildScaffold(
+          child: SuperText(
+            key: superTextKey,
+            richText: threeLineTextSpan,
+            maxLines: null,
+            overflow: TextOverflow.clip,
+          ),
+        ),
+      );
+
+      expect(find.byType(SuperText), findsOneWidget);
+    });
+
+    testWidgets("uses ellipsis overflow correctly", (tester) async {
+      await tester.pumpWidget(
+        _buildScaffold(
+          child: SuperText(
+            key: superTextKey,
+            richText: threeLineTextSpan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
+
+      expect(find.byType(SuperText), findsOneWidget);
+    });
+
+    testWidgets("uses fade overflow correctly", (tester) async {
+      await tester.pumpWidget(
+        _buildScaffold(
+          child: SuperText(
+            key: superTextKey,
+            richText: threeLineTextSpan,
+            maxLines: 2,
+            overflow: TextOverflow.fade,
+          ),
+        ),
+      );
+
+      expect(find.byType(SuperText), findsOneWidget);
+    });
+  });
