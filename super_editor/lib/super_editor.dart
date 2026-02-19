@@ -171,3 +171,4 @@ export 'package:super_text_layout/super_text_layout.dart'
         DottedUnderlinePainter,
         StraightUnderlineStyle,
         StraightUnderlinePainter;
+export 'src/super_textfield/chat_draft.dart';
