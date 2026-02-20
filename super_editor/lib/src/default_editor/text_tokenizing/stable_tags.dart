@@ -58,8 +58,8 @@ class StableTagPlugin extends SuperEditorPlugin {
   static const stableTagIndexKey = "stableTagIndex";
 
   StableTagPlugin({
-    TagRule tagRule = userTagRule,
-  })  : _tagRule = tagRule,
+    TagRule? tagRule,
+  })  : _tagRule = tagRule ?? userTagRule,
         tagIndex = StableTagIndex() {
     _requestHandlers = <EditRequestHandler>[
       (editor, request) => request is FillInComposingStableTagRequest
@@ -72,14 +72,18 @@ class StableTagPlugin extends SuperEditorPlugin {
 
     _reactions = [
       TagUserReaction(
-        tagRule: tagRule,
+        tagRule: _tagRule,
         onUpdateComposingStableTag: tagIndex._onComposingStableTagFound,
       ),
-      AdjustSelectionAroundTagReaction(tagRule),
+      AdjustSelectionAroundTagReaction(_tagRule),
     ];
   }
 
-  final TagRule _tagRule;
+  void dispose() {
+    tagIndex.dispose();
+  }
+
+  late final TagRule _tagRule;
 
   /// Index of all stable tags in the document, which changes as the user adds and removes tags.
   final StableTagIndex tagIndex;
@@ -130,7 +134,7 @@ class StableTagPlugin extends SuperEditorPlugin {
 ///
 /// Stable tags can use any [TagRule]. This rule is provided as a convenience due to
 /// the popularity of user tagging.
-const userTagRule = TagRule(trigger: "@", excludedCharacters: {" ", "."});
+final userTagRule = TagRule(trigger: "@", excludedCharacters: {" ", "."});
 
 /// An [EditRequest] that replaces a composing stable tag with the given [tag]
 /// and commits it.
@@ -238,7 +242,7 @@ class FillInComposingUserTagCommand extends EditCommand {
       InsertAttributedTextCommand(
         documentPosition: textNode.positionAt(composingToken.indexedTag.startOffset),
         textToInsert: AttributedText(
-          "${_tagRule.trigger}$_tag ",
+          "${composingToken.indexedTag.tag.trigger}$_tag ",
           AttributedSpans(
             attributions: [
               SpanMarker(attribution: stableTagAttribution, offset: 0, markerType: SpanMarkerType.start),
@@ -444,17 +448,19 @@ class TagUserReaction extends EditReaction {
 
     for (final range in cancelledTagRanges) {
       final cancelledText = node.text.substring(range.start, range.end + 1); // +1 because substring is exclusive
-      if (cancelledText == _tagRule.trigger) {
+      if (_tagRule.isTrigger(cancelledText)) {
         // This is a legitimate cancellation attribution.
         continue;
       }
 
       DocumentSelection? addedRange;
-      if (cancelledText.contains(_tagRule.trigger)) {
-        // This cancelled range includes more than just a trigger. Reduce it back
-        // down to the trigger.
-        final triggerIndex = cancelledText.indexOf(_tagRule.trigger);
-        addedRange = node.selectionBetween(triggerIndex, triggerIndex);
+      for (final trigger in _tagRule.triggers) {
+        if (cancelledText.contains(trigger)) {
+          // This cancelled range includes more than just a trigger. Reduce it back
+          // down to the trigger.
+          final triggerIndex = cancelledText.indexOf(trigger);
+          addedRange = node.selectionBetween(triggerIndex, triggerIndex);
+        }
       }
 
       changeRequests.addAll([
@@ -569,7 +575,7 @@ class TagUserReaction extends EditReaction {
       for (final tag in allComposingTags) {
         final tagText = textNode.text.substring(tag.start, tag.end + 1);
 
-        if (!tagText.startsWith(_tagRule.trigger)) {
+        if (!_tagRule.doesTextStartWithTrigger(tagText)) {
           editorStableTagsLog.info("Removing tag with value: '$tagText'");
 
           onUpdateComposingStableTag?.call(null);
@@ -615,10 +621,10 @@ class TagUserReaction extends EditReaction {
       for (final tag in allStableTags) {
         final tagText = textNode.text.substring(tag.start, tag.end + 1);
         final attribution = tag.attribution as CommittedStableTagAttribution;
-        final containsTrigger = textNode.text.toPlainText()[tag.start] == _tagRule.trigger;
+        final containsTrigger = _tagRule.isTrigger(textNode.text.toPlainText()[tag.start]);
 
-        if (tagText != "${_tagRule.trigger}${attribution.tagValue}" || !containsTrigger) {
-          // The tag was partially deleted it. Delete the whole thing.
+        if (!containsTrigger || tagText.substring(1) != attribution.tagValue) {
+          // The tag was partially deleted. Delete the whole thing.
           final deleteFrom = tag.start;
           final deleteTo = tag.end + 1; // +1 because SpanRange is inclusive and text position is exclusive
           editorStableTagsLog.info("Deleting partial tag '$tagText': $deleteFrom -> $deleteTo");
@@ -722,6 +728,7 @@ class TagUserReaction extends EditReaction {
             existingComposingTag.indexedTag.startOffset + 1,
             existingComposingTag.indexedTag.endOffset,
           ),
+          existingComposingTag.indexedTag.tag.trigger,
           existingComposingTag.indexedTag.tag.token,
         ),
       );
@@ -756,6 +763,7 @@ class TagUserReaction extends EditReaction {
           nonAttributedTagAroundCaret.indexedTag.startOffset + 1,
           nonAttributedTagAroundCaret.indexedTag.endOffset,
         ),
+        nonAttributedTagAroundCaret.indexedTag.tag.trigger,
         nonAttributedTagAroundCaret.indexedTag.tag.token,
       ),
     );
@@ -1092,9 +1100,10 @@ class StableTagIndex with ChangeNotifier implements Editable {
 }
 
 class ComposingStableTag {
-  const ComposingStableTag(this.contentBounds, this.token);
+  const ComposingStableTag(this.contentBounds, this.trigger, this.token);
 
   final DocumentRange contentBounds;
+  final String trigger;
   final String token;
 
   @override
@@ -1103,13 +1112,14 @@ class ComposingStableTag {
       other is ComposingStableTag &&
           runtimeType == other.runtimeType &&
           contentBounds == other.contentBounds &&
+          trigger == other.trigger &&
           token == other.token;
 
   @override
-  int get hashCode => contentBounds.hashCode ^ token.hashCode;
+  int get hashCode => contentBounds.hashCode ^ trigger.hashCode ^ token.hashCode;
 
   @override
-  String toString() => "[ComposingStableTag] - '$token', bounds: $contentBounds";
+  String toString() => "[ComposingStableTag] - '$trigger', '$token', bounds: $contentBounds";
 }
 
 /// An [EditReaction] that prevents partial selection of a stable user tag.
