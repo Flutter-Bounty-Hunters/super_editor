@@ -122,7 +122,7 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   }
 }
 
-typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);
+typedef CustomPasteDataInserter = FutureOr<bool> Function(Editor editor, ClipboardReader clipboardReader);
 
 /// Reads the native OS clipboard and pastes the content into the given [editor] at the
 /// current selection.
@@ -131,10 +131,20 @@ typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, Clipboard
 ///
 /// The supported clipboard data types is determined by the implementation of this method, and
 /// available [EditRequest]s in the Super Editor API. I.e., there are probably a number of
-/// unsupported content types.
+/// unsupported content types. This implementation will evolve over time.
+///
+/// To take an arbitrary custom action, such as handling a custom data type, provide
+/// a [customInserter].
+///
+/// To take custom actions when pasting known file types, provide desired [customFileInserters].
+///
+/// To take custom actions when pasting known value types (HTML, URL's, plain text),
+/// provide desired [customValueInserters].
 Future<void> pasteIntoEditorFromNativeClipboard(
   Editor editor, {
   CustomPasteDataInserter? customInserter,
+  Map<SimpleFileFormat, CustomPasteDataInserter>? customFileInserters,
+  Map<SimpleValueFormat, CustomPasteDataInserter>? customValueInserters,
 }) async {
   SECLog.paste.fine("Pasting from native clipboard");
   if (editor.composer.selection == null) {
@@ -160,6 +170,17 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     return;
   }
 
+  // Try to paste any custom file type.
+  if (customFileInserters != null) {
+    for (final entry in customFileInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom file (${entry.key})");
+        return;
+      }
+    }
+  }
+
   // Try to paste a bitmap image.
   didPaste = await _maybePasteImage(editor, reader);
   if (didPaste) {
@@ -168,13 +189,40 @@ Future<void> pasteIntoEditorFromNativeClipboard(
   }
 
   // Try to paste rich text (via HTML).
+  if (customValueInserters?[Formats.htmlText] != null) {
+    didPaste = await customValueInserters![Formats.htmlText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom HTML");
+      return;
+    }
+  }
+
   didPaste = await _maybePasteHtml(editor, reader);
   if (didPaste) {
     SECLog.paste.fine(" - pasted HTML");
     return;
   }
 
+  // Try to paste any custom value type, before we default to plain text.
+  if (customValueInserters != null) {
+    for (final entry in customValueInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom value type (${entry.key})");
+        return;
+      }
+    }
+  }
+
   // Fall back to plain text.
+  if (customValueInserters?[Formats.plainText] != null) {
+    didPaste = await customValueInserters![Formats.plainText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom plain text");
+      return;
+    }
+  }
+
   SECLog.paste.fine(" - pasting plain text");
   await _pastePlainText(editor, reader);
 }
