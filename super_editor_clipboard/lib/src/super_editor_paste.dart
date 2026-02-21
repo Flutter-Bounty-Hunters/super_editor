@@ -280,36 +280,6 @@ Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   }
 
   return false;
-
-  // // Check if HTML is available before attempting to read it.
-  // // If we don't check, getValue's callback may never be invoked,
-  // // leaving the completer hanging forever.
-  // if (!reader.canProvide(Formats.htmlText)) {
-  //   return false;
-  // }
-  //
-  // final completer = Completer<bool>();
-  //
-  // reader.getValue(
-  //   Formats.htmlText,
-  //   (html) {
-  //     if (html == null) {
-  //       completer.complete(false);
-  //       return;
-  //     }
-  //
-  //     // Do the paste.
-  //     editor.pasteHtml(editor, html);
-  //
-  //     completer.complete(true);
-  //   },
-  //   onError: (_) {
-  //     completer.complete(false);
-  //   },
-  // );
-  //
-  // final didPaste = await completer.future;
-  // return didPaste;
 }
 
 Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
@@ -317,7 +287,34 @@ Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
     if (item.canProvide(Formats.plainText)) {
       final text = await item.readValue(Formats.plainText);
       if (text != null) {
-        editor.execute([InsertPlainTextAtCaretRequest(text)]);
+        final pastePosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
+          document: editor.document,
+          selection: editor.composer.selection!,
+        );
+
+        if (pastePosition == null) {
+          // There are no deletable nodes in the selection. Do nothing.
+          return;
+        }
+
+        // Delete the selected content.
+        editor.execute([
+          DeleteContentRequest(documentRange: editor.composer.selection!),
+          ChangeSelectionRequest(
+            DocumentSelection.collapsed(position: pastePosition),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        ]);
+
+        // Paste clipboard text.
+        editor.execute([
+          PasteEditorRequest(
+            content: text,
+            pastePosition: pastePosition,
+          ),
+        ]);
+
         return;
       }
     }
