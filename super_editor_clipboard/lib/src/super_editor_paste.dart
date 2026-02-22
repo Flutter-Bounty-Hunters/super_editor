@@ -145,6 +145,7 @@ Future<void> pasteIntoEditorFromNativeClipboard(
   CustomPasteDataInserter? customInserter,
   Map<SimpleFileFormat, CustomPasteDataInserter>? customFileInserters,
   Map<SimpleValueFormat, CustomPasteDataInserter>? customValueInserters,
+  SystemClipboard? testClipboard,
 }) async {
   SECLog.paste.fine("Pasting from native clipboard");
   if (editor.composer.selection == null) {
@@ -152,7 +153,7 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     return;
   }
 
-  final clipboard = SystemClipboard.instance;
+  final clipboard = testClipboard ?? SystemClipboard.instance;
   if (clipboard == null) {
     SECLog.paste.fine(" - no clipboard");
     return;
@@ -212,6 +213,13 @@ Future<void> pasteIntoEditorFromNativeClipboard(
         return;
       }
     }
+  }
+
+  // Try to paste a standalone URL.
+  didPaste = await _maybePasteUrl(editor, reader);
+  if (didPaste) {
+    SECLog.paste.fine(" - pasted a URL");
+    return;
   }
 
   // Fall back to plain text.
@@ -282,30 +290,68 @@ Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   return false;
 }
 
+Future<bool> _maybePasteUrl(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return false;
+  }
+
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.uri)) {
+      final url = await item.readValue(Formats.uri);
+      if (url != null) {
+        editor.execute([
+          if (!selection.isCollapsed) //
+            const DeleteSelectionRequest(TextAffinity.downstream),
+          PasteEditorRequest(
+            content: url.uri.toString(),
+            pastePosition: selection.normalize(editor.document).start,
+          ),
+        ]);
+
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return;
+  }
+
   for (final item in reader.items) {
     if (item.canProvide(Formats.plainText)) {
       final text = await item.readValue(Formats.plainText);
       if (text != null) {
-        final pastePosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
-          document: editor.document,
-          selection: editor.composer.selection!,
-        );
+        SECLog.paste.fine(" - found reader with plain text: '$text'");
 
-        if (pastePosition == null) {
-          // There are no deletable nodes in the selection. Do nothing.
-          return;
+        DocumentPosition? pastePosition = selection.extent;
+
+        if (!selection.isCollapsed) {
+          pastePosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
+            document: editor.document,
+            selection: editor.composer.selection!,
+          );
+
+          if (pastePosition == null) {
+            // There are no deletable nodes in the selection. Do nothing.
+            return;
+          }
+
+          // Delete the selected content.
+          editor.execute([
+            DeleteContentRequest(documentRange: editor.composer.selection!),
+            ChangeSelectionRequest(
+              DocumentSelection.collapsed(position: pastePosition),
+              SelectionChangeType.deleteContent,
+              SelectionReason.userInteraction,
+            ),
+          ]);
         }
-
-        // Delete the selected content.
-        editor.execute([
-          DeleteContentRequest(documentRange: editor.composer.selection!),
-          ChangeSelectionRequest(
-            DocumentSelection.collapsed(position: pastePosition),
-            SelectionChangeType.deleteContent,
-            SelectionReason.userInteraction,
-          ),
-        ]);
 
         // Paste clipboard text.
         editor.execute([
@@ -319,4 +365,6 @@ Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
       }
     }
   }
+
+  SECLog.paste.fine(" - Tried to paste plain text but didn't find any");
 }
