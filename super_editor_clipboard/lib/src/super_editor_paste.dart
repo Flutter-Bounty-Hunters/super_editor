@@ -122,7 +122,7 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   }
 }
 
-typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);
+typedef CustomPasteDataInserter = FutureOr<bool> Function(Editor editor, ClipboardReader clipboardReader);
 
 /// Reads the native OS clipboard and pastes the content into the given [editor] at the
 /// current selection.
@@ -131,10 +131,21 @@ typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, Clipboard
 ///
 /// The supported clipboard data types is determined by the implementation of this method, and
 /// available [EditRequest]s in the Super Editor API. I.e., there are probably a number of
-/// unsupported content types.
+/// unsupported content types. This implementation will evolve over time.
+///
+/// To take an arbitrary custom action, such as handling a custom data type, provide
+/// a [customInserter].
+///
+/// To take custom actions when pasting known file types, provide desired [customFileInserters].
+///
+/// To take custom actions when pasting known value types (HTML, URL's, plain text),
+/// provide desired [customValueInserters].
 Future<void> pasteIntoEditorFromNativeClipboard(
   Editor editor, {
   CustomPasteDataInserter? customInserter,
+  Map<SimpleFileFormat, CustomPasteDataInserter>? customFileInserters,
+  Map<SimpleValueFormat, CustomPasteDataInserter>? customValueInserters,
+  SystemClipboard? testClipboard,
 }) async {
   SECLog.paste.fine("Pasting from native clipboard");
   if (editor.composer.selection == null) {
@@ -142,7 +153,7 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     return;
   }
 
-  final clipboard = SystemClipboard.instance;
+  final clipboard = testClipboard ?? SystemClipboard.instance;
   if (clipboard == null) {
     SECLog.paste.fine(" - no clipboard");
     return;
@@ -160,6 +171,17 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     return;
   }
 
+  // Try to paste any custom file type.
+  if (customFileInserters != null) {
+    for (final entry in customFileInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom file (${entry.key})");
+        return;
+      }
+    }
+  }
+
   // Try to paste a bitmap image.
   didPaste = await _maybePasteImage(editor, reader);
   if (didPaste) {
@@ -168,13 +190,47 @@ Future<void> pasteIntoEditorFromNativeClipboard(
   }
 
   // Try to paste rich text (via HTML).
+  if (customValueInserters?[Formats.htmlText] != null) {
+    didPaste = await customValueInserters![Formats.htmlText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom HTML");
+      return;
+    }
+  }
+
   didPaste = await _maybePasteHtml(editor, reader);
   if (didPaste) {
     SECLog.paste.fine(" - pasted HTML");
     return;
   }
 
+  // Try to paste any custom value type, before we default to plain text.
+  if (customValueInserters != null) {
+    for (final entry in customValueInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom value type (${entry.key})");
+        return;
+      }
+    }
+  }
+
+  // Try to paste a standalone URL.
+  didPaste = await _maybePasteUrl(editor, reader);
+  if (didPaste) {
+    SECLog.paste.fine(" - pasted a URL");
+    return;
+  }
+
   // Fall back to plain text.
+  if (customValueInserters?[Formats.plainText] != null) {
+    didPaste = await customValueInserters![Formats.plainText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom plain text");
+      return;
+    }
+  }
+
   SECLog.paste.fine(" - pasting plain text");
   await _pastePlainText(editor, reader);
 }
@@ -232,46 +288,83 @@ Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
   }
 
   return false;
+}
 
-  // // Check if HTML is available before attempting to read it.
-  // // If we don't check, getValue's callback may never be invoked,
-  // // leaving the completer hanging forever.
-  // if (!reader.canProvide(Formats.htmlText)) {
-  //   return false;
-  // }
-  //
-  // final completer = Completer<bool>();
-  //
-  // reader.getValue(
-  //   Formats.htmlText,
-  //   (html) {
-  //     if (html == null) {
-  //       completer.complete(false);
-  //       return;
-  //     }
-  //
-  //     // Do the paste.
-  //     editor.pasteHtml(editor, html);
-  //
-  //     completer.complete(true);
-  //   },
-  //   onError: (_) {
-  //     completer.complete(false);
-  //   },
-  // );
-  //
-  // final didPaste = await completer.future;
-  // return didPaste;
+Future<bool> _maybePasteUrl(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return false;
+  }
+
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.uri)) {
+      final url = await item.readValue(Formats.uri);
+      if (url != null) {
+        editor.execute([
+          if (!selection.isCollapsed) //
+            const DeleteSelectionRequest(TextAffinity.downstream),
+          PasteEditorRequest(
+            content: url.uri.toString(),
+            pastePosition: selection.normalize(editor.document).start,
+          ),
+        ]);
+
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return;
+  }
+
   for (final item in reader.items) {
     if (item.canProvide(Formats.plainText)) {
       final text = await item.readValue(Formats.plainText);
       if (text != null) {
-        editor.execute([InsertPlainTextAtCaretRequest(text)]);
+        SECLog.paste.fine(" - found reader with plain text: '$text'");
+
+        DocumentPosition? pastePosition = selection.extent;
+
+        if (!selection.isCollapsed) {
+          pastePosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
+            document: editor.document,
+            selection: editor.composer.selection!,
+          );
+
+          if (pastePosition == null) {
+            // There are no deletable nodes in the selection. Do nothing.
+            return;
+          }
+
+          // Delete the selected content.
+          editor.execute([
+            DeleteContentRequest(documentRange: editor.composer.selection!),
+            ChangeSelectionRequest(
+              DocumentSelection.collapsed(position: pastePosition),
+              SelectionChangeType.deleteContent,
+              SelectionReason.userInteraction,
+            ),
+          ]);
+        }
+
+        // Paste clipboard text.
+        editor.execute([
+          PasteEditorRequest(
+            content: text,
+            pastePosition: pastePosition,
+          ),
+        ]);
+
         return;
       }
     }
   }
+
+  SECLog.paste.fine(" - Tried to paste plain text but didn't find any");
 }
