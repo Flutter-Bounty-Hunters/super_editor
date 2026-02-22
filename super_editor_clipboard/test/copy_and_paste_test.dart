@@ -56,54 +56,6 @@ void main() {
         );
       });
 
-      test("ignores style tags", () {
-        const html = "<meta charset='utf-8'><style>.p { color: BLACK; }</style><p>Hello, World!</p>";
-        final editor = createDefaultDocumentEditor(
-          document: MutableDocument(
-            nodes: [ParagraphNode(id: "1", text: AttributedText())],
-          ),
-        );
-
-        // Place the caret so we know where to paste.
-        editor.execute([
-          ChangeSelectionRequest(
-            DocumentSelection.collapsed(
-              position: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 0),
-              ),
-            ),
-            SelectionChangeType.placeCaret,
-            SelectionReason.userInteraction,
-          ),
-        ]);
-
-        // Paste the HTML.
-        editor.pasteHtml(editor, html);
-
-        // Ensure the HTML was turned into the expected document, with the
-        // expected selection.
-        expect(
-          editor.document,
-          documentEquivalentTo(
-            MutableDocument(
-              nodes: [
-                ParagraphNode(id: "1", text: AttributedText("Hello, World!")),
-              ],
-            ),
-          ),
-        );
-        expect(
-          editor.composer.selection,
-          DocumentSelection.collapsed(
-            position: DocumentPosition(
-              nodeId: "1",
-              nodePosition: TextNodePosition(offset: 13),
-            ),
-          ),
-        );
-      });
-
       test("pastes plain text in middle of paragraph", () {
         const html = "<meta charset='utf-8'><p>Hello, World!</p>";
         final editor = createDefaultDocumentEditor(
@@ -150,6 +102,54 @@ void main() {
             position: DocumentPosition(
               nodeId: "1",
               nodePosition: TextNodePosition(offset: 17),
+            ),
+          ),
+        );
+      });
+
+      test("ignores style tags", () {
+        const html = "<meta charset='utf-8'><style>.p { color: BLACK; }</style><p>Hello, World!</p>";
+        final editor = createDefaultDocumentEditor(
+          document: MutableDocument(
+            nodes: [ParagraphNode(id: "1", text: AttributedText())],
+          ),
+        );
+
+        // Place the caret so we know where to paste.
+        editor.execute([
+          ChangeSelectionRequest(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: "1",
+                nodePosition: TextNodePosition(offset: 0),
+              ),
+            ),
+            SelectionChangeType.placeCaret,
+            SelectionReason.userInteraction,
+          ),
+        ]);
+
+        // Paste the HTML.
+        editor.pasteHtml(editor, html);
+
+        // Ensure the HTML was turned into the expected document, with the
+        // expected selection.
+        expect(
+          editor.document,
+          documentEquivalentTo(
+            MutableDocument(
+              nodes: [
+                ParagraphNode(id: "1", text: AttributedText("Hello, World!")),
+              ],
+            ),
+          ),
+        );
+        expect(
+          editor.composer.selection,
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: "1",
+              nodePosition: TextNodePosition(offset: 13),
             ),
           ),
         );
