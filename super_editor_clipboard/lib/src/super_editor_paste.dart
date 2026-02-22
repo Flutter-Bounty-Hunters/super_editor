@@ -52,12 +52,16 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
     required this.editor,
     required this.documentLayoutResolver,
     CustomPasteDataInserter? customPasteDataInserter,
+    Map<SimpleFileFormat, FutureOr<bool> Function(Editor, ClipboardReader)> customFileInserters = const {},
+    Map<SimpleValueFormat<Object>, FutureOr<bool> Function(Editor, ClipboardReader)> customValueInserters = const {},
     super.useIosSelectionHeuristics = true,
     super.handleColor,
     super.floatingCursorController,
     super.magnifierBuilder,
     super.createOverlayControlsClipper,
-  }) : _customPasteDataInserter = customPasteDataInserter {
+  })  : _customFileInserters = customFileInserters,
+        _customValueInserters = customValueInserters,
+        _customPasteDataInserter = customPasteDataInserter {
     shouldShowToolbar.addListener(_onToolbarVisibilityChange);
   }
 
@@ -75,6 +79,8 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   }
 
   final CustomPasteDataInserter? _customPasteDataInserter;
+  final Map<SimpleFileFormat, CustomPasteDataInserter> _customFileInserters;
+  final Map<SimpleValueFormat, CustomPasteDataInserter> _customValueInserters;
 
   @protected
   final Editor editor;
@@ -118,7 +124,12 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   @override
   Future<void> onUserRequestedPaste() async {
     SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
-    pasteIntoEditorFromNativeClipboard(editor, customInserter: _customPasteDataInserter);
+    pasteIntoEditorFromNativeClipboard(
+      editor,
+      customInserter: _customPasteDataInserter,
+      customFileInserters: _customFileInserters,
+      customValueInserters: _customValueInserters,
+    );
   }
 }
 
