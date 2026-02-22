@@ -1,3 +1,12 @@
+## [0.2.7]
+### Feb 21, 2026
+* `pasteIntoEditorFromNativeClipboard` improvements:
+  * URL data type is now pasted from clipboard.
+  * Plain text uses the standard `super_editor` parser to infer semantics, e.g., parse links.
+  * Custom clipboard data inserters can now be provided on a per-format basis instead of just one big custom delegate.
+  * When pasting HTML, `<style>` and `<script>` tags are now ignored so that their content is not
+    inserted into the document. Any such tags can be listed to be ignored.
+
 ## [0.2.6]
 ### Feb 16, 2026
 * Fix method that uses `super_clipboard` to paste ito an `Editor`. Something about how we
