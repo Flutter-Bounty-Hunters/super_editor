@@ -446,5 +446,5 @@ Nam hendrerit vitae elit ut placerat. Maecenas nec congue neque. Fusce eget tort
 
 Etiam id lacus interdum, efficitur ex convallis, accumsan ipsum. Integer faucibus mollis mauris, a suscipit ante mollis vitae. Fusce justo metus, congue non lectus ac, luctus rhoncus tellus. Phasellus vitae fermentum orci, sit amet sodales orci. Fusce at ante iaculis nunc aliquet pharetra. Nam placerat, nisl in gravida lacinia, nisl nibh feugiat nunc, in sagittis nisl sapien nec arcu. Nunc gravida faucibus massa, sit amet accumsan dolor feugiat in. Mauris ut elementum leo.
 
-- [ ] This is an incomplete task
-- [x] This is a completed task''';
+  - [ ] This is an incomplete task
+  - [x] This is a completed task''';
