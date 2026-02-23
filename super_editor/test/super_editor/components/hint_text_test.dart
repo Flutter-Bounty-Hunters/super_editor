@@ -20,7 +20,10 @@ void main() {
             ],
           ))
           .withComponentBuilders([
-            const HintComponentBuilder("Hello", _hintStyler),
+            HintComponentBuilder.plainText(
+              "Hello",
+              hintTextStyle: const TextStyle(),
+            ),
             ...defaultComponentBuilders,
           ])
           .useStylesheet(defaultStylesheet.copyWith(
@@ -42,10 +45,137 @@ void main() {
       expect(richText.children!.last, isA<WidgetSpan>());
       expect((richText.children!.last as WidgetSpan).child, isA<_FakeInlineWidget>());
     });
+
+    testWidgetsOnArbitraryDesktop("allows customizing when the hint should be displayed", (tester) async {
+      // By default, the hint component shows the hint text only when there is a single node in the document.
+      // Here, we customize that behavior to show the hint text even if there are multiple nodes,
+      // as long as the first node is empty.
+      await tester
+          .createDocument()
+          .withCustomContent(MutableDocument(
+            nodes: [
+              ParagraphNode(
+                id: "1",
+                text: AttributedText(""),
+              ),
+              ParagraphNode(
+                id: "2",
+                text: AttributedText("A paragraph"),
+              ),
+            ],
+          ))
+          .withAddedComponents(
+        [
+          HintComponentBuilder.plainText(
+            "This is a hint",
+            hintTextStyle: const TextStyle(),
+            shouldShowHint: (document, node) => document.getNodeIndexById(node.id) == 0 && node.text.isEmpty,
+          ),
+        ],
+      ).pump();
+
+      // Ensure that the hint text is being displayed for the empty paragraph.
+      expect(find.text("This is a hint", findRichText: true), findsOne);
+    });
+
+    testWidgetsOnArbitraryDesktop("allows customizing the hint's textStyle", (tester) async {
+      await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .withAddedComponents(
+        [
+          HintComponentBuilder.plainText(
+            "This is a hint",
+            hintTextStyle: const TextStyle(color: Colors.red),
+          ),
+        ],
+      ).pump();
+
+      // Ensure that the hint text is being displayed for the empty paragraph with a red color.
+      final hintFinder = find.text("This is a hint", findRichText: true);
+      expect(hintFinder, findsOne);
+      final widget = hintFinder.evaluate().first.widget;
+      expect(widget, isA<RichText>());
+      expect(
+          (widget as RichText) //
+              .text
+              .getSpanForPosition(const TextPosition(offset: 0))
+              ?.style
+              ?.color,
+          Colors.red);
+    });
+
+    testWidgetsOnArbitraryDesktop("allows customizing the hint's textStyle with a hintStyleBuilder", (tester) async {
+      await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .withAddedComponents(
+        [
+          HintComponentBuilder.plainText(
+            "This is a hint",
+            hintStyleBuilder: (context, attributions) => const TextStyle(color: Colors.red),
+          ),
+        ],
+      ).pump();
+
+      // Ensure that the hint text is being displayed for the empty paragraph with a red color.
+      final hintFinder = find.text("This is a hint", findRichText: true);
+      expect(hintFinder, findsOne);
+      final widget = hintFinder.evaluate().first.widget;
+      expect(widget, isA<RichText>());
+      expect(
+          (widget as RichText) //
+              .text
+              .getSpanForPosition(const TextPosition(offset: 0))
+              ?.style
+              ?.color,
+          Colors.red);
+    });
+
+    testWidgetsOnArbitraryDesktop("honors the default text styles", (tester) async {
+      await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .withAddedComponents(
+        [
+          HintComponentBuilder.richText(
+            AttributedText(
+              "This is a hint",
+              // The word "hint" has italics.
+              AttributedSpans(
+                attributions: [
+                  const SpanMarker(attribution: italicsAttribution, offset: 10, markerType: SpanMarkerType.start),
+                  const SpanMarker(attribution: italicsAttribution, offset: 13, markerType: SpanMarkerType.end),
+                ],
+              ),
+            ),
+            hintTextStyle: const TextStyle(),
+          ),
+        ],
+      ).pump();
+
+      // Ensure that the hint text is being displayed for the empty paragraph and only the word
+      // "hint" has italics.
+      final hintFinder = find.text("This is a hint", findRichText: true);
+      expect(hintFinder, findsOne);
+      final widget = hintFinder.evaluate().first.widget;
+      expect(widget, isA<RichText>());
+      expect(
+          (widget as RichText) //
+              .text
+              .getSpanForPosition(const TextPosition(offset: 0))
+              ?.style
+              ?.fontStyle,
+          isNull);
+      expect(
+          widget.text //
+              .getSpanForPosition(const TextPosition(offset: 10))
+              ?.style
+              ?.fontStyle,
+          FontStyle.italic);
+    });
   });
 }
-
-TextStyle _hintStyler(BuildContext _) => TextStyle();
 
 const _inlineWidgetBuilders = [
   _buildFakeInlineWidget,
