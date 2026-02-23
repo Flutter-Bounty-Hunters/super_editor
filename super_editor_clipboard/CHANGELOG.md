@@ -1,3 +1,8 @@
+## [0.2.8]
+### Feb 22, 2026
+* Updated `SuperEditorIosControlsControllerWithNativePaste` constructor API to take in
+  custom clipboard format inserts, to match the new configuration of `pasteIntoEditorFromNativeClipboard`. 
+
 ## [0.2.7]
 ### Feb 21, 2026
 * `pasteIntoEditorFromNativeClipboard` improvements:
