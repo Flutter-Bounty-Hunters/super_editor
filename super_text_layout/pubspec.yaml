@@ -48,8 +48,7 @@ dev_dependencies:
   golden_toolkit: ^0.15.0
   args: ^2.3.1
   meta: ^1.8.0
-  golden_runner:
-    path: ../golden_runner
+  golden_runner: ^0.2.0
 
 flutter:
   # no Flutter configuration
