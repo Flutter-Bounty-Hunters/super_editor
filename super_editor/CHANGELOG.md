@@ -1,3 +1,7 @@
+## [0.3.0-dev.50]
+### Feb 24, 2026
+* FIX: `SuperMessage` Android and iOS popover toolbars now dismiss themselves after tapping a button.
+
 ## [0.3.0-dev.49]
 ### Feb 19, 2026
 * ADJUSTMENT: Pattern tags, stable tags, and action tags now support multiple triggers in the same editor.
