@@ -28,6 +28,8 @@ class SuperText extends StatefulWidget {
     this.textAlign = TextAlign.left,
     this.textDirection = TextDirection.ltr,
     this.textScaler,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     this.layerBeneathBuilder,
     this.layerAboveBuilder,
     this.debugTrackTextBuilds = false,
@@ -42,6 +44,18 @@ class SuperText extends StatefulWidget {
   /// The text direction to use for [richText] display.
   final TextDirection textDirection;
 
+  /// The text scaling policy.
+  ///
+  /// Defaults to `MediaQuery.textScalerOf`.
+  final TextScaler? textScaler;
+
+  /// The maximum number of lines of text that are permitted to be displayed until [overflow]
+  /// is applied to the text.
+  final int? maxLines;
+
+  /// The effect used when text exceeds the available space, e.g., clip, ellipsis, fade, show.
+  final TextOverflow overflow;
+
   /// Builds a widget that appears beneath the text, e.g., to render text
   /// selection boxes.
   final SuperTextLayerBuilder? layerBeneathBuilder;
@@ -53,11 +67,6 @@ class SuperText extends StatefulWidget {
   /// builds its inner rich text, so that tests can ensure the inner text
   /// is not rebuilt unnecessarily, due to text decorations.
   final bool debugTrackTextBuilds;
-
-  /// The text scaling policy.
-  ///
-  /// Defaults to `MediaQuery.textScalerOf`.
-  final TextScaler? textScaler;
 
   @override
   State<SuperText> createState() => SuperTextState();
@@ -92,6 +101,8 @@ class SuperTextState extends ProseTextState<SuperText> with ProseTextBlock {
         textAlign: widget.textAlign,
         textDirection: widget.textDirection,
         textScaler: widget.textScaler ?? MediaQuery.textScalerOf(context),
+        maxLines: widget.maxLines,
+        overflow: widget.overflow,
         onMarkNeedsLayout: _invalidateParagraph,
       ),
       background: LayoutBuilder(
@@ -293,19 +304,15 @@ class RenderSuperTextLayout extends RenderBox
 @visibleForTesting
 class LayoutAwareRichText extends RichText {
   LayoutAwareRichText({
-    Key? key,
-    required InlineSpan text,
-    TextAlign textAlign = TextAlign.left,
-    TextDirection textDirection = TextDirection.ltr,
-    TextScaler textScaler = TextScaler.noScaling,
+    super.key,
+    required super.text,
+    super.textAlign = TextAlign.left,
+    super.textDirection = TextDirection.ltr,
+    super.textScaler = TextScaler.noScaling,
+    super.maxLines,
+    super.overflow,
     required this.onMarkNeedsLayout,
-  }) : super(
-          key: key,
-          text: text,
-          textAlign: textAlign,
-          textDirection: textDirection,
-          textScaler: textScaler,
-        );
+  });
 
   /// Callback invoked when the underlying [RenderParagraph] invalidates
   /// its layout.
