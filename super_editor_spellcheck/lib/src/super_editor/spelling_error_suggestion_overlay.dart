@@ -164,10 +164,7 @@ class _SpellingErrorSuggestionOverlayState
   }
 
   @override
-  void showSuggestions(
-    SpellingError suggestions, {
-    VoidCallback? onDismiss,
-  }) {
+  void showSuggestions(SpellingError suggestions, {VoidCallback? onDismiss}) {
     setState(() {
       _currentSpellingSuggestions = suggestions;
       _onDismissToolbar = onDismiss;
@@ -246,10 +243,14 @@ class _SpellingErrorSuggestionOverlayState
             ),
           ),
         );
-        final isBaseInWord =
-            widget.editor.document.doesSelectionContainPosition(ignoredWordAsSelection, selection.base);
-        final isExtentInWord =
-            widget.editor.document.doesSelectionContainPosition(ignoredWordAsSelection, selection.extent);
+        final isBaseInWord = widget.editor.document.doesSelectionContainPosition(
+          ignoredWordAsSelection,
+          selection.base,
+        );
+        final isExtentInWord = widget.editor.document.doesSelectionContainPosition(
+          ignoredWordAsSelection,
+          selection.extent,
+        );
 
         if (!isBaseInWord || !isExtentInWord) {
           _ignoredSpellingErrorRange = null;
@@ -353,16 +354,21 @@ class _SpellingErrorSuggestionOverlayState
     );
   }
 
-  SpellingError? _findSpellingSuggestionAtRange(
-    SpellingErrorSuggestions allSuggestions,
-    DocumentRange selection,
-  ) {
+  SpellingError? _findSpellingSuggestionAtRange(SpellingErrorSuggestions allSuggestions, DocumentRange selection) {
     if (selection.start.nodeId != selection.end.nodeId) {
       // It doesn't make sense to correct spelling across paragraphs. Fizzle.
       return null;
     }
 
-    final textNode = widget.editor.context.document.getNodeById(selection.end.nodeId) as TextNode;
+    final node = widget.editor.context.document.getNodeById(selection.end.nodeId);
+    if (node is! TextNode) {
+      return null;
+    }
+    final textNode = node;
+
+    if (selection.start.nodePosition is! TextNodePosition || selection.end.nodePosition is! TextNodePosition) {
+      return null;
+    }
 
     final selectionBaseOffset = (selection.start.nodePosition as TextNodePosition).offset;
     final spellingSuggestionsAtBase = allSuggestions.getSuggestionsAtTextOffset(textNode.id, selectionBaseOffset);
@@ -686,16 +692,9 @@ class _DesktopSpellingSuggestionToolbarState extends State<DesktopSpellingSugges
           decoration: BoxDecoration(
             color: _getBackgroundColor(brightness),
             border: Border.all(color: _getBorderColor(brightness)),
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(10),
-              right: Radius.circular(34),
-            ),
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(10), right: Radius.circular(34)),
             boxShadow: [
-              BoxShadow(
-                offset: const Offset(0, 4),
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 6,
-              ),
+              BoxShadow(offset: const Offset(0, 4), color: Colors.black.withValues(alpha: 0.2), blurRadius: 6),
             ],
           ),
           child: SingleChildScrollView(
@@ -710,10 +709,7 @@ class _DesktopSpellingSuggestionToolbarState extends State<DesktopSpellingSugges
                       onTap: () => _applySpellingFix(suggestion),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        child: Text(
-                          suggestion,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        child: Text(suggestion, style: const TextStyle(fontSize: 12)),
                       ),
                     ),
                     VerticalDivider(width: 1, color: _getBorderColor(brightness)),
@@ -721,11 +717,7 @@ class _DesktopSpellingSuggestionToolbarState extends State<DesktopSpellingSugges
                   const SizedBox(width: 6),
                   GestureDetector(
                     onTap: widget.onCancelPressed,
-                    child: Icon(
-                      Icons.cancel_outlined,
-                      size: 12,
-                      color: _getTextColor(brightness),
-                    ),
+                    child: Icon(Icons.cancel_outlined, size: 12, color: _getTextColor(brightness)),
                   ),
                   const SizedBox(width: 6),
                 ],
@@ -851,27 +843,15 @@ class _AndroidSpellingSuggestionToolbarState extends State<AndroidSpellingSugges
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final suggestion in widget.suggestions) ...[
-            _buildButton(
-              title: suggestion,
-              onPressed: () => _applySpellingFix(suggestion),
-              brightness: brightness,
-            ),
+            _buildButton(title: suggestion, onPressed: () => _applySpellingFix(suggestion), brightness: brightness),
           ],
-          _buildButton(
-            title: 'Delete',
-            onPressed: _removeWord,
-            brightness: brightness,
-          ),
+          _buildButton(title: 'Delete', onPressed: _removeWord, brightness: brightness),
         ],
       ),
     );
   }
 
-  Widget _buildButton({
-    required String title,
-    required VoidCallback onPressed,
-    required Brightness brightness,
-  }) {
+  Widget _buildButton({required String title, required VoidCallback onPressed, required Brightness brightness}) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
@@ -881,10 +861,7 @@ class _AndroidSpellingSuggestionToolbarState extends State<AndroidSpellingSugges
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 14),
-        ),
+        child: Text(title, style: const TextStyle(fontSize: 14)),
       ),
     );
   }
@@ -985,11 +962,7 @@ class _IosSpellingSuggestionToolbarState extends State<IosSpellingSuggestionTool
           elevation: 8.0,
           children: [
             for (final suggestion in widget.suggestions) ...[
-              _buildButton(
-                title: suggestion,
-                onPressed: () => _applySpellingFix(suggestion),
-                brightness: brightness,
-              ),
+              _buildButton(title: suggestion, onPressed: () => _applySpellingFix(suggestion), brightness: brightness),
             ],
           ],
         ),
@@ -1015,11 +988,7 @@ class _IosSpellingSuggestionToolbarState extends State<IosSpellingSuggestionTool
     }
   }
 
-  Widget _buildButton({
-    required String title,
-    required VoidCallback onPressed,
-    required Brightness brightness,
-  }) {
+  Widget _buildButton({required String title, required VoidCallback onPressed, required Brightness brightness}) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
@@ -1031,10 +1000,7 @@ class _IosSpellingSuggestionToolbarState extends State<IosSpellingSuggestionTool
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 14),
-        ),
+        child: Text(title, style: const TextStyle(fontSize: 14)),
       ),
     );
   }

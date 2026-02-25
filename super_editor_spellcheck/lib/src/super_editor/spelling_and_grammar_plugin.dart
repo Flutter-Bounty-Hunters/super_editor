@@ -395,9 +395,8 @@ class SpellingAndGrammarReaction implements EditReaction {
 
   @override
   void react(EditContext editorContext, RequestDispatcher requestDispatcher, List<EditEvent> changeList) {
-    if (kIsWeb ||
-        !const [TargetPlatform.macOS, TargetPlatform.android, TargetPlatform.iOS].contains(defaultTargetPlatform)) {
-      // We currently only support spell check when running on Mac desktop or mobile platforms.
+    if (kIsWeb) {
+      // We currently do not support spell check when running on the Web.
       return;
     }
 
