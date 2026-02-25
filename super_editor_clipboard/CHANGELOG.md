@@ -1,3 +1,12 @@
+## [0.2.9]
+### Feb 25, 2026
+* Feature: Added Markdown to the series of default clipboard paste behaviors that is attempted when
+  pasting from the native clipboard.
+* Feature: Added an API to provide HTML tags that you want to ignore when pasting HTML.
+* Fix: When pasting HTML, and we do an intermediate conversion to Markdown, we now force
+  ATX-style headers, which prevents a bug where Setext-style headers were ending up in the
+  final document.
+
 ## [0.2.8]
 ### Feb 22, 2026
 * Updated `SuperEditorIosControlsControllerWithNativePaste` constructor API to take in
