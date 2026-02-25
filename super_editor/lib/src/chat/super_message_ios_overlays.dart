@@ -330,6 +330,8 @@ class DefaultIOSSuperMessageToolbar extends StatelessWidget {
       documentSelection: editor.composer.selection!,
     );
     _saveToClipboard(textToCopy);
+
+    messageControlsController.hideToolbar();
   }
 
   void _selectAll() {
@@ -353,6 +355,8 @@ class DefaultIOSSuperMessageToolbar extends StatelessWidget {
         SelectionReason.userInteraction,
       ),
     ]);
+
+    messageControlsController.hideToolbar();
   }
 
   Future<void> _saveToClipboard(String text) {

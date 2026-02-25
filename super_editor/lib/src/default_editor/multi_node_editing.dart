@@ -1399,6 +1399,56 @@ class DeleteNodeCommand extends EditCommand {
   }
 }
 
+/// An [EditRequest] that replaces the current document content with the given
+/// [nodes].
+///
+/// This request deletes all existing content, clears the selection, and then
+/// inserts the new nodes.
+class ReplaceDocumentRequest implements EditRequest {
+  const ReplaceDocumentRequest(this.nodes);
+
+  final List<DocumentNode> nodes;
+}
+
+class ReplaceDocumentCommand extends EditCommand {
+  const ReplaceDocumentCommand(this.nodes);
+
+  final List<DocumentNode> nodes;
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    executor
+      // Clear selection before deleting content so that we don't have
+      // a momentarily illegal selection.
+      ..executeCommand(
+        const ChangeSelectionCommand(
+          null,
+          SelectionChangeType.alteredContent,
+          SelectionReason.contentChange,
+        ),
+      )
+      ..executeCommand(ClearDocumentCommand())
+      // Clear selection again because `ClearDocumentCommand` sets a selection.
+      ..executeCommand(
+        const ChangeSelectionCommand(
+          null,
+          SelectionChangeType.alteredContent,
+          SelectionReason.contentChange,
+        ),
+      )
+      ..executeCommand(DeleteNodeCommand(nodeId: context.document.first.id));
+
+    for (final node in nodes) {
+      executor.executeCommand(
+        InsertNodeAtIndexCommand(
+          nodeIndex: context.document.length,
+          newNode: node,
+        ),
+      );
+    }
+  }
+}
+
 /// An [EditRequest] to clear the document's content.
 ///
 /// This request:
