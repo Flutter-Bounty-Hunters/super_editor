@@ -1,6 +1,6 @@
 name: super_text_layout
 description: Configurable, composable, extensible text display for Flutter.
-version: 0.1.19
+version: 0.1.20
 homepage: https://github.com/superlistapp/super_editor
 funding:
   - https://flutterbountyhunters.com
