@@ -77,6 +77,8 @@ class CodeBlockComponentViewModel extends SingleColumnLayoutComponentViewModel w
     this.inlineWidgetBuilders = const [],
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     required this.backgroundColor,
     required this.borderRadius,
     this.selection,
@@ -104,6 +106,10 @@ class CodeBlockComponentViewModel extends SingleColumnLayoutComponentViewModel w
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  @override
+  int? maxLines;
+  @override
+  TextOverflow overflow;
   @override
   TextSelection? selection;
   @override

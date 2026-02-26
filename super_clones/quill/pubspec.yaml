@@ -13,7 +13,7 @@ dependencies:
 
   cupertino_icons: ^1.0.6
   super_editor: any
-  super_text_layout: any
+  super_text_layout: ^0.1.20
   collection: ^1.18.0
   overlord: ^0.4.2
   material_symbols_icons: ^4.2762.0
