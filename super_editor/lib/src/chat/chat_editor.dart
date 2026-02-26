@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/message_page_scaffold.dart';
+import 'package:super_editor/src/chat/plugins/chat_preview_mode_plugin.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_selection.dart';
@@ -88,6 +89,8 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
   final _editorKey = GlobalKey();
   late FocusNode _editorFocusNode;
 
+  final _previewModePlugin = ChatPreviewModePlugin();
+
   late ScrollController _scrollController;
   // late KeyboardPanelController<PanelType> _keyboardPanelController;
   late ValueNotifier<bool> _isImeConnected;
@@ -98,6 +101,8 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     super.initState();
 
     _editorFocusNode = widget.editorFocusNode ?? FocusNode();
+    _editorFocusNode.addListener(_onFocusChange);
+    _syncPreviewModeWithFocus();
 
     _scrollController = widget.scrollController ?? ScrollController();
 
@@ -118,11 +123,15 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     super.didUpdateWidget(oldWidget);
 
     if (widget.editorFocusNode != oldWidget.editorFocusNode) {
+      _editorFocusNode.removeListener(_onFocusChange);
       if (oldWidget.editorFocusNode == null) {
         _editorFocusNode.dispose();
       }
 
       _editorFocusNode = widget.editorFocusNode ?? FocusNode();
+      _editorFocusNode.addListener(_onFocusChange);
+
+      _syncPreviewModeWithFocus();
     }
 
     if (widget.scrollController != oldWidget.scrollController) {
@@ -175,6 +184,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     // _keyboardPanelController.dispose();
     // _isImeConnected.dispose();
 
+    _editorFocusNode.removeListener(_onFocusChange);
     if (widget.editorFocusNode == null) {
       print("Disposing _editorFocusNode");
       _editorFocusNode.dispose();
@@ -183,6 +193,14 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     super.dispose();
 
     print("Done with chat editor disposal");
+  }
+
+  void _onFocusChange() {
+    _syncPreviewModeWithFocus();
+  }
+
+  void _syncPreviewModeWithFocus() {
+    _previewModePlugin.isInPreviewMode = !_editorFocusNode.hasFocus;
   }
 
   void _onKeyboardChange() {
@@ -244,6 +262,10 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
             HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
             ...defaultComponentBuilders,
           ],
+          plugins: {
+            // TODO: pass in additional plugins from outside the widget.
+            _previewModePlugin,
+          },
         ),
       ),
     );

@@ -28,7 +28,21 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
     super.initState();
 
     _editor = createDefaultDocumentEditor(
-      document: MutableDocument.empty(),
+      // document: MutableDocument.empty(),
+      document: MutableDocument(nodes: [
+        ParagraphNode(
+          id: "1",
+          text: AttributedText(
+            "This is a draft that already exists in the editor and it's used to test preview mode.",
+          ),
+        ),
+        ParagraphNode(
+          id: "2",
+          text: AttributedText(
+            "This is a 2nd paragraph which should not be visible in preview mode.",
+          ),
+        ),
+      ]),
       composer: MutableDocumentComposer(),
     );
 
