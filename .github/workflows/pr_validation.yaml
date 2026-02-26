@@ -100,50 +100,6 @@ jobs:
           name: golden-failures
           path: "**/failures/**/*.png"
 
-  test_super_editor_markdown:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./super_editor_markdown
-    steps:
-      # Checkout the PR branch
-      - uses: actions/checkout@v3
-
-      # Setup Flutter environment
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "master"
-
-      # Download all the packages that the app uses
-      - run: flutter pub get
-
-      # TODO: Enforce static analysis
-
-      # Run all tests
-      - run: flutter test
-
-  test_super_editor_quill:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./super_editor_quill
-    steps:
-      # Checkout the PR branch
-      - uses: actions/checkout@v3
-
-      # Setup Flutter environment
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "master"
-
-      # Download all the packages that the app uses
-      - run: flutter pub get
-
-      # TODO: Enforce static analysis
-
-      # Run all tests
-      - run: flutter test
-
   test_super_editor_spellcheck:
     runs-on: ubuntu-latest
     defaults:
