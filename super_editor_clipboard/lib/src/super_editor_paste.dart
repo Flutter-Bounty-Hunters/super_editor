@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -29,7 +30,7 @@ ExecutionInstruction pasteRichTextOnCmdCtrlV({
     return ExecutionInstruction.continueExecution;
   }
 
-  // Cmd/Ctrl+V detected - handle clipboard paste
+  // Cmd/Ctrl+V detected - Paste content from native clipboard.
   pasteIntoEditorFromNativeClipboard(editContext.editor);
 
   return ExecutionInstruction.haltExecution;
@@ -52,12 +53,18 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
     required this.editor,
     required this.documentLayoutResolver,
     CustomPasteDataInserter? customPasteDataInserter,
+    Map<SimpleFileFormat, FutureOr<bool> Function(Editor, ClipboardReader)> customFileInserters = const {},
+    Map<SimpleValueFormat<Object>, FutureOr<bool> Function(Editor, ClipboardReader)> customValueInserters = const {},
+    Set<String> ignoredHtmlTags = RichTextPaste.defaultIgnoredHtmlTags,
     super.useIosSelectionHeuristics = true,
     super.handleColor,
     super.floatingCursorController,
     super.magnifierBuilder,
     super.createOverlayControlsClipper,
-  }) : _customPasteDataInserter = customPasteDataInserter {
+  })  : _customFileInserters = customFileInserters,
+        _customValueInserters = customValueInserters,
+        _customPasteDataInserter = customPasteDataInserter,
+        _ignoredHtmlTags = ignoredHtmlTags {
     shouldShowToolbar.addListener(_onToolbarVisibilityChange);
   }
 
@@ -75,6 +82,9 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   }
 
   final CustomPasteDataInserter? _customPasteDataInserter;
+  final Map<SimpleFileFormat, CustomPasteDataInserter> _customFileInserters;
+  final Map<SimpleValueFormat, CustomPasteDataInserter> _customValueInserters;
+  final Set<String> _ignoredHtmlTags;
 
   @protected
   final Editor editor;
@@ -118,11 +128,17 @@ class SuperEditorIosControlsControllerWithNativePaste extends SuperEditorIosCont
   @override
   Future<void> onUserRequestedPaste() async {
     SECLog.pasteIOS.fine("User requested to paste - pasting from super_clipboard");
-    pasteIntoEditorFromNativeClipboard(editor, customInserter: _customPasteDataInserter);
+    pasteIntoEditorFromNativeClipboard(
+      editor,
+      customInserter: _customPasteDataInserter,
+      customFileInserters: _customFileInserters,
+      customValueInserters: _customValueInserters,
+      ignoredHtmlTags: _ignoredHtmlTags,
+    );
   }
 }
 
-typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, ClipboardReader clipboardReader);
+typedef CustomPasteDataInserter = FutureOr<bool> Function(Editor editor, ClipboardReader clipboardReader);
 
 /// Reads the native OS clipboard and pastes the content into the given [editor] at the
 /// current selection.
@@ -131,17 +147,37 @@ typedef CustomPasteDataInserter = Future<bool> Function(Editor editor, Clipboard
 ///
 /// The supported clipboard data types is determined by the implementation of this method, and
 /// available [EditRequest]s in the Super Editor API. I.e., there are probably a number of
-/// unsupported content types.
+/// unsupported content types. This implementation will evolve over time.
+///
+/// To take an arbitrary custom action, such as handling a custom data type, provide
+/// a [customInserter].
+///
+/// To take custom actions when pasting known file types, provide desired [customFileInserters].
+///
+/// To take custom actions when pasting known value types (HTML, URL's, plain text),
+/// provide desired [customValueInserters].
+///
+/// In the case that HTML is found on the clipboard, [ignoredHtmlTags] specifies any HTML
+/// tags that should be completely ignored when deserializing the HTML to a [Document].
+/// For example, it is probably never desirable to extract the text from a `<style>` tag
+/// or `<script>` tag.
 Future<void> pasteIntoEditorFromNativeClipboard(
   Editor editor, {
   CustomPasteDataInserter? customInserter,
+  Map<SimpleFileFormat, CustomPasteDataInserter>? customFileInserters,
+  Map<SimpleValueFormat, CustomPasteDataInserter>? customValueInserters,
+  Set<String> ignoredHtmlTags = RichTextPaste.defaultIgnoredHtmlTags,
+  SystemClipboard? testClipboard,
 }) async {
+  SECLog.paste.fine("Pasting from native clipboard");
   if (editor.composer.selection == null) {
+    SECLog.paste.fine(" - no selection");
     return;
   }
 
-  final clipboard = SystemClipboard.instance;
+  final clipboard = testClipboard ?? SystemClipboard.instance;
   if (clipboard == null) {
+    SECLog.paste.fine(" - no clipboard");
     return;
   }
 
@@ -153,23 +189,87 @@ Future<void> pasteIntoEditorFromNativeClipboard(
     didPaste = await customInserter(editor, reader);
   }
   if (didPaste) {
+    SECLog.paste.fine(" - pasted using custom inserter");
     return;
+  }
+
+  // Try to paste any custom file type.
+  if (customFileInserters != null) {
+    for (final entry in customFileInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom file (${entry.key})");
+        return;
+      }
+    }
   }
 
   // Try to paste a bitmap image.
   didPaste = await _maybePasteImage(editor, reader);
   if (didPaste) {
+    SECLog.paste.fine(" - pasted an image");
     return;
   }
 
   // Try to paste rich text (via HTML).
-  didPaste = await _maybePasteHtml(editor, reader);
+  if (customValueInserters?[Formats.htmlText] != null) {
+    didPaste = await customValueInserters![Formats.htmlText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom HTML");
+      return;
+    }
+  }
+
+  didPaste = await _maybePasteHtml(editor, reader, ignoredHtmlTags);
   if (didPaste) {
+    SECLog.paste.fine(" - pasted HTML");
+    return;
+  }
+
+  // Try to paste rich text (via Markdown).
+  if (customFileInserters?[Formats.md] != null) {
+    didPaste = await customFileInserters![Formats.md]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom Markdown");
+      return;
+    }
+  }
+
+  didPaste = await _maybePasteMarkdown(editor, reader);
+  if (didPaste) {
+    SECLog.paste.fine(" - pasted Markdown");
+    return;
+  }
+
+  // Try to paste any custom value type, before we default to plain text.
+  if (customValueInserters != null) {
+    for (final entry in customValueInserters.entries) {
+      didPaste = await entry.value.call(editor, reader);
+      if (didPaste) {
+        SECLog.paste.fine(" - pasted custom value type (${entry.key})");
+        return;
+      }
+    }
+  }
+
+  // Try to paste a standalone URL.
+  didPaste = await _maybePasteUrl(editor, reader);
+  if (didPaste) {
+    SECLog.paste.fine(" - pasted a URL");
     return;
   }
 
   // Fall back to plain text.
-  _pastePlainText(editor, reader);
+  if (customValueInserters?[Formats.plainText] != null) {
+    didPaste = await customValueInserters![Formats.plainText]!.call(editor, reader);
+    if (didPaste) {
+      SECLog.paste.fine(" - pasted custom plain text");
+      return;
+    }
+  }
+
+  SECLog.paste.fine(" - pasting plain text");
+  await _pastePlainText(editor, reader);
 }
 
 Future<bool> _maybePasteImage(Editor editor, ClipboardReader reader) async {
@@ -213,35 +313,133 @@ const _supportedBitmapImageFormats = [
   Formats.webp,
 ];
 
-Future<bool> _maybePasteHtml(Editor editor, ClipboardReader reader) async {
-  final completer = Completer<bool>();
-
-  reader.getValue(
-    Formats.htmlText,
-    (html) {
-      if (html == null) {
-        completer.complete(false);
-        return;
+Future<bool> _maybePasteHtml(
+  Editor editor,
+  ClipboardReader reader, [
+  Set<String> ignoredHtmlTags = RichTextPaste.defaultIgnoredHtmlTags,
+]) async {
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.htmlText)) {
+      final html = await item.readValue(Formats.htmlText);
+      if (html != null) {
+        editor.pasteHtml(editor, html, ignoredTags: ignoredHtmlTags);
+        return true;
       }
+    }
+  }
 
-      // Do the paste.
-      editor.pasteHtml(editor, html);
-
-      completer.complete(true);
-    },
-    onError: (_) {
-      completer.complete(false);
-    },
-  );
-
-  final didPaste = await completer.future;
-  return didPaste;
+  return false;
 }
 
-void _pastePlainText(Editor editor, ClipboardReader reader) {
-  reader.getValue(Formats.plainText, (value) {
-    if (value != null) {
-      editor.execute([InsertPlainTextAtCaretRequest(value)]);
+Future<bool> _maybePasteMarkdown(Editor editor, ClipboardReader reader) async {
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.md)) {
+      final completer = Completer<bool>();
+
+      final progress = item.getFile(
+        Formats.md,
+        (file) async {
+          final data = await file.readAll();
+          final markdown = utf8.decode(data);
+
+          if (markdown.isNotEmpty) {
+            editor.pasteMarkdown(editor, markdown);
+            completer.complete(true);
+          } else {
+            completer.complete(false);
+          }
+        },
+        onError: (_) {
+          completer.complete(false);
+        },
+      );
+      if (progress == null) {
+        // For some reason we couldn't get access to the file.
+        continue;
+      }
+
+      return completer.future;
     }
-  });
+  }
+
+  return false;
+}
+
+Future<bool> _maybePasteUrl(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return false;
+  }
+
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.uri)) {
+      final url = await item.readValue(Formats.uri);
+      if (url != null) {
+        editor.execute([
+          if (!selection.isCollapsed) //
+            const DeleteSelectionRequest(TextAffinity.downstream),
+          PasteEditorRequest(
+            content: url.uri.toString(),
+            pastePosition: selection.normalize(editor.document).start,
+          ),
+        ]);
+
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+Future<void> _pastePlainText(Editor editor, ClipboardReader reader) async {
+  final selection = editor.composer.selection;
+  if (selection == null) {
+    return;
+  }
+
+  for (final item in reader.items) {
+    if (item.canProvide(Formats.plainText)) {
+      final text = await item.readValue(Formats.plainText);
+      if (text != null) {
+        SECLog.paste.fine(" - found reader with plain text: '$text'");
+
+        DocumentPosition? pastePosition = selection.extent;
+
+        if (!selection.isCollapsed) {
+          pastePosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
+            document: editor.document,
+            selection: editor.composer.selection!,
+          );
+
+          if (pastePosition == null) {
+            // There are no deletable nodes in the selection. Do nothing.
+            return;
+          }
+
+          // Delete the selected content.
+          editor.execute([
+            DeleteContentRequest(documentRange: editor.composer.selection!),
+            ChangeSelectionRequest(
+              DocumentSelection.collapsed(position: pastePosition),
+              SelectionChangeType.deleteContent,
+              SelectionReason.userInteraction,
+            ),
+          ]);
+        }
+
+        // Paste clipboard text.
+        editor.execute([
+          PasteEditorRequest(
+            content: text,
+            pastePosition: pastePosition,
+          ),
+        ]);
+
+        return;
+      }
+    }
+  }
+
+  SECLog.paste.fine(" - Tried to paste plain text but didn't find any");
 }

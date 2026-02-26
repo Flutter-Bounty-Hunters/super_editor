@@ -139,7 +139,7 @@ void main() {
               ),
             ],
           ),
-          tagRule: const TagRule(trigger: "/"),
+          tagRule: TagRule(trigger: "/"),
         );
 
         // Place the caret at "before |"
@@ -178,7 +178,7 @@ void main() {
               ),
             ],
           ),
-          tagRule: const TagRule(trigger: "@", excludedCharacters: {" "}),
+          tagRule: TagRule(trigger: "@", excludedCharacters: {" "}),
         );
 
         // Place the caret at "before |"

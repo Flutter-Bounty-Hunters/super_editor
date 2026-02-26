@@ -39,6 +39,37 @@ void main() {
 
         await screenMatchesGolden(tester, "SuperText-text-scale-factor");
       });
+
+      testGoldensOnAndroid("respects max lines and overflow", (tester) async {
+        await tester.pumpWidget(
+          _buildScaffold(
+            child: const Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 24,
+                children: [
+                  SuperText(
+                    richText: _threeLineSpan,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SuperText(
+                    richText: _threeLineSpan,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SuperText(
+                    richText: _threeLineSpan,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        await screenMatchesGolden(tester, "SuperText-max-lines");
+      });
     });
   });
 }
