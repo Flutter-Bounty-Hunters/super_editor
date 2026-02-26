@@ -16,6 +16,7 @@ export 'src/core/styles.dart';
 
 // Chat
 export 'src/chat/message_page_scaffold.dart';
+export 'src/chat/plugins/chat_preview_mode_plugin.dart';
 export 'src/chat/super_message.dart';
 export 'src/chat/super_message_android_overlays.dart';
 export 'src/chat/super_message_android_touch_interactor.dart';
