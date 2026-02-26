@@ -429,58 +429,64 @@ class SuperDesktopTextFieldState extends State<SuperDesktopTextField> implements
 
     final isMultiline = widget.minLines != 1 || widget.maxLines != 1;
 
-    return TapRegion(
-      groupId: widget.tapRegionGroupId,
-      child: _buildTextInputSystem(
-        isMultiline: isMultiline,
-        // As we handle the scrolling gestures ourselves,
-        // we use NeverScrollableScrollPhysics to prevent SingleChildScrollView
-        // from scrolling. This also prevents the user from interacting
-        // with the scrollbar.
-        // We use a modified version of Flutter's Scrollbar that allows
-        // configuring it with a different scroll physics.
-        //
-        // See https://github.com/superlistapp/super_editor/issues/1628 for more details.
-        child: ScrollbarWithCustomPhysics(
-          controller: _scrollController,
-          physics: ScrollConfiguration.of(context).getScrollPhysics(context),
-          child: SuperTextFieldGestureInteractor(
-            focusNode: _focusNode,
-            textController: _controller,
-            textKey: _textKey,
-            textScrollKey: _textScrollKey,
-            isMultiline: isMultiline,
-            onRightClick: widget.onRightClick,
-            tapHandlers: widget.tapHandlers,
-            child: MultiListenableBuilder(
-              listenables: {
-                _focusNode,
-                _controller,
-              },
-              builder: (context) {
-                return _buildDecoration(
-                  child: SuperTextFieldScrollview(
-                    key: _textScrollKey,
-                    textKey: _textKey,
-                    textController: _controller,
-                    textAlign: _textAlign,
-                    scrollController: _scrollController,
-                    viewportHeight: _viewportHeight,
-                    estimatedLineHeight: _getEstimatedLineHeight(),
-                    isMultiline: isMultiline,
-                    child: FillWidthIfConstrained(
-                      child: Padding(
-                        // WARNING: Padding within the text scroll view must be placed here, under
-                        // FillWidthIfConstrained, rather than around it, because FillWidthIfConstrained makes
-                        // decisions about sizing that expects its child to fill all available space in the
-                        // ancestor Scrollable.
-                        padding: widget.padding,
-                        child: _buildSelectableText(),
+    return Semantics(
+      textField: true,
+      focusable: true,
+      focused: _focusNode.hasFocus,
+      value: _controller.text.toPlainText(),
+      child: TapRegion(
+        groupId: widget.tapRegionGroupId,
+        child: _buildTextInputSystem(
+          isMultiline: isMultiline,
+          // As we handle the scrolling gestures ourselves,
+          // we use NeverScrollableScrollPhysics to prevent SingleChildScrollView
+          // from scrolling. This also prevents the user from interacting
+          // with the scrollbar.
+          // We use a modified version of Flutter's Scrollbar that allows
+          // configuring it with a different scroll physics.
+          //
+          // See https://github.com/superlistapp/super_editor/issues/1628 for more details.
+          child: ScrollbarWithCustomPhysics(
+            controller: _scrollController,
+            physics: ScrollConfiguration.of(context).getScrollPhysics(context),
+            child: SuperTextFieldGestureInteractor(
+              focusNode: _focusNode,
+              textController: _controller,
+              textKey: _textKey,
+              textScrollKey: _textScrollKey,
+              isMultiline: isMultiline,
+              onRightClick: widget.onRightClick,
+              tapHandlers: widget.tapHandlers,
+              child: MultiListenableBuilder(
+                listenables: {
+                  _focusNode,
+                  _controller,
+                },
+                builder: (context) {
+                  return _buildDecoration(
+                    child: SuperTextFieldScrollview(
+                      key: _textScrollKey,
+                      textKey: _textKey,
+                      textController: _controller,
+                      textAlign: _textAlign,
+                      scrollController: _scrollController,
+                      viewportHeight: _viewportHeight,
+                      estimatedLineHeight: _getEstimatedLineHeight(),
+                      isMultiline: isMultiline,
+                      child: FillWidthIfConstrained(
+                        child: Padding(
+                          // WARNING: Padding within the text scroll view must be placed here, under
+                          // FillWidthIfConstrained, rather than around it, because FillWidthIfConstrained makes
+                          // decisions about sizing that expects its child to fill all available space in the
+                          // ancestor Scrollable.
+                          padding: widget.padding,
+                          child: _buildSelectableText(),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),
