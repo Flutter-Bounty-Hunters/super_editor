@@ -1,9 +1,13 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/src/foundation/basic_types.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
 import 'package:super_editor_clipboard/super_editor_clipboard.dart';
+import 'package:super_native_extensions/raw_clipboard.dart' show DataReaderItem;
 
 void main() {
   group("Max > Super Editor > copy and paste >", () {
@@ -102,6 +106,54 @@ void main() {
             position: DocumentPosition(
               nodeId: "1",
               nodePosition: TextNodePosition(offset: 17),
+            ),
+          ),
+        );
+      });
+
+      test("ignores style tags", () {
+        const html = "<meta charset='utf-8'><style>.p { color: BLACK; }</style><p>Hello, World!</p>";
+        final editor = createDefaultDocumentEditor(
+          document: MutableDocument(
+            nodes: [ParagraphNode(id: "1", text: AttributedText())],
+          ),
+        );
+
+        // Place the caret so we know where to paste.
+        editor.execute([
+          ChangeSelectionRequest(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: "1",
+                nodePosition: TextNodePosition(offset: 0),
+              ),
+            ),
+            SelectionChangeType.placeCaret,
+            SelectionReason.userInteraction,
+          ),
+        ]);
+
+        // Paste the HTML.
+        editor.pasteHtml(editor, html);
+
+        // Ensure the HTML was turned into the expected document, with the
+        // expected selection.
+        expect(
+          editor.document,
+          documentEquivalentTo(
+            MutableDocument(
+              nodes: [
+                ParagraphNode(id: "1", text: AttributedText("Hello, World!")),
+              ],
+            ),
+          ),
+        );
+        expect(
+          editor.composer.selection,
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: "1",
+              nodePosition: TextNodePosition(offset: 13),
             ),
           ),
         );
@@ -388,6 +440,119 @@ void main() {
         );
       });
     });
+
+    test("URLs", () async {
+      // Note: Clipboards have a dedicated URL/URI data type. For example, opening
+      // a webpage in mobile Safari and then using the browser's share feature
+      // saves a URI to the clipboard - not plain text, and not an HTML link.
+      final editor = createDefaultDocumentEditor(
+        document: MutableDocument(
+          nodes: [ParagraphNode(id: "1", text: AttributedText())],
+        ),
+      );
+
+      // Place the caret so we know where to paste.
+      editor.execute([
+        ChangeSelectionRequest(
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: "1",
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+          ),
+          SelectionChangeType.placeCaret,
+          SelectionReason.userInteraction,
+        ),
+      ]);
+
+      // Setup fake clipboard with a URL in plain text.
+      final fakeClipboard = _FakeClipboard(_FakeClipboardReader({
+        Formats.uri,
+      }, [
+        _FakeUrlTextReaderItem("https://google.com"),
+      ]));
+
+      await pasteIntoEditorFromNativeClipboard(editor, testClipboard: fakeClipboard);
+
+      final urlAttribution = LinkAttribution("https://google.com");
+      expect(
+        editor.document,
+        documentEquivalentTo(
+          MutableDocument(
+            nodes: [
+              ParagraphNode(
+                id: "1",
+                text: AttributedText(
+                  "https://google.com",
+                  AttributedSpans(
+                    attributions: [
+                      SpanMarker(attribution: urlAttribution, offset: 0, markerType: SpanMarkerType.start),
+                      SpanMarker(attribution: urlAttribution, offset: 17, markerType: SpanMarkerType.end),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+
+    group("plain text >", () {
+      test("parses URLs", () async {
+        final editor = createDefaultDocumentEditor(
+          document: MutableDocument(
+            nodes: [ParagraphNode(id: "1", text: AttributedText())],
+          ),
+        );
+
+        // Place the caret so we know where to paste.
+        editor.execute([
+          ChangeSelectionRequest(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: "1",
+                nodePosition: TextNodePosition(offset: 0),
+              ),
+            ),
+            SelectionChangeType.placeCaret,
+            SelectionReason.userInteraction,
+          ),
+        ]);
+
+        // Setup fake clipboard with a URL in plain text.
+        final fakeClipboard = _FakeClipboard(_FakeClipboardReader({
+          Formats.plainText,
+        }, [
+          _FakePlainTextReaderItem("Hello, https://google.com world"),
+        ]));
+
+        await pasteIntoEditorFromNativeClipboard(editor, testClipboard: fakeClipboard);
+
+        final urlAttribution = LinkAttribution("https://google.com");
+        expect(
+          editor.document,
+          documentEquivalentTo(
+            MutableDocument(
+              nodes: [
+                ParagraphNode(
+                  id: "1",
+                  text: AttributedText(
+                    "Hello, https://google.com world",
+                    AttributedSpans(
+                      attributions: [
+                        SpanMarker(attribution: urlAttribution, offset: 7, markerType: SpanMarkerType.start),
+                        SpanMarker(attribution: urlAttribution, offset: 24, markerType: SpanMarkerType.end),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      });
+    });
   });
 }
 
@@ -487,3 +652,246 @@ final _tableCells = [
     ),
   ],
 ];
+
+class _FakeClipboard implements SystemClipboard {
+  _FakeClipboard(this._reader);
+
+  final ClipboardReader _reader;
+
+  @override
+  Future<ClipboardReader> read() async => _reader;
+
+  @override
+  Future<void> write(Iterable<DataWriterItem> items) {
+    throw UnimplementedError();
+  }
+}
+
+class _FakeClipboardReader implements ClipboardReader {
+  _FakeClipboardReader(this._holdingFormats, this._items);
+
+  final Set<DataFormat> _holdingFormats;
+
+  final List<ClipboardDataReader> _items;
+
+  @override
+  bool canProvide(DataFormat<Object> format) {
+    return _holdingFormats.contains(format);
+  }
+
+  @override
+  bool hasValue(DataFormat<Object> format) {
+    // TODO: implement hasValue
+    throw UnimplementedError();
+  }
+
+  @override
+  List<DataFormat<Object>> getFormats(List<DataFormat<Object>> allFormats) {
+    // TODO: implement getFormats
+    throw UnimplementedError();
+  }
+
+  @override
+  List<ClipboardDataReader> get items => List.from(_items);
+
+  @override
+  List<PlatformFormat> get platformFormats => throw UnimplementedError();
+
+  @override
+  DataReaderItem? get rawReader => throw UnimplementedError();
+
+  @override
+  Future<T?> readValue<T extends Object>(ValueFormat<T> format) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> getSuggestedName() {
+    // TODO: implement getSuggestedName
+    throw UnimplementedError();
+  }
+
+  @override
+  ReadProgress? getFile(
+    FileFormat? format,
+    AsyncValueChanged<DataReaderFile> onFile, {
+    ValueChanged<Object>? onError,
+    bool allowVirtualFiles = true,
+    bool synthesizeFilesFromURIs = true,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  ReadProgress? getValue<T extends Object>(ValueFormat<T> format, AsyncValueChanged<T?> onValue,
+      {ValueChanged<Object>? onError}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VirtualFileReceiver?> getVirtualFileReceiver({FileFormat? format}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  bool isSynthesized(DataFormat<Object> format) {
+    throw UnimplementedError();
+  }
+
+  @override
+  bool isVirtual(DataFormat<Object> format) {
+    throw UnimplementedError();
+  }
+}
+
+class _FakeUrlTextReaderItem implements ClipboardDataReader {
+  _FakeUrlTextReaderItem(this._uri);
+
+  final String _uri;
+
+  @override
+  bool canProvide(DataFormat<Object> format) {
+    return format == Formats.uri;
+  }
+
+  @override
+  List<DataFormat<Object>> getFormats(List<DataFormat<Object>> allFormats) {
+    return [Formats.uri];
+  }
+
+  @override
+  Future<T?> readValue<T extends Object>(ValueFormat<T> format) async {
+    return format.codec.decode(_SimpleProvider(_uri), "text/uri-list");
+  }
+
+  @override
+  ReadProgress? getFile(FileFormat? format, AsyncValueChanged<DataReaderFile> onFile,
+      {ValueChanged<Object>? onError, bool allowVirtualFiles = true, bool synthesizeFilesFromURIs = true}) {
+    // TODO: implement getFile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> getSuggestedName() {
+    // TODO: implement getSuggestedName
+    throw UnimplementedError();
+  }
+
+  @override
+  ReadProgress? getValue<T extends Object>(ValueFormat<T> format, AsyncValueChanged<T?> onValue,
+      {ValueChanged<Object>? onError}) {
+    // TODO: implement getValue
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VirtualFileReceiver?> getVirtualFileReceiver({FileFormat? format}) {
+    // TODO: implement getVirtualFileReceiver
+    throw UnimplementedError();
+  }
+
+  @override
+  bool hasValue(DataFormat<Object> format) {
+    return format == Formats.plainText;
+  }
+
+  @override
+  bool isSynthesized(DataFormat<Object> format) {
+    return false;
+  }
+
+  @override
+  bool isVirtual(DataFormat<Object> format) {
+    return false;
+  }
+
+  @override
+  // TODO: implement platformFormats
+  List<PlatformFormat> get platformFormats => throw UnimplementedError();
+
+  @override
+  // TODO: implement rawReader
+  DataReaderItem? get rawReader => throw UnimplementedError();
+}
+
+class _FakePlainTextReaderItem implements ClipboardDataReader {
+  _FakePlainTextReaderItem(this._plainText);
+
+  final String _plainText;
+
+  @override
+  bool canProvide(DataFormat<Object> format) {
+    return format == Formats.plainText;
+  }
+
+  @override
+  List<DataFormat<Object>> getFormats(List<DataFormat<Object>> allFormats) {
+    return [Formats.plainText];
+  }
+
+  @override
+  Future<T?> readValue<T extends Object>(ValueFormat<T> format) async {
+    return format.codec.decode(_SimpleProvider(_plainText), "public.utf8-plain-text");
+  }
+
+  @override
+  ReadProgress? getFile(FileFormat? format, AsyncValueChanged<DataReaderFile> onFile,
+      {ValueChanged<Object>? onError, bool allowVirtualFiles = true, bool synthesizeFilesFromURIs = true}) {
+    // TODO: implement getFile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> getSuggestedName() {
+    // TODO: implement getSuggestedName
+    throw UnimplementedError();
+  }
+
+  @override
+  ReadProgress? getValue<T extends Object>(ValueFormat<T> format, AsyncValueChanged<T?> onValue,
+      {ValueChanged<Object>? onError}) {
+    // TODO: implement getValue
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VirtualFileReceiver?> getVirtualFileReceiver({FileFormat? format}) {
+    // TODO: implement getVirtualFileReceiver
+    throw UnimplementedError();
+  }
+
+  @override
+  bool hasValue(DataFormat<Object> format) {
+    return format == Formats.plainText;
+  }
+
+  @override
+  bool isSynthesized(DataFormat<Object> format) {
+    return false;
+  }
+
+  @override
+  bool isVirtual(DataFormat<Object> format) {
+    return false;
+  }
+
+  @override
+  // TODO: implement platformFormats
+  List<PlatformFormat> get platformFormats => throw UnimplementedError();
+
+  @override
+  // TODO: implement rawReader
+  DataReaderItem? get rawReader => throw UnimplementedError();
+}
+
+class _SimpleProvider extends PlatformDataProvider {
+  final Object data;
+
+  _SimpleProvider(this.data);
+
+  @override
+  List<PlatformFormat> getAllFormats() => [];
+
+  @override
+  Future<Object?> getData(PlatformFormat format) async => data;
+}

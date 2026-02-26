@@ -1,6 +1,6 @@
 name: super_editor_clipboard
 description: "Rich text copy/paste extensions on super_editor."
-version: 0.2.5
+version: 0.2.9
 repository: https://github.com/superlistapp/super_editor/
 
 environment:
@@ -31,6 +31,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   super_text_layout: ^0.1.19
+  super_native_extensions: ^0.9.1
 
 flutter:
   plugin:

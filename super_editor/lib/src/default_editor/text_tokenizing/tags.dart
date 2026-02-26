@@ -41,7 +41,7 @@ class TagFinder {
       return null;
     }
 
-    // Move upstream until we find the trigger character or an excluded character.
+    // Move upstream until we find a trigger character or an excluded character.
     while (iteratorUpstream.moveBack()) {
       final currentCharacter = iteratorUpstream.current;
       if (tagRule.excludedCharacters.contains(currentCharacter)) {
@@ -49,9 +49,10 @@ class TagFinder {
         return null;
       }
 
-      if (currentCharacter == tagRule.trigger) {
-        // The character we are reading is the trigger.
-        // We move the iteratorUpstream one last time to include the trigger in the tokenRange and stop looking any further upstream
+      if (tagRule.isTrigger(currentCharacter)) {
+        // The character we are reading is a trigger.
+        // We move the iteratorUpstream one last time to include the trigger in the tokenRange and stop looking any
+        // further upstream
         iteratorUpstream.moveBack();
         break;
       }
@@ -69,7 +70,7 @@ class TagFinder {
     final tokenRange = SpanRange(tokenStartOffset, splitIndex + iteratorDownstream.stringBeforeLength);
 
     final tagText = text.substringInRange(tokenRange);
-    if (!tagText.startsWith(tagRule.trigger)) {
+    if (!tagRule.doesTextStartWithTrigger(tagText)) {
       return null;
     }
 
@@ -80,7 +81,7 @@ class TagFinder {
 
     return TagAroundPosition(
       indexedTag: IndexedTag(
-        Tag(tagRule.trigger, tagText.substring(1)),
+        Tag(tagRule.extractTriggerFrom(tagText)!, tagText.substring(1)),
         nodeId,
         tokenStartOffset,
       ),
@@ -97,7 +98,7 @@ class TagFinder {
     int? tagStartIndex;
     late StringBuffer tagBuffer;
     for (final character in plainText.characters) {
-      if (character == rule.trigger) {
+      if (rule.isTrigger(character)) {
         if (tagStartIndex != null) {
           // We found a trigger, but we're still accumulating a tag from an earlier
           // trigger. End the tag we were accumulating.
@@ -182,15 +183,97 @@ class TagAroundPosition {
 
 /// A rule for matching a text token to a tag.
 ///
-/// A tag begins with a [trigger] character, and is then followed by one or more
+/// A tag begins with a character in [triggers], and is then followed by one or more
 /// non-whitespace characters, except for [excludedCharacters].
 class TagRule {
-  const TagRule({
-    required this.trigger,
+  TagRule.multiple(
+    this.triggers, {
     this.excludedCharacters = const {},
-  }) : assert(trigger.length == 1, "Trigger must be exactly one character long");
+  }) : assert(triggers.isNotEmpty, "At least one trigger must be provided") {
+    for (final trigger in triggers) {
+      assert(trigger.length == 1, "Triggers must be exactly one character long");
+    }
+  }
 
-  final String trigger;
+  TagRule({
+    required String trigger,
+    this.excludedCharacters = const {},
+  }) : assert(trigger.length == 1, "Trigger must be exactly one character long") {
+    triggers = {trigger};
+  }
+
+  /// The set of `String`s that constitute the start of a "tag", within the context
+  /// of this rule.
+  late final Set<String> triggers;
+
+  /// Returns `true` if the given [text] matches any one of this rule's [triggers].
+  bool isTrigger(String text) => triggers.contains(text);
+
+  /// Returns `true` if the given [text] starts with any one of this rule's [triggers].
+  bool doesTextStartWithTrigger(String text) => extractTriggerFrom(text) != null;
+
+  /// Returns `true` if the given [text] contains any [triggers] anywhere within the
+  /// text, or `false` if it doesn't.
+  bool doesTextContainTriggers(String text) {
+    for (final trigger in triggers) {
+      if (text.contains(trigger)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Searches [candidate] for triggers, starting from the beginning, to the end, and
+  /// returns a list with every trigger and that trigger's index in [candidate].
+  List<(int index, String trigger)> findAllTriggers(String candidate) {
+    final triggers = <(int index, String trigger)>[];
+    var searchIndex = 0;
+    while (searchIndex < candidate.length) {
+      final nextTrigger = findNextTrigger(candidate, searchIndex);
+      if (nextTrigger == null) {
+        break;
+      }
+
+      triggers.add(nextTrigger);
+      searchIndex = nextTrigger.$1 + 1;
+    }
+
+    return triggers;
+  }
+
+  /// Inspects text in [candidate], beginning at [start], and returns the index and trigger
+  /// for the first trigger found at or after [start], or `null` if no trigger is found in
+  /// the remaining text.
+  (int index, String trigger)? findNextTrigger(String candidate, [int start = 0]) {
+    var index = start;
+    while (index < candidate.length) {
+      final trigger = extractTriggerFrom(candidate.substring(index));
+      if (trigger != null) {
+        return (index, trigger);
+      }
+
+      index += 1;
+    }
+
+    return null;
+  }
+
+  String? extractTriggerFrom(String candidate) {
+    for (final trigger in triggers) {
+      if (candidate.startsWith(trigger)) {
+        return trigger;
+      }
+    }
+    return null;
+  }
+
+  @Deprecated("Use 'triggers' and 'hasTrigger' instead - plugin now supports multiple triggers")
+  String get trigger {
+    assert(triggers.length == 1);
+
+    return triggers.first;
+  }
+
   final Set<String> excludedCharacters;
 
   /// Returns `true` if the entire [candidate] complies with this [TagRule].
@@ -204,7 +287,7 @@ class TagRule {
   ///     "flutter" returns `false`.
   ///
   bool isTag(String candidate) {
-    if (!candidate.startsWith(trigger)) {
+    if (!doesTextStartWithTrigger(candidate)) {
       return false;
     }
 
@@ -227,7 +310,8 @@ class TagRule {
   ///     "flutter" -> `null`
   ///
   String? findTagAtBeginning(String candidate) {
-    if (!candidate.startsWith(trigger)) {
+    final trigger = extractTriggerFrom(candidate);
+    if (trigger == null) {
       return null;
     }
 
@@ -240,7 +324,7 @@ class TagRule {
       buffer.write(character);
     }
 
-    if (buffer.length == 1) {
+    if (buffer.length == trigger.length) {
       // We didn't find any non-excluded characters after the trigger.
       return null;
     }

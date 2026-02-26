@@ -1,3 +1,31 @@
+## [0.2.9]
+### Feb 25, 2026
+* Feature: Added Markdown to the series of default clipboard paste behaviors that is attempted when
+  pasting from the native clipboard.
+* Feature: Added an API to provide HTML tags that you want to ignore when pasting HTML.
+* Fix: When pasting HTML, and we do an intermediate conversion to Markdown, we now force
+  ATX-style headers, which prevents a bug where Setext-style headers were ending up in the
+  final document.
+
+## [0.2.8]
+### Feb 22, 2026
+* Updated `SuperEditorIosControlsControllerWithNativePaste` constructor API to take in
+  custom clipboard format inserts, to match the new configuration of `pasteIntoEditorFromNativeClipboard`. 
+
+## [0.2.7]
+### Feb 21, 2026
+* `pasteIntoEditorFromNativeClipboard` improvements:
+  * URL data type is now pasted from clipboard.
+  * Plain text uses the standard `super_editor` parser to infer semantics, e.g., parse links.
+  * Custom clipboard data inserters can now be provided on a per-format basis instead of just one big custom delegate.
+  * When pasting HTML, `<style>` and `<script>` tags are now ignored so that their content is not
+    inserted into the document. Any such tags can be listed to be ignored.
+
+## [0.2.6]
+### Feb 16, 2026
+* Fix method that uses `super_clipboard` to paste ito an `Editor`. Something about how we
+  were using the APIs was resulting in mobile paste doing nothing. Now it should be working.
+
 ## [0.2.5]
 ### Jan 28, 2026
 * Expose public method for native clipboard pasting into `Editor`: `pasteIntoEditorFromNativeClipboard`.
