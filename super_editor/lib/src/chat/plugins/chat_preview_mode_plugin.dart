@@ -14,6 +14,7 @@ class ChatPreviewModePlugin extends SuperEditorPlugin {
   /// Returns `true` if this plugin is currently restricting the editor visuals
   /// to "preview mode", or `false` if this plugin is doing nothing.
   bool get isInPreviewMode => _previewStylePhase.isInPreviewMode;
+  set isInPreviewMode(bool newValue) => _previewStylePhase.isInPreviewMode = newValue;
 
   set _isInPreviewMode(bool newValue) => _previewStylePhase.isInPreviewMode = newValue;
 

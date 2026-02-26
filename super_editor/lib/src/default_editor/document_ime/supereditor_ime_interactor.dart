@@ -265,6 +265,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     _configureImeClientDecorators();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print(
+          "SuperEditorImeInteractorState ($hashCode) (isImeConnected - ${widget.isImeConnected.hashCode}) - init state callback");
       // Synchronize the IME connection notifier with our IME connection state. We run
       // this in a post-frame callback because the very first pump of the Super Editor
       // widget tree won't have Super Editor connected as an IME delegate, yet.
@@ -277,6 +279,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    print("IME interactor - didChangeDependencies");
     _controlsController = SuperEditorIosControlsScope.maybeRootOf(context);
     _documentImeClient.floatingCursorController =
         widget.floatingCursorController ?? _controlsController?.floatingCursorController;
@@ -286,6 +289,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   @override
   void didUpdateWidget(SuperEditorImeInteractor oldWidget) {
+    print("IME interactor - didUpdateWidget");
     super.didUpdateWidget(oldWidget);
 
     if (widget.focusNode != oldWidget.focusNode) {
@@ -319,6 +323,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (widget.imeConfiguration != oldWidget.imeConfiguration) {
+      print("IME interactor - updating IME configuration");
       _textInputConfiguration = widget.imeConfiguration.toTextInputConfiguration(viewId: View.of(context).viewId);
       if (isAttachedToIme) {
         SuperIme.instance.getImeConnectionForOwner(_myImeId)!.updateConfig(_textInputConfiguration);
