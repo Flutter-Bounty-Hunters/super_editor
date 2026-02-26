@@ -169,6 +169,16 @@ class SuperEditorInspector {
     return widget as WidgetType;
   }
 
+  static WidgetType? maybeFindWidgetForComponent<WidgetType>(String nodeId, [Finder? superEditorFinder]) {
+    final documentLayout = findDocumentLayout(superEditorFinder);
+    final widget = (documentLayout.getComponentByNodeId(nodeId) as State?)?.widget;
+    if (widget != null && widget is! WidgetType) {
+      throw Exception("Looking for a component's widget. Expected type $WidgetType, but found ${widget.runtimeType}");
+    }
+
+    return widget as WidgetType;
+  }
+
   /// Returns the [AttributedText] within the [ParagraphNode] associated with the
   /// given [nodeId].
   ///
