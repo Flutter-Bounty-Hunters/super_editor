@@ -1,0 +1,52 @@
+# This script is the same as our auto-cherry-pick to `stable` branch, except
+# it goes to a temporary branch, which maintains compilation with Flutter versions
+# up to v3.38, before Flutter broke IME after that.
+name: Cherry pick to stable-up-to-flutter-v3.38
+on:
+  pull_request:
+    branches:
+      - main
+    types: ["closed"]
+
+jobs:
+  cherry-pick-to-stable:
+    runs-on: ubuntu-latest
+    name: Cherry pick from main to stable_up-to-flutter-3.38
+
+    # Only cherry pick merged PRs. Don't merge PRs marked with "no-cherry-pick" label.
+    if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'no-cherry-pick') }}
+
+    # These ENV variables can be accessed directly when they're used in shell commands, e.g.:
+    #
+    #     echo "My name is $NAME"
+    # 
+    # When referencing ENV variables in declarative YAML, they must be accessed via "env.", e.g.:
+    #
+    #     someProperty: "My name is ${{ env.NAME }}"
+    #
+    # GitHub pull request data: https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
+    env:
+      CHERRY_PICK_BRANCH_NAME: "cherry-pick_${{ github.event.pull_request.head.ref }}_${{ github.event.pull_request.merge_commit_sha }}"
+      CHERRY_PICK_PR_TITLE: "Cherry Pick: ${{ github.event.pull_request.title }}"
+      CHERRY_PICK_PR_BODY: "Cherry Pick: Original PR - #${{ github.event.pull_request.number }}"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0    
+
+      - name: Cherry pick into stable_up-to-flutter-3.38
+        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
+        with:
+          branch: stable_up-to-flutter-3.38
+          cherry-pick-branch: "${{ env.CHERRY_PICK_BRANCH_NAME }}"
+          title: "${{ env.CHERRY_PICK_PR_TITLE }}"
+          body: "${{ env.CHERRY_PICK_PR_BODY }}"
+          labels: |
+            cherry-pick
+          reviewers: |
+            matthew-carroll
+            "${{ gitHub.event.pull_request.user.login }}"
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
