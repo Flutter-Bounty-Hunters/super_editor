@@ -1,352 +1,78 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:super_editor/src/test/super_editor_test/supereditor_inspector.dart';
+import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_keyboard/super_keyboard.dart';
 
-/// A chat experience, which includes a simulated list of comments, as well as
-/// a bottom-mounted message editor, which uses `SuperEditor` for writing messages.
-class SuperEditorMessagePageDemo extends StatefulWidget {
-  const SuperEditorMessagePageDemo({super.key});
+import '../infrastructure/keyboard_panel_scaffold_test.dart';
 
-  @override
-  State<SuperEditorMessagePageDemo> createState() => _SuperEditorMessagePageDemoState();
-}
+void main() {
+  group("Chat > preview mode >", () {
+    testWidgetsOnMobilePhone("activates and deactivates with focus", (tester) async {
+      await _pumpScaffold(tester, _longDocument);
 
-class _SuperEditorMessagePageDemoState extends State<SuperEditorMessagePageDemo> {
-  @override
-  void initState() {
-    super.initState();
+      // Ensure we begin in preview mode, hiding everything after the first
+      // component.
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("1"), isNotNull);
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("2"), isNull);
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
 
-    SKLog.startLogging();
-  }
+      // Tap the editor to focus it, and disable preview mode.
+      await tester.placeCaretInParagraph("1", 0);
 
-  @override
-  void dispose() {
-    SKLog.stopLogging();
-
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _ChatPage(
-      inputRole: "Home",
-    );
-  }
-}
-
-class _ChatPage extends StatefulWidget {
-  const _ChatPage({
-    required this.inputRole,
+      // Ensure we're now in normal mode, showing the entire document.
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("1"), isNotNull);
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("2"), isNotNull);
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNotNull);
+    });
   });
-
-  final String inputRole;
-
-  @override
-  State<_ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<_ChatPage> {
-  final _messagePageController = MessagePageController();
+final _longDocument = MutableDocument(
+  nodes: [
+    ParagraphNode(
+      id: "1",
+      text: AttributedText("This is the first paragraph which takes up multiple lines of height."),
+    ),
+    ParagraphNode(id: "2", text: AttributedText("This is paragraph 2.")),
+    ParagraphNode(id: "3", text: AttributedText("This is paragraph 3.")),
+  ],
+);
 
-  @override
-  void dispose() {
-    _messagePageController.dispose();
-    super.dispose();
-  }
+Future<void> _pumpScaffold(WidgetTester tester, MutableDocument document) async {
+  final editor = createDefaultAiMessageEditor(document: document);
+  final messagePageController = MessagePageController();
+  final scrollController = ScrollController();
 
-  @override
-  Widget build(BuildContext context) {
-    return MessagePageScaffold(
-      controller: _messagePageController,
-      bottomSheetMinimumTopGap: 150,
-      bottomSheetMinimumHeight: 148,
-      contentBuilder: (contentContext, bottomSpacing) {
-        return MediaQuery.removePadding(
-          context: contentContext,
-          removeBottom: true,
-          // ^ Remove bottom padding because if we don't, when the keyboard
-          //   opens to edit the bottom sheet, this content behind the bottom
-          //   sheet adds some phantom space at the bottom, slightly pushing
-          //   it up for no reason.
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ColoredBox(color: Colors.purpleAccent.shade100),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: bottomSpacing,
-                child: _ChatThread(),
-              ),
-            ],
-          ),
-        );
-      },
-      bottomSheetBuilder: (messageContext) {
-        return _EditorBottomSheet(
-          messagePageController: _messagePageController,
-          inputRole: widget.inputRole,
-        );
-      },
-    );
-  }
-}
-
-/// A simulated chat conversation thread, which is simulated as a bottom-aligned
-/// list of tiles.
-class _ChatThread extends StatelessWidget {
-  const _ChatThread();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      reverse: true,
-      // ^ The list starts at the bottom and grows upward. This is how
-      //   we should layout chat conversations where the most recent
-      //   message appears at the bottom, and you want to retain the
-      //   scroll offset near the newest messages, not the oldest.
-      itemBuilder: (context, index) {
-        if (index == 8) {
-          // Arbitrarily placed text field to test moving focus between a non-editor
-          // and the editor.
-          return TextField(
-            decoration: InputDecoration(
-              hintText: "Content text field...",
-            ),
-          );
-        }
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Material(
-            color: Colors.white.withValues(alpha: 0.5),
-            child: ListTile(
-              title: Text("Item $index"),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) {
-                      return Scaffold(
-                        resizeToAvoidBottomInset: false,
-                        body: _ChatPage(
-                          inputRole: "Subpage-${Random().nextInt(1000)}",
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Bottom sheet, which includes a message editor.
-class _EditorBottomSheet extends StatefulWidget {
-  const _EditorBottomSheet({
-    required this.messagePageController,
-    required this.inputRole,
-  });
-
-  final MessagePageController messagePageController;
-  final String inputRole;
-
-  @override
-  State<_EditorBottomSheet> createState() => _EditorBottomSheetState();
-}
-
-class _EditorBottomSheetState extends State<_EditorBottomSheet> {
-  final _dragIndicatorKey = GlobalKey();
-
-  final _scrollController = ScrollController();
-
-  final _editorSheetKey = GlobalKey();
-  late final Editor _editor;
-
-  final _hasSelection = ValueNotifier(false);
-
-  @override
-  void initState() {
-    super.initState();
-
-    _editor = createDefaultDocumentEditor(
-      document: MutableDocument(
-        nodes: [
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("This is a pre-existing"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("message"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("It's tall for quick"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("testing of"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("intrinsic height that"),
-          ),
-          ParagraphNode(
-            id: Editor.createNodeId(),
-            text: AttributedText("exceeds available space"),
-          ),
-        ],
-      ),
-      composer: MutableDocumentComposer(),
-    );
-    _editor.composer.selectionNotifier.addListener(_onSelectionChange);
-  }
-
-  @override
-  void dispose() {
-    _editor.composer.selectionNotifier.removeListener(_onSelectionChange);
-    _editor.dispose();
-
-    _scrollController.dispose();
-
-    super.dispose();
-  }
-
-  void _onSelectionChange() {
-    _hasSelection.value = _editor.composer.selection != null;
-
-    // If the editor doesn't have a selection then when it's collapsed it
-    // should be in preview mode. If the editor does have a selection, then
-    // when it's collapsed, it should be in intrinsic height mode.
-    widget.messagePageController.collapsedMode =
-        _hasSelection.value ? MessagePageSheetCollapsedMode.intrinsic : MessagePageSheetCollapsedMode.preview;
-  }
-
-  double _dragTouchOffsetFromIndicator = 0;
-
-  void _onVerticalDragStart(DragStartDetails details) {
-    _dragTouchOffsetFromIndicator = _dragFingerOffsetFromIndicator(details.globalPosition);
-
-    widget.messagePageController.onDragStart(
-      details.globalPosition.dy - _dragIndicatorOffsetFromTop + _dragTouchOffsetFromIndicator,
-    );
-  }
-
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    widget.messagePageController.onDragUpdate(
-      details.globalPosition.dy - _dragIndicatorOffsetFromTop + _dragTouchOffsetFromIndicator,
-    );
-  }
-
-  void _onVerticalDragEnd(DragEndDetails details) {
-    widget.messagePageController.onDragEnd();
-  }
-
-  void _onVerticalDragCancel() {
-    widget.messagePageController.onDragEnd();
-  }
-
-  double get _dragIndicatorOffsetFromTop {
-    final editorSheetBox = _editorSheetKey.currentContext!.findRenderObject();
-    final dragIndicatorBox = _dragIndicatorKey.currentContext!.findRenderObject()! as RenderBox;
-
-    return dragIndicatorBox.localToGlobal(Offset.zero, ancestor: editorSheetBox).dy;
-  }
-
-  double _dragFingerOffsetFromIndicator(Offset globalDragOffset) {
-    final dragIndicatorBox = _dragIndicatorKey.currentContext!.findRenderObject()! as RenderBox;
-
-    return dragIndicatorBox.localToGlobal(Offset.zero).dy - globalDragOffset.dy;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      key: _editorSheetKey,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.5),
-        border: Border(top: BorderSide(color: Colors.grey)),
-      ),
-      child: KeyboardScaffoldSafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildDragHandle(),
-            Flexible(
-              child: _buildSheetContent(),
-            ),
-          ],
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: MessagePageScaffold(
+          controller: messagePageController,
+          contentBuilder: (context, bottomSpacing) {
+            return const SizedBox();
+          },
+          bottomSheetBuilder: (context) {
+            return _ChatEditor(
+              editor: editor,
+              inputRole: 'chat-preview-test-editor',
+              messagePageController: messagePageController,
+              scrollController: scrollController,
+            );
+          },
         ),
       ),
-    );
-  }
-
-  Widget _buildSheetContent() {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.paddingOf(context).bottom,
-        // ^ Avoid the bottom notch when the keyboard is closed.
-      ),
-      child: BottomSheetEditorHeight(
-        previewHeight: 72,
-        child: _ChatEditor(
-          key: _editorKey,
-          editor: _editor,
-          inputRole: widget.inputRole,
-          messagePageController: widget.messagePageController,
-          scrollController: _scrollController,
-        ),
-      ),
-    );
-  }
-
-  // FIXME: Keyboard keeps closing without a bunch of global keys. Either
-  //        document why, or figure out how to operate without all the keys.
-  final _editorKey = GlobalKey();
-
-  Widget _buildDragHandle() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        GestureDetector(
-          onVerticalDragStart: _onVerticalDragStart,
-          onVerticalDragUpdate: _onVerticalDragUpdate,
-          onVerticalDragEnd: _onVerticalDragEnd,
-          onVerticalDragCancel: _onVerticalDragCancel,
-          behavior: HitTestBehavior.opaque,
-          // ^ Opaque to handle tough events in our invisible padding.
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            // ^ Expand the hit area with invisible padding.
-            child: Container(
-              key: _dragIndicatorKey,
-              width: 32,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    ),
+  );
 }
 
-/// An editor for composing chat messages.
+// TODO: When we have a good selection of public chat editor APIs, delete all of the
+//       following infrastructure and replace it with the standard public versions from
+//       the package (at the time of writing, we don't have ready-made public chat APIs yet).
 class _ChatEditor extends StatefulWidget {
   const _ChatEditor({
-    super.key,
     required this.editor,
     required this.inputRole,
     required this.messagePageController,
@@ -471,7 +197,7 @@ class _ChatEditorState extends State<_ChatEditor> {
                     _keyboardPanelController.showKeyboardPanel(_Panel.thePanel);
                   });
                 },
-                icon: Icon(Icons.add),
+                icon: const Icon(Icons.add),
               ),
             ),
             Expanded(child: _buildEditor()),
@@ -484,7 +210,7 @@ class _ChatEditorState extends State<_ChatEditor> {
 
                 return child!;
               },
-              child: IconButton(onPressed: () {}, icon: Icon(Icons.multitrack_audio)),
+              child: IconButton(onPressed: () {}, icon: const Icon(Icons.multitrack_audio)),
             ),
           ],
         );
@@ -507,14 +233,14 @@ class _ChatEditorState extends State<_ChatEditor> {
                     _keyboardPanelController.showSoftwareKeyboard();
                   }
                 },
-                child: Icon(Icons.add),
+                child: const Icon(Icons.add),
               ),
-              Spacer(),
+              const Spacer(),
               GestureDetector(
                 onTap: () {
                   _softwareKeyboardController.close();
                 },
-                child: Icon(Icons.keyboard_hide_outlined),
+                child: const Icon(Icons.keyboard_hide_outlined),
               ),
             ],
           ),
@@ -522,7 +248,7 @@ class _ChatEditorState extends State<_ChatEditor> {
       },
       keyboardPanelBuilder: (BuildContext context, _Panel? openPanel) {
         if (openPanel == null) {
-          return SizedBox();
+          return const SizedBox();
         }
 
         return Container(width: double.infinity, height: 300, color: Colors.red);
@@ -531,7 +257,7 @@ class _ChatEditorState extends State<_ChatEditor> {
   }
 
   Widget _buildEditor() {
-    return SuperEditorFocusOnTap(
+    return _SuperEditorFocusOnTap(
       editorFocusNode: _editorFocusNode,
       editor: widget.editor,
       child: SuperEditorDryLayout(
@@ -543,12 +269,12 @@ class _ChatEditorState extends State<_ChatEditor> {
           inputRole: widget.inputRole,
           softwareKeyboardController: _softwareKeyboardController,
           isImeConnected: _isImeConnected,
-          imePolicies: SuperEditorImePolicies(),
-          selectionPolicies: SuperEditorSelectionPolicies(),
+          imePolicies: const SuperEditorImePolicies(),
+          selectionPolicies: const SuperEditorSelectionPolicies(),
           shrinkWrap: false,
           stylesheet: _chatStylesheet,
-          componentBuilders: [
-            const HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+          componentBuilders: const [
+            HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
             ...defaultComponentBuilders,
           ],
           plugins: {
@@ -645,9 +371,13 @@ final _chatStylesheet = Stylesheet(
   inlineWidgetBuilders: defaultInlineWidgetBuilderChain,
 );
 
-TextStyle _hintTextStyleBuilder(context) => TextStyle(
+TextStyle _hintTextStyleBuilder(context) => const TextStyle(
       color: Colors.grey,
     );
+
+enum _Panel {
+  thePanel;
+}
 
 // FIXME: This widget is required because of the current shrink wrap behavior
 //        of Super Editor. If we set `shrinkWrap` to `false` then the bottom
@@ -663,8 +393,8 @@ TextStyle _hintTextStyleBuilder(context) => TextStyle(
 ///
 /// It's expected that the [child] subtree contains the associated `SuperEditor`,
 /// which owns the [editor] and [editorFocusNode].
-class SuperEditorFocusOnTap extends StatelessWidget {
-  const SuperEditorFocusOnTap({
+class _SuperEditorFocusOnTap extends StatelessWidget {
+  const _SuperEditorFocusOnTap({
     super.key,
     required this.editorFocusNode,
     required this.editor,
@@ -722,8 +452,4 @@ class SuperEditorFocusOnTap extends StatelessWidget {
       )
     ]);
   }
-}
-
-enum _Panel {
-  thePanel;
 }

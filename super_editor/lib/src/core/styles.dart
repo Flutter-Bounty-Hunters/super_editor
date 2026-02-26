@@ -348,8 +348,14 @@ class Styles {
   /// Applies a [BorderRadius] to a blockquote.
   static const String borderRadius = 'borderRadius';
 
-  /// Applies a [TextAlign] to a text node.
+  /// Applies a [TextAlign] to a text component.
   static const String textAlign = 'textAlign';
+
+  /// Applies a max line count to a text component, or no limit if `null`.
+  static const String maxLines = 'maxLines';
+
+  /// Applies a text overflow effect to a text component, e.g., clip, ellipsis, fade, show.
+  static const String overflow = 'overflow';
 
   /// Defines the visual style for all custom underlines rendered by all
   /// text that matches the style rule selector.
