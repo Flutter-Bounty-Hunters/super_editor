@@ -250,7 +250,16 @@ class _MarkdownToDocument implements md.NodeVisitor {
           // as a list item with a checkbox input element.
           _addTask(element);
 
-          // Skip any child elements because we already added the task node.
+          // Manually visit any nested list children (ul/ol) since we need to process them,
+          // but we don't want to revisit all children (which would double-process the task text).
+          if (element.children != null) {
+            for (final child in element.children!) {
+              if (child is md.Element && (child.tag == 'ul' || child.tag == 'ol')) {
+                child.accept(this);
+              }
+            }
+          }
+
           return false;
         }
 
@@ -447,10 +456,28 @@ class _MarkdownToDocument implements md.NodeVisitor {
       checked = (element.children!.first as md.Element).attributes['checked'] == 'true';
     }
 
+    // Extract text content following the same pattern as _addListItem.
+    // Task structure: input (checkbox), then text content (possibly UnparsedContent), then possibly nested ul/ol.
+    // Like list items, if there's an UnparsedContent child it contains just the task's text, not nested list text.
+    late String content;
+
+    final unparsedContent = element.children?.whereType<md.UnparsedContent>().firstOrNull;
+    if (unparsedContent != null) {
+      // UnparsedContent contains just this task's text, excluding nested list text.
+      content = unparsedContent.textContent;
+    } else {
+      // Fallback: element.textContent would include nested list text, so filter it out.
+      bool isNotExcludedElement(md.Node child) =>
+          child is! md.Element || !const ['ul', 'ol', 'input'].contains(child.tag);
+
+      content = element.children?.where(isNotExcludedElement).map((child) => child.textContent).join() ??
+          element.textContent;
+    }
+
     _content.add(
       TaskNode(
         id: Editor.createNodeId(),
-        text: _parseInlineText(element.textContent),
+        text: _parseInlineText(content),
         isComplete: checked,
       ),
     );

@@ -261,9 +261,11 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
 
     final nodeIndex = document.getNodeIndexById(node.id);
     final nodeBelow = nodeIndex < document.nodeCount - 1 ? document.getNodeAt(nodeIndex + 1) : null;
-    if (nodeBelow != null && (nodeBelow is! ListItemNode || nodeBelow.type != node.type)) {
-      // This list item is the last item in the list. Add an extra
-      // blank line after it.
+    final isSameListType = nodeBelow is ListItemNode && nodeBelow.type == node.type;
+    final isFollowedByTask = nodeBelow is TaskNode;
+    if (nodeBelow != null && !isSameListType && !isFollowedByTask) {
+      // This list item is the last item in the list and is not followed by a task.
+      // Add an extra blank line after it.
       buffer.writeln('');
     }
 
@@ -375,7 +377,7 @@ class TaskNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<TaskNod
         ? node.text.copyText(textSelection.start, textSelection.end)
         : node.text;
 
-    return '- [${node.isComplete ? 'x' : ' '}] ${textToConvert.toMarkdown()}';
+    return '  - [${node.isComplete ? 'x' : ' '}] ${textToConvert.toMarkdown()}';
   }
 }
 
