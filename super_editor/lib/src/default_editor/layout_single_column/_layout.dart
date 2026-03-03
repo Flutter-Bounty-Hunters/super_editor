@@ -986,6 +986,7 @@ class _Component extends StatelessWidget {
     for (final componentBuilder in componentBuilders) {
       var component = componentBuilder.createComponent(componentContext, componentViewModel);
       if (component != null) {
+        print("Create component (${component.runtimeType}) with builder: $componentBuilder");
         // TODO: we might need a SizeChangedNotifier here for the case where two components
         //       change size exactly inversely
         component = ConstrainedBox(
