@@ -45,10 +45,6 @@ dependencies:
     git:
       url: https://github.com/superlistapp/super_editor.git
       path: super_editor
-  super_editor_markdown:
-    git:
-      url: https://github.com/superlistapp/super_editor.git
-      path: super_editor_markdown
   super_text_layout:
     git:
       url: https://github.com/superlistapp/super_editor.git
@@ -62,8 +58,6 @@ dependency_overrides:
   # against changes that they're making to other mono-repo packages
   super_editor:
     path: ../
-  super_editor_markdown:
-    path: ../../super_editor_markdown
   super_text_layout:
     path: ../../super_text_layout
   attributed_text:
