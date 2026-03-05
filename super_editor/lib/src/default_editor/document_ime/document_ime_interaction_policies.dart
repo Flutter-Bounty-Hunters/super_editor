@@ -424,6 +424,17 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
       return;
     }
 
+    if (SuperIme.instance.owner != widget.inputId && SuperIme.instance.owner?.role == widget.inputId.role) {
+      // Our SuperEditor has been replaced by a different one, which now owns the IME,
+      // but the other SuperEditor is playing the same role. Our widget tree got
+      // disposed and replaced by another widget tree.
+      //
+      // Since the role of the owning SuperEditor didn't change, we don't want to
+      // mess with selection, IME, or anything else. Leave it alone for the new
+      // version of us.
+      return;
+    }
+
     final hasNonPrimaryFocus = widget.focusNode.hasFocus && !widget.focusNode.hasPrimaryFocus;
     if (hasNonPrimaryFocus) {
       // We don't want to mess with selection when the editor has non-primary focus. Non-primary
