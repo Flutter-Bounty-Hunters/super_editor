@@ -14,7 +14,10 @@ class SuperIme with ChangeNotifier {
 
   SuperIme._();
 
+  /// The current owner of the IME, or `null` if there is no owner.
+  SuperImeInputId? get owner => _owner;
   SuperImeInputId? _owner;
+
   TextInputConnection? _imeConnection;
 
   /// Returns `true` if [SuperIme] currently holds a Flutter [TextInputConnection]
