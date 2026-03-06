@@ -373,6 +373,7 @@ class _SuperMessageState extends State<SuperMessage> {
                 focusNode: _focusNode,
                 editor: widget.editor,
                 getDocumentLayout: () => _messageContext.documentLayout,
+                contentTapHandlers: _contentTapDelegate != null ? [_contentTapDelegate!] : null,
                 showDebugPaint: widget.debugPaint.gestures,
                 child: SuperMessageAndroidControlsOverlayManager(
                   editor: widget.editor,
