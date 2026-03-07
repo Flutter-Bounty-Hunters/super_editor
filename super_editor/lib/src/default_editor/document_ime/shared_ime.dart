@@ -19,6 +19,7 @@ class SuperIme with ChangeNotifier {
   SuperImeInputId? _owner;
 
   TextInputConnection? _imeConnection;
+  TextInputClient? _attachedClient;
 
   /// Returns `true` if [SuperIme] currently holds a Flutter [TextInputConnection]
   /// in [imeConnection].
@@ -37,6 +38,8 @@ class SuperIme with ChangeNotifier {
   /// Returns `true` if the given [input] is the current owner of the shared IME,
   /// and the shared IME is currently attached to the OS.
   bool isInputAttachedToOS(SuperImeInputId input) => _owner == input && isAttachedToOS;
+
+  TextInputClient? get attachedClient => _attachedClient;
 
   /// If [owner] is the current IME owner, returns the shared [TextInputConnection], or `null` if
   /// no such connection currently exists, or if the [owner] isn't actually the owner.
@@ -73,7 +76,10 @@ class SuperIme with ChangeNotifier {
     }
 
     superImeLog.info("Opening IME connection (owner: '$ownerInputId')");
-    _imeConnection ??= TextInput.attach(client, configuration);
+    if (_imeConnection == null || client != _attachedClient) {
+      _imeConnection = TextInput.attach(client, configuration);
+    }
+    _attachedClient = client;
     if (showKeyboard) {
       _imeConnection!.show();
     }
@@ -89,8 +95,10 @@ class SuperIme with ChangeNotifier {
     }
 
     superImeLog.info("Closing IME connection (owner: '$ownerInputId')");
+    print("Closing IME connection (owner: '$ownerInputId')");
     _imeConnection?.close();
     _imeConnection = null;
+    _attachedClient = null;
 
     notifyListeners();
   }
