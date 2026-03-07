@@ -307,6 +307,13 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
       if (didOwnIme) {
         // Re-take IME ownership.
+        //
+        // Note: In general when taking ownership, we need to be mindful of an IME
+        // connection that might already be open, and would therefore be tied to an
+        // existing IME client. In this case, because we were the previous owner, and
+        // the new owner, if an IME connection is open, it should be our IME client
+        // that's bound to it. So we don't need to open a new IME connection just
+        // because we took ownership.
         SuperIme.instance.takeOwnership(_myImeId);
       }
     }
@@ -326,7 +333,9 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (widget.imeOverrides != oldWidget.imeOverrides) {
-      oldWidget.imeOverrides?.client = null;
+      if (true == oldWidget.imeOverrides?.isCurrentClient(_documentImeClient)) {
+        oldWidget.imeOverrides?.client = null;
+      }
       _configureImeClientDecorators();
     }
   }
@@ -394,17 +403,26 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   void _onSharedImeChange() {
+    print(
+      "supereditor_ime_interactor.dart - _onSharedImeChange, this: $_myImeId, new owner: ${SuperIme.instance.owner}",
+    );
     if (!SuperIme.instance.isOwner(_myImeId)) {
+      print(" - it's not ours");
       // We don't own the IME. Update our accounting.
       _ownedImeConnection.value = null;
 
       _documentImeConnection.value = null;
-      widget.imeOverrides?.client = null;
+      if (true == widget.imeOverrides?.isCurrentClient(_documentImeClient)) {
+        // We're still the IME overrides client. Remove ourselves because we no
+        // longer own the IME.
+        widget.imeOverrides?.client = null;
+      }
       widget.isImeConnected?.value = false;
       return;
     }
 
     if (!SuperIme.instance.isInputAttachedToOS(_myImeId)) {
+      print(" - we own it, but the connection to the OS has closed");
       // We own the IME, but our connection to the OS was closed.
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
@@ -412,9 +430,32 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       return;
     }
 
+    print(" - we own it. Grabbing connection and configuring ourselves.");
+    print(" - our IME client: ${_imeClient.hashCode}");
     _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;
+    if (SuperIme.instance.isInputAttachedToOS(_myImeId) && SuperIme.instance.attachedClient != _imeClient) {
+      // The IME is attached to the OS, but it's not using our client. This probably because
+      // the IME was owned by a different client that had an open connection. Close that connection
+      // and open our own. If we don't do this, the IME connection will continue talking to
+      // the previous editor's client.
+      print(
+          " - re-opening IME connection because a connection is open, but it's not using this instance of Super Editor's IME client.");
+      SuperIme.instance.openConnection(
+        _myImeId,
+        _imeClient,
+        widget.imeConfiguration.toTextInputConfiguration(viewId: View.of(context).viewId),
+        // To keep the keyboard up when transitioning from an old SuperEditor instance
+        // to a new SuperEditor instance, we must explicitly tell it to `show()` after
+        // opening the new connection.
+        //
+        // I'm not entirely sure that we always want this to be `true`, but at the time of
+        // writing this, I don't know of a situation where we wouldn't. If we discover one,
+        // re-evaluate this.
+        showKeyboard: true,
+      );
+    }
 
     _reportVisualInformationToIme();
 
