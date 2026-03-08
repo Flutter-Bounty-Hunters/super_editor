@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
@@ -82,7 +83,10 @@ class DeltaTextInputClientDecorator with TextInputClient, DeltaTextInputClient {
   /// itself as the client, or not.
   bool isCurrentClient(DeltaTextInputClient client) => _client == client;
 
-  set client(DeltaTextInputClient? client) => _client = client;
+  set client(DeltaTextInputClient? client) {
+    _client = client;
+  }
+
   DeltaTextInputClient? _client;
 
   @override

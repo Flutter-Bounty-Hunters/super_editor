@@ -14,11 +14,36 @@ class SuperIme with ChangeNotifier {
 
   SuperIme._();
 
+  /// Sets the [SuperImeLog], which is notified of important events that take
+  /// place within this [SuperIme], e.g., taking ownership, releasing ownership,
+  /// opening a connection, closing a connection.
+  set log(SuperImeLog? log) => _log = log;
+  SuperImeLog? _log = SuperImeLog();
+
   /// The current owner of the IME, or `null` if there is no owner.
   SuperImeInputId? get owner => _owner;
   SuperImeInputId? _owner;
 
+  /// The open OS IME connection, which is owned by [owner], but *may* have been
+  /// opened by a previous owner.
   TextInputConnection? _imeConnection;
+
+  /// The [SuperImeInputId] that was the owner when the [_imeConnection] was opened,
+  /// which may not be the same as [owner], if a different owner took ownership and
+  /// kept the connection open.
+  // TODO: Find out which scenarios would ever want to take new ownership, but leave the
+  //       existing connection open. If we find them, document them. If we can't find them,
+  //       then change `releaseOwnership()` to automatically close the open connection.
+  SuperImeInputId? _connectionOwner;
+
+  /// The [TextInputClient] that was passed to Flutter when opening the current
+  /// [_imeConnection].
+  ///
+  /// We track this so that we know when the client changes, which requires us to
+  /// close the current connection and open a new connection. This is because Flutter
+  /// registers the IME client when the connection is opened, and it cannot be change
+  /// or replaced after that.
+  TextInputClient? _attachedClient;
 
   /// Returns `true` if [SuperIme] currently holds a Flutter [TextInputConnection]
   /// in [imeConnection].
@@ -37,6 +62,14 @@ class SuperIme with ChangeNotifier {
   /// Returns `true` if the given [input] is the current owner of the shared IME,
   /// and the shared IME is currently attached to the OS.
   bool isInputAttachedToOS(SuperImeInputId input) => _owner == input && isAttachedToOS;
+
+  /// Returns the [TextInputClient] that is currently connected to the open IME
+  /// connection.
+  ///
+  /// This client is made available for instance verification. It's not expected that
+  /// apps call anything on this client. Doing so could corrupt the accounting between
+  /// the client and the OS IME state.
+  TextInputClient? get attachedClient => _attachedClient;
 
   /// If [owner] is the current IME owner, returns the shared [TextInputConnection], or `null` if
   /// no such connection currently exists, or if the [owner] isn't actually the owner.
@@ -72,8 +105,28 @@ class SuperIme with ChangeNotifier {
       _imeConnection = null;
     }
 
-    superImeLog.info("Opening IME connection (owner: '$ownerInputId')");
-    _imeConnection ??= TextInput.attach(client, configuration);
+    if (_imeConnection == null || client != _attachedClient) {
+      // Log the specific action we're taking here, because its nuanced and we will
+      // want to know which one we did, if a bug shows up.
+      if (_imeConnection == null) {
+        // We're opening a new connection. There was no previous connection.
+        _log?.onNewImeConnectionOpened(ownerInputId);
+      } else if (_owner?.role != ownerInputId.role) {
+        // The owner changed from one role to another, which means one editor to a
+        // completely different editor.
+        _log?.onImeConnectionSwitchedBetweenRoles(previousOwner: _connectionOwner!, newOwner: ownerInputId);
+      } else {
+        // The owner didn't change role, but did change instance. This means the owner
+        // is playing the same role (same editor), but is a different instance (different
+        // `State` object).
+        _log?.onImeConnectionSwitchedBetweenInstances(previousOwner: _connectionOwner!, newOwner: ownerInputId);
+      }
+
+      _imeConnection = TextInput.attach(client, configuration);
+    }
+    _attachedClient = client;
+    _connectionOwner = ownerInputId;
+
     if (showKeyboard) {
       _imeConnection!.show();
     }
@@ -88,9 +141,11 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
-    superImeLog.info("Closing IME connection (owner: '$ownerInputId')");
+    _log?.onImeConnectionClosed(ownerInputId);
     _imeConnection?.close();
     _imeConnection = null;
+    _connectionOwner = null;
+    _attachedClient = null;
 
     notifyListeners();
   }
@@ -118,7 +173,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
-    superImeLog.info("Giving IME ownership to new owner (owner: '$newOwnerInputId')");
+    _log?.onOwnershipClaimed(newOwner: newOwnerInputId, previousOwner: _owner);
     _owner = newOwnerInputId;
 
     notifyListeners();
@@ -140,9 +195,8 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
-    superImeLog.info("Releasing IME ownership (owner: '$ownerInputId')");
+    _log?.onOwnershipReleased(ownerInputId, willCloseConnection: clearConnectionOnRelease);
     if (clearConnectionOnRelease) {
-      superImeLog.info("Closing connection when releasing IME ownership (owner: '$ownerInputId')");
       clearConnection(ownerInputId);
     }
     _owner = null;
@@ -230,4 +284,71 @@ class SuperImeInputId {
 
   @override
   int get hashCode => role.hashCode ^ instance.hashCode;
+}
+
+/// Logger for [SuperIme] events, which can be used to print events to console, or
+/// to forward those events to logging backend systems.
+class SuperImeLog {
+  /// The [newOwner] explicitly requested ownership, taking it from [previousOwner].
+  void onOwnershipClaimed({
+    required SuperImeInputId newOwner,
+    required SuperImeInputId? previousOwner,
+  }) {
+    superImeLog.info("Giving IME ownership to new owner: '$newOwner', from previous owner: $previousOwner");
+  }
+
+  /// The [previousOwner] explicitly requested to give up ownership.
+  void onOwnershipReleased(
+    SuperImeInputId previousOwner, {
+    required bool willCloseConnection,
+  }) {
+    superImeLog.info("Releasing IME ownership from: '$previousOwner'");
+    superImeLog.info(" - SuperIme will close the connection after releasing ownership");
+  }
+
+  /// A new IME connection was opened with the OS, via `TextInput.attach()`, and
+  /// this happened either without any previous connection existing, or this happened
+  /// after another connection was explicitly closed.
+  ///
+  /// This event is distinct from [onImeConnectionSwitchedBetweenInstances], even though
+  /// both of these events involve a connection being opened.
+  void onNewImeConnectionOpened(SuperImeInputId owner) {
+    superImeLog.info("Opening a new IME connection from a closed connection. Owner: $owner");
+  }
+
+  /// The IME was owned and open, then a new owner from a completely different editor
+  /// took control, and replaced the previous connection with its own, new connection.
+  void onImeConnectionSwitchedBetweenRoles({
+    required SuperImeInputId previousOwner,
+    required SuperImeInputId newOwner,
+  }) {
+    superImeLog.info(
+      "Replacing IME connection, because owner changed roles.\n - Previous: $previousOwner\n - New: $newOwner",
+    );
+  }
+
+  /// The IME was owned and open, then a new owner took over with the same role, but
+  /// different instance, so the connection was closed for the first instance, and
+  /// immediately re-opened for the second instance.
+  ///
+  /// This happens when one input widget (like `SuperEditor`) has its widget tree
+  /// re-created, which throws out the previous `State` and creates a new `State`.
+  /// When this happens, the user expects the connection and keyboard to remain
+  /// exactly as-is, but internally, because the `State` object was replaced, there's
+  /// a new IME client instance. The only way to switch out the IME client is to
+  /// close the current connection, and then open a new one, with the new client.
+  ///
+  /// This event is emitted when this close/open series happens.
+  void onImeConnectionSwitchedBetweenInstances({
+    required SuperImeInputId previousOwner,
+    required SuperImeInputId newOwner,
+  }) {
+    superImeLog.info(
+      "Replacing IME connection, because owner changed instances.\n - Previous: $previousOwner\n - New: $newOwner",
+    );
+  }
+
+  void onImeConnectionClosed(SuperImeInputId ownerBeforeClose) {
+    superImeLog.info("Closing IME connection (owner: '$ownerBeforeClose')");
+  }
 }
