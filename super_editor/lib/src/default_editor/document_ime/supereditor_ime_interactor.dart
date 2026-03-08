@@ -334,8 +334,12 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     if (widget.imeOverrides != oldWidget.imeOverrides) {
       if (true == oldWidget.imeOverrides?.isCurrentClient(_documentImeClient)) {
+        // Remove ourselves as the IME client from the old IME decorator, but ONLY
+        // if we're still registered as the client (some other client may have
+        // installed itself, which means it's none of our business).
         oldWidget.imeOverrides?.client = null;
       }
+
       _configureImeClientDecorators();
     }
   }
@@ -403,11 +407,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   }
 
   void _onSharedImeChange() {
-    print(
-      "supereditor_ime_interactor.dart - _onSharedImeChange, this: $_myImeId, new owner: ${SuperIme.instance.owner}",
-    );
     if (!SuperIme.instance.isOwner(_myImeId)) {
-      print(" - it's not ours");
       // We don't own the IME. Update our accounting.
       _ownedImeConnection.value = null;
 
@@ -422,7 +422,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (!SuperIme.instance.isInputAttachedToOS(_myImeId)) {
-      print(" - we own it, but the connection to the OS has closed");
       // We own the IME, but our connection to the OS was closed.
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
@@ -430,8 +429,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       return;
     }
 
-    print(" - we own it. Grabbing connection and configuring ourselves.");
-    print(" - our IME client: ${_imeClient.hashCode}");
     _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;
@@ -440,8 +437,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       // the IME was owned by a different client that had an open connection. Close that connection
       // and open our own. If we don't do this, the IME connection will continue talking to
       // the previous editor's client.
-      print(
-          " - re-opening IME connection because a connection is open, but it's not using this instance of Super Editor's IME client.");
       SuperIme.instance.openConnection(
         _myImeId,
         _imeClient,
