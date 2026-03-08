@@ -429,11 +429,15 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       return;
     }
 
+    // We own the IME, and a connection is open. Update our connection accounting,
+    // and make sure the open connection is configured for us, and not some previous
+    // client.
     _ownedImeConnection.value = SuperIme.instance.getImeConnectionForOwner(_myImeId);
     _configureImeClientDecorators();
     _documentImeConnection.value = _documentImeClient;
+
     if (SuperIme.instance.isInputAttachedToOS(_myImeId) && SuperIme.instance.attachedClient != _imeClient) {
-      // The IME is attached to the OS, but it's not using our client. This probably because
+      // The IME is attached to the OS, but it's not using our client. This is probably because
       // the IME was owned by a different client that had an open connection. Close that connection
       // and open our own. If we don't do this, the IME connection will continue talking to
       // the previous editor's client.
