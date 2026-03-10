@@ -113,6 +113,22 @@ class TextDeltasDocumentEditor {
     // End the editor transaction for all deltas in this call.
     editor.endTransaction();
 
+    final currentComposingRegion = composingRegion.value;
+    if (currentComposingRegion != null && selection.value != null) {
+      final currentSerialization = DocumentImeSerializer(
+        document,
+        selection.value!,
+        currentComposingRegion,
+      );
+      final currentImeComposingRange = currentSerialization.documentToImeRange(currentComposingRegion);
+      if (!currentImeComposingRange.isValid) {
+        editorImeLog.fine('Clearing stale composing region after IME delta application.');
+        editor.execute([
+          ChangeComposingRegionRequest(null),
+        ]);
+      }
+    }
+
     _nextImeValue = null;
   }
 
@@ -244,6 +260,17 @@ class TextDeltasDocumentEditor {
 
     // Update the local IME value that changes with each delta.
     _previousImeValue = delta.apply(_previousImeValue);
+
+    // Deletions can remove or collapse document content in ways that invalidate
+    // the previous IME mapping, e.g. deleting an entire stable tag at the start
+    // of the document. Rebuild the mapping before any follow-up selection or
+    // composing-region translation.
+    _serializedDoc = DocumentImeSerializer(
+      document,
+      selection.value!,
+      composingRegion.value,
+      _serializedDoc.didPrependPlaceholder ? PrependedCharacterPolicy.include : PrependedCharacterPolicy.exclude,
+    );
 
     editorImeLog.fine("Deletion operation complete");
   }

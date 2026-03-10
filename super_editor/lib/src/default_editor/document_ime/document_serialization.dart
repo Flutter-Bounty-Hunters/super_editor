@@ -338,6 +338,21 @@ class DocumentImeSerializer {
     editorImeLog.fine("After converting DocumentRange to TextRange:");
     editorImeLog.fine("Start IME position: $startImePosition");
     editorImeLog.fine("End IME position: $endImePosition");
+
+    if (startImePosition.offset < 0 ||
+        endImePosition.offset < 0 ||
+        startImePosition.offset > endImePosition.offset ||
+        endImePosition.offset > imeText.length) {
+      editorImeLog.warning(
+        'Ignoring invalid composing range for IME serialization. '
+        'Document range: $documentRange, '
+        'IME start: ${startImePosition.offset}, '
+        'IME end: ${endImePosition.offset}, '
+        'IME text length: ${imeText.length}',
+      );
+      return const TextRange(start: -1, end: -1);
+    }
+
     return TextRange(
       start: startImePosition.offset,
       end: endImePosition.offset,

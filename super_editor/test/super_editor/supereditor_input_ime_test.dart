@@ -670,6 +670,74 @@ Paragraph two
       });
     });
 
+    group('on Microsoft SwiftKey (Android)', () {
+      testWidgetsOnAndroid('clears composing region when deleting a stable tag at the start of text',
+          (tester) async {
+        final testContext = await tester
+            .createDocument()
+            .withCustomContent(
+              MutableDocument(
+                nodes: [
+                  ParagraphNode(
+                    id: '1',
+                    text: AttributedText(
+                      '@everyone',
+                      AttributedSpans(
+                        attributions: [
+                          SpanMarker(
+                            attribution: const CommittedStableTagAttribution('everyone'),
+                            offset: 0,
+                            markerType: SpanMarkerType.start,
+                          ),
+                          SpanMarker(
+                            attribution: const CommittedStableTagAttribution('everyone'),
+                            offset: 8,
+                            markerType: SpanMarkerType.end,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+            .withInputSource(TextInputSource.ime)
+            .withPlugin(StableTagPlugin())
+            .pump();
+
+        await tester.placeCaretInParagraph('1', 9);
+
+        await tester.ime.sendDeltas(
+          const [
+            TextEditingDeltaDeletion(
+              oldText: '. @everyone',
+              deletedRange: TextRange(start: 10, end: 11),
+              selection: TextSelection.collapsed(
+                offset: 10,
+                affinity: TextAffinity.downstream,
+              ),
+              composing: TextRange(start: 2, end: 10),
+            ),
+          ],
+          getter: imeClientGetter,
+        );
+
+        expect(SuperEditorInspector.findTextInComponent('1').toPlainText(), '');
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          selectionEquivalentTo(
+            const DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: '1',
+                nodePosition: TextNodePosition(offset: 0),
+              ),
+            ),
+          ),
+        );
+        expect(testContext.composer.composingRegion.value, isNull);
+      });
+    });
+
     group('on iPhone 11 (iOS 13.7) with chinese keyboard', () {
       testWidgetsOnIos('applies keyboard suggestions', (tester) async {
         // Holds the composing region that we sent to the IME.
