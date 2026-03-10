@@ -489,6 +489,7 @@ class SuperEditorState extends State<SuperEditor> {
 
     if (widget.focusNode != oldWidget.focusNode) {
       _focusNode = (widget.focusNode ?? FocusNode())..addListener(_onFocusChange);
+      _onFocusChange();
     }
 
     if (widget.documentLayoutKey != oldWidget.documentLayoutKey) {
@@ -599,6 +600,9 @@ class SuperEditorState extends State<SuperEditor> {
 
     for (final plugin in widget.plugins) {
       plugin._attachToSuperEditor(widget.editor);
+
+      // Notify plugin of focus state at time of attachment.
+      plugin.onFocusChange(_focusNode);
     }
 
     // The ContentTapDelegate depends upon the EditContext. Recreate the
@@ -662,6 +666,11 @@ class SuperEditorState extends State<SuperEditor> {
   void _onFocusChange() {
     _recomputeIfLayoutShouldShowCaret();
     _primaryFocusListener.value = _focusNode.hasPrimaryFocus;
+
+    // Notify plugins about focus change.
+    for (final plugin in widget.plugins) {
+      plugin.onFocusChange(_focusNode);
+    }
   }
 
   void _recomputeIfLayoutShouldShowCaret() {
@@ -1247,6 +1256,13 @@ abstract class SuperEditorPlugin {
 
   /// Removes behaviors from the given [editor], which were added in [attach].
   void detach(Editor editor) {}
+
+  /// Hook, which is invoked when the attached `SuperEditor` widget gains or
+  /// loses focus.
+  ///
+  /// This hook might be called at times when no change in focus actually took place.
+  /// It's the job of implementers to handle repeat invocations without focus changes.
+  void onFocusChange(FocusNode editorFocusNode) {}
 
   /// Additional [SuperEditorKeyboardAction]s that will be added to a given [SuperEditor] widget.
   List<SuperEditorKeyboardAction> get keyboardActions => [];

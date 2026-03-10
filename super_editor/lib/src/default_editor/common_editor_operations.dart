@@ -2656,7 +2656,10 @@ class DeleteUpstreamCharacterCommand extends EditCommand {
           SelectionChangeType.deleteContent,
           SelectionReason.userInteraction,
         ),
-      );
+      )
+      // We changed the content, and moved the selection. Clear the composing region
+      // so that it's not incorrect or invalid.
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 }
 
@@ -2696,6 +2699,10 @@ class DeleteDownstreamCharacterCommand extends EditCommand {
     final nextCharacterOffset = getCharacterEndBounds(text.toPlainText(), currentTextPositionOffset);
 
     // Delete the selected content.
+    //
+    // Note: We don't clear the composing region because the selection and upstream content
+    //       are both unchanged. If we ever find a use-case where this is wrong, and we should
+    //       clear the composing region, add that command here, and document why.
     executor.executeCommand(
       DeleteContentCommand(
         documentRange: textNode.selectionBetween(

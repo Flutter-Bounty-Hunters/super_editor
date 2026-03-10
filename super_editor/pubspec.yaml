@@ -38,7 +38,7 @@ dependencies:
   linkify: ^5.0.0
   logging: ^1.3.0
   markdown: ^7.2.1
-  super_text_layout: ^0.1.18
+  super_text_layout: ^0.1.20
   super_keyboard: ^0.3.0
   url_launcher: ^6.3.1
   uuid: ^4.5.1

@@ -223,6 +223,8 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel with T
     this.inlineWidgetBuilders = const [],
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     this.selection,
     required this.selectionColor,
     this.highlightWhenEmpty = false,
@@ -259,6 +261,10 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel with T
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  @override
+  int? maxLines;
+  @override
+  TextOverflow overflow;
   @override
   TextSelection? selection;
   @override
@@ -390,6 +396,8 @@ class _TaskComponentState extends State<TaskComponent> with ProxyDocumentCompone
               text: widget.viewModel.text,
               textDirection: widget.viewModel.textDirection,
               textAlign: widget.viewModel.textAlignment,
+              maxLines: widget.viewModel.maxLines,
+              overflow: widget.viewModel.overflow,
               textStyleBuilder: _computeStyles,
               inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
               textSelection: widget.viewModel.selection,

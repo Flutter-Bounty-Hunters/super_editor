@@ -182,6 +182,8 @@ class ParagraphComponentViewModel extends SingleColumnLayoutComponentViewModel w
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
     this.textScaler,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     this.selection,
     required this.selectionColor,
     this.highlightWhenEmpty = false,
@@ -220,6 +222,10 @@ class ParagraphComponentViewModel extends SingleColumnLayoutComponentViewModel w
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  @override
+  int? maxLines;
+  @override
+  TextOverflow overflow;
 
   /// The text scaling policy.
   ///
@@ -239,6 +245,7 @@ class ParagraphComponentViewModel extends SingleColumnLayoutComponentViewModel w
       ParagraphComponentViewModel(
         nodeId: nodeId,
         createdAt: createdAt,
+        // FIXME: Do we need to send in the `text`? Isn't the superclass already doing it?
         text: text.copy(),
         textStyleBuilder: textStyleBuilder,
         opacity: opacity,
@@ -363,6 +370,8 @@ class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with T
       inlineWidgetBuilders: viewModel.inlineWidgetBuilders,
       textAlignment: viewModel.textAlignment,
       textDirection: viewModel.textDirection,
+      maxLines: viewModel.maxLines,
+      overflow: viewModel.overflow,
       textStyleBuilder: viewModel.textStyleBuilder,
       selectionColor: viewModel.selectionColor,
       indent: viewModel.indent,
@@ -383,6 +392,8 @@ class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with T
     this.inlineWidgetBuilders = const [],
     this.textAlignment = TextAlign.left,
     this.textDirection = TextDirection.ltr,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     required this.textStyleBuilder,
     required this.selectionColor,
     this.indent = 0,
@@ -404,6 +415,10 @@ class HintComponentViewModel extends SingleColumnLayoutComponentViewModel with T
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  @override
+  int? maxLines;
+  @override
+  TextOverflow overflow;
   int indent;
   @override
   TextSelection? selection;
@@ -511,6 +526,8 @@ class _ParagraphComponentState extends State<ParagraphComponent>
               textDirection: widget.viewModel.textDirection,
               textAlign: widget.viewModel.textAlignment,
               textScaler: widget.viewModel.textScaler,
+              maxLines: widget.viewModel.maxLines,
+              overflow: widget.viewModel.overflow,
               textStyleBuilder: widget.viewModel.textStyleBuilder,
               inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
               metadata: widget.viewModel.blockType != null

@@ -96,6 +96,8 @@ class BlockquoteComponentViewModel extends SingleColumnLayoutComponentViewModel 
     this.inlineWidgetBuilders = const [],
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     this.indent = 0,
     this.indentCalculator = defaultParagraphIndentCalculator,
     required this.backgroundColor,
@@ -130,6 +132,10 @@ class BlockquoteComponentViewModel extends SingleColumnLayoutComponentViewModel 
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  @override
+  int? maxLines;
+  @override
+  TextOverflow overflow;
 
   int indent;
   TextBlockIndentCalculator indentCalculator;
@@ -202,6 +208,8 @@ class BlockquoteComponent extends StatelessWidget {
     Key? key,
     required this.textKey,
     required this.text,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
     required this.styleBuilder,
     this.inlineWidgetBuilders = const [],
     this.textSelection,
@@ -217,6 +225,8 @@ class BlockquoteComponent extends StatelessWidget {
 
   final GlobalKey textKey;
   final AttributedText text;
+  final int? maxLines;
+  final TextOverflow overflow;
   final AttributionStyleBuilder styleBuilder;
   final InlineWidgetBuilderChain inlineWidgetBuilders;
   final TextSelection? textSelection;
@@ -252,6 +262,8 @@ class BlockquoteComponent extends StatelessWidget {
               child: TextComponent(
                 key: textKey,
                 text: text,
+                maxLines: maxLines,
+                overflow: overflow,
                 textStyleBuilder: styleBuilder,
                 inlineWidgetBuilders: inlineWidgetBuilders,
                 textSelection: textSelection,

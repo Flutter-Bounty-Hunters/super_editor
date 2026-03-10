@@ -9,7 +9,18 @@ extension RichTextPaste on Editor {
     String html, {
     Set<String> ignoredTags = defaultIgnoredHtmlTags,
   }) {
-    final markdown = html2md.convert(html, ignore: ignoredTags.toList(growable: false));
+    final markdown = html2md.convert(
+      html,
+      ignore: ignoredTags.toList(growable: false),
+      styleOptions: {
+        // Use "#" for headers instead of "======="
+        'headingStyle': 'atx',
+      },
+    );
+    pasteMarkdown(editor, markdown);
+  }
+
+  void pasteMarkdown(Editor editor, String markdown) {
     final contentToPaste = deserializeMarkdownToDocument(markdown);
 
     final composer = editor.composer;
