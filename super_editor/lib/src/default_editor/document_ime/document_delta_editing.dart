@@ -92,6 +92,17 @@ class TextDeltasDocumentEditor {
       editorImeLog.info("---------------------------------------------------");
     }
 
+    // End the editor transaction for all deltas in this call.
+    editor.endTransaction();
+
+    // Re-serialize document after end of transaction because reactions may have
+    // run and further changed it.
+    _serializedDoc = DocumentImeSerializer(
+      document,
+      selection.value!,
+      composingRegion.value,
+    );
+
     // Update the editor's IME composing region based on the composing region
     // for the last delta. If the version of our document serialized hidden
     // characters in the IME, adjust for those hidden characters before setting
@@ -109,9 +120,6 @@ class TextDeltasDocumentEditor {
       ]);
     }
     editorImeLog.fine("Document composing region: ${composingRegion.value}");
-
-    // End the editor transaction for all deltas in this call.
-    editor.endTransaction();
 
     _nextImeValue = null;
   }
