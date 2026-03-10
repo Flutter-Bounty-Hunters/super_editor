@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -39,7 +40,7 @@ class SuperMessageMouseInteractor extends StatefulWidget {
     Key? key,
     this.focusNode,
     required this.messageContext,
-    this.contentTapHandler,
+    this.contentTapHandlers = const [],
     this.showDebugPaint = false,
     required this.child,
   }) : super(key: key);
@@ -49,9 +50,12 @@ class SuperMessageMouseInteractor extends StatefulWidget {
   /// Service locator for document dependencies.
   final DocumentContext messageContext;
 
-  /// Optional handler that responds to taps on content, e.g., opening
+  /// Optional list of handlers that respond to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.
-  final ContentTapDelegate? contentTapHandler;
+  ///
+  /// If a handler returns [TapHandlingInstruction.halt], no subsequent handlers
+  /// nor the default tap behavior will be executed.
+  final List<ContentTapDelegate> contentTapHandlers;
 
   /// Paints some extra visual ornamentation to help with
   /// debugging, when `true`.
@@ -85,7 +89,10 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
   void initState() {
     super.initState();
     _focusNode = widget.focusNode ?? FocusNode();
-    widget.contentTapHandler?.addListener(_updateMouseCursorAtLatestOffset);
+
+    for (final handler in widget.contentTapHandlers) {
+      handler.addListener(_updateMouseCursorAtLatestOffset);
+    }
   }
 
   @override
@@ -94,15 +101,24 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
     if (widget.focusNode != oldWidget.focusNode) {
       _focusNode = widget.focusNode ?? FocusNode();
     }
-    if (widget.contentTapHandler != oldWidget.contentTapHandler) {
-      oldWidget.contentTapHandler?.removeListener(_updateMouseCursorAtLatestOffset);
-      widget.contentTapHandler?.addListener(_updateMouseCursorAtLatestOffset);
+
+    if (!const DeepCollectionEquality().equals(oldWidget.contentTapHandlers, widget.contentTapHandlers)) {
+      for (final handler in oldWidget.contentTapHandlers) {
+        handler.removeListener(_updateMouseCursorAtLatestOffset);
+      }
+
+      for (final handler in widget.contentTapHandlers) {
+        handler.addListener(_updateMouseCursorAtLatestOffset);
+      }
     }
   }
 
   @override
   void dispose() {
-    widget.contentTapHandler?.removeListener(_updateMouseCursorAtLatestOffset);
+    for (final handler in widget.contentTapHandlers) {
+      handler.removeListener(_updateMouseCursorAtLatestOffset);
+    }
+
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
@@ -142,8 +158,15 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
       return;
     }
 
-    final cursorForContent = widget.contentTapHandler?.mouseCursorForContentHover(docPosition);
-    _mouseCursor.value = cursorForContent ?? SystemMouseCursors.text;
+    for (final handler in widget.contentTapHandlers) {
+      final cursorForContent = handler.mouseCursorForContentHover(docPosition);
+      if (cursorForContent != null) {
+        _mouseCursor.value = cursorForContent;
+        return;
+      }
+    }
+
+    _mouseCursor.value = SystemMouseCursors.text;
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -153,8 +176,8 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
 
     _focusNode.requestFocus();
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,
@@ -208,8 +231,8 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
     final docOffset = _getDocOffsetFromGlobalOffset(details.globalPosition);
     readerGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onDoubleTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onDoubleTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,
@@ -272,8 +295,8 @@ class _SuperMessageMouseInteractorState extends State<SuperMessageMouseInteracto
     final docOffset = _getDocOffsetFromGlobalOffset(details.globalPosition);
     readerGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onTripleTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTripleTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,

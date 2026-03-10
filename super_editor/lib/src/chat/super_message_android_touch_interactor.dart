@@ -237,7 +237,7 @@ class SuperMessageAndroidTouchInteractor extends StatefulWidget {
     required this.focusNode,
     required this.editor,
     required this.getDocumentLayout,
-    this.contentTapHandlers,
+    this.contentTapHandlers = const [],
     this.showDebugPaint = false,
     required this.child,
   }) : super(key: key);
@@ -252,7 +252,7 @@ class SuperMessageAndroidTouchInteractor extends StatefulWidget {
   ///
   /// If a handler returns [TapHandlingInstruction.halt], no subsequent handlers
   /// nor the default tap behavior will be executed.
-  final List<ContentTapDelegate>? contentTapHandlers;
+  final List<ContentTapDelegate> contentTapHandlers;
 
   final bool showDebugPaint;
 
@@ -436,20 +436,18 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     final docOffset = _getDocumentOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandlers != null) {
-      for (final handler in widget.contentTapHandlers!) {
-        final result = handler.onTap(
-          DocumentTapDetails(
-            documentLayout: _docLayout,
-            layoutOffset: docOffset,
-            globalOffset: details.globalPosition,
-          ),
-        );
-        if (result == TapHandlingInstruction.halt) {
-          // The custom tap handler doesn't want us to react at all
-          // to the tap.
-          return;
-        }
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTap(
+        DocumentTapDetails(
+          documentLayout: _docLayout,
+          layoutOffset: docOffset,
+          globalOffset: details.globalPosition,
+        ),
+      );
+      if (result == TapHandlingInstruction.halt) {
+        // The custom tap handler doesn't want us to react at all
+        // to the tap.
+        return;
       }
     }
 
@@ -476,20 +474,18 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     final docOffset = _getDocumentOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandlers != null) {
-      for (final handler in widget.contentTapHandlers!) {
-        final result = handler.onDoubleTap(
-          DocumentTapDetails(
-            documentLayout: _docLayout,
-            layoutOffset: docOffset,
-            globalOffset: details.globalPosition,
-          ),
-        );
-        if (result == TapHandlingInstruction.halt) {
-          // The custom tap handler doesn't want us to react at all
-          // to the tap.
-          return;
-        }
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onDoubleTap(
+        DocumentTapDetails(
+          documentLayout: _docLayout,
+          layoutOffset: docOffset,
+          globalOffset: details.globalPosition,
+        ),
+      );
+      if (result == TapHandlingInstruction.halt) {
+        // The custom tap handler doesn't want us to react at all
+        // to the tap.
+        return;
       }
     }
 
@@ -559,20 +555,18 @@ class _SuperMessageAndroidTouchInteractorState extends State<SuperMessageAndroid
     final docOffset = _getDocumentOffsetFromGlobalOffset(details.globalPosition);
     editorGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandlers != null) {
-      for (final handler in widget.contentTapHandlers!) {
-        final result = handler.onTripleTap(
-          DocumentTapDetails(
-            documentLayout: _docLayout,
-            layoutOffset: docOffset,
-            globalOffset: details.globalPosition,
-          ),
-        );
-        if (result == TapHandlingInstruction.halt) {
-          // The custom tap handler doesn't want us to react at all
-          // to the tap.
-          return;
-        }
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTripleTap(
+        DocumentTapDetails(
+          documentLayout: _docLayout,
+          layoutOffset: docOffset,
+          globalOffset: details.globalPosition,
+        ),
+      );
+      if (result == TapHandlingInstruction.halt) {
+        // The custom tap handler doesn't want us to react at all
+        // to the tap.
+        return;
       }
     }
 
