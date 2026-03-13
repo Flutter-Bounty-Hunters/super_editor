@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
@@ -6,13 +7,12 @@ import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/common_editor_operations.dart';
+import 'package:super_editor/src/default_editor/document_ime/document_serialization.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/platforms/platform.dart';
-
-import 'document_serialization.dart';
 
 /// Applies software keyboard text deltas to a document.
 class TextDeltasDocumentEditor {
@@ -25,6 +25,7 @@ class TextDeltasDocumentEditor {
     required this.composingRegion,
     required this.commonOps,
     required this.onPerformAction,
+    this.log,
   });
 
   final Editor editor;
@@ -38,14 +39,25 @@ class TextDeltasDocumentEditor {
   /// Handles newlines that are inserted as text, e.g., "\n" in deltas.
   final void Function(TextInputAction) onPerformAction;
 
+  /// A logger that is notified of events specifically to [TextDeltasDocumentEditor],
+  /// which lets apps report those specific events to their own issue tracker.
+  final TextDeltasDocumentEditorLog? log;
+
   late DocumentImeSerializer _serializedDoc;
   late TextEditingValue _previousImeValue;
   TextEditingValue? _nextImeValue;
 
   /// Applies the given [textEditingDeltas] to the [Document].
   void applyDeltas(List<TextEditingDelta> textEditingDeltas) {
-    editorImeLog.info("Applying ${textEditingDeltas.length} IME deltas to document");
+    // Check for GBoard aggressive trailing space deletion, which prevents
+    // inserting a paragraph after an empty paragraph.
+    final isGBoardNewlineSpaceRemoval = _isGBoardTrailingSpaceRemoval(textEditingDeltas);
+    if (isGBoardNewlineSpaceRemoval) {
+      log?.onGBoardNewlineTrailingSpaceRemoval(textEditingDeltas);
+      return;
+    }
 
+    editorImeLog.info("Applying ${textEditingDeltas.length} IME deltas to document");
     editorImeDeltasLog.fine("Incoming deltas:");
     for (final delta in textEditingDeltas) {
       editorImeDeltasLog.fine(delta);
@@ -71,29 +83,75 @@ class TextDeltasDocumentEditor {
     // application is considered a single undo-able change.
     editor.startTransaction();
 
-    for (final delta in textEditingDeltas) {
-      editorImeLog.info("---------------------------------------------------");
+    try {
+      for (final delta in textEditingDeltas) {
+        editorImeLog.info("---------------------------------------------------");
 
-      editorImeLog.info("Applying delta: $delta");
+        editorImeLog.info("Applying delta: $delta");
 
-      _nextImeValue = delta.apply(_previousImeValue);
-      if (delta is TextEditingDeltaInsertion) {
-        _applyInsertion(delta);
-      } else if (delta is TextEditingDeltaReplacement) {
-        _applyReplacement(delta);
-      } else if (delta is TextEditingDeltaDeletion) {
-        _applyDeletion(delta);
-      } else if (delta is TextEditingDeltaNonTextUpdate) {
-        _applyNonTextChange(delta);
-      } else {
-        editorImeLog.shout("Unknown IME delta type: ${delta.runtimeType}");
+        _nextImeValue = delta.apply(_previousImeValue);
+        if (delta is TextEditingDeltaInsertion) {
+          _applyInsertion(delta);
+        } else if (delta is TextEditingDeltaReplacement) {
+          _applyReplacement(delta);
+        } else if (delta is TextEditingDeltaDeletion) {
+          _applyDeletion(delta);
+        } else if (delta is TextEditingDeltaNonTextUpdate) {
+          _applyNonTextChange(delta);
+        } else {
+          editorImeLog.shout("Unknown IME delta type: ${delta.runtimeType}");
+        }
+
+        editorImeLog.info("---------------------------------------------------");
       }
-
-      editorImeLog.info("---------------------------------------------------");
+    } on FailedToMapImePositionToDocumentPositionException catch (exception, stacktrace) {
+      // We fail silently on this error due to a Samsung delta ordering issue. When the user
+      // presses `newline` button, we receive 2 events, but in the wrong order. We *should*
+      // receive:
+      //
+      //  1. Text replacement for upstream word auto-correction
+      //  2. `ENTER` key pressed
+      //
+      // But what we get is:
+      //
+      //  1. `ENTER` key pressed
+      //  2. Text replacement for upstream word auto-correction (which is now in previous paragraph)
+      //
+      // The best we can do is stop the delta applications right now, serialize what we've got
+      // and send our current state to the IME to get us back in sync. This might still erase
+      // some changes that the user applied, but hopefully the editor will continue to respond
+      // to future input.
+      //
+      // Note: We added this specifically to get around a Samsung bug (https://github.com/Flutter-Bounty-Hunters/super_editor/issues/2979)
+      // but this error could appear for any number of reasons, and so there may be situations in which
+      // we shouldn't swallow this error. If we find those, update this logic accordingly.
+      log?.onFailedToMapImePositionToDocumentPosition(exception, stacktrace);
+    } on FailedToMapDocumentPositionToImePositionException catch (exception, stacktrace) {
+      // We added this catch at the same time as `FailedToMapImePositionToDocumentPositionException`.
+      // The other catch was added for a specific Samsung bug. That bug doesn't trigger this
+      // exception, nor have we seen this exception elsewhere, but I thought that if we're going
+      // to swallow and short-circuit deltas when the mapping fails one direction, then we should
+      // do the same thing in the other direction.
+      //
+      // The hope is that if we ever fail to map from the document to the IME, we short-circuit
+      // here and immediately send our current document to the IME, thus returning the IME to a
+      // valid state for future editing. Similar to the other error that we swallow, by swallowing
+      // this one, there might be missed content changes from the user's perspective. However, it's
+      // more important that we keep a working editor than that we avoid the appearance of buggy input.
+      log?.onFailedToMapDocumentPositionToImePosition(exception, stacktrace);
+    } catch (exception, stacktrace) {
+      // This is an unknown error, and therefore it would be dangerous to swallow it. Rethrow it
+      // so that apps can catch this issue, and also maybe report it to their issue tracker.
+      log?.onFailedToApplyDeltasForUnknownReason(exception, stacktrace);
+      rethrow;
+    } finally {
+      // We must always end the transaction, even if an error occurred. Otherwise, we'll get
+      // stuck with an open transaction and the editor will never stabilize.
+      //
+      // End the editor transaction for all deltas in this call.
+      editorImeLog.info("Done with deltas. Ending transaction.");
+      editor.endTransaction();
     }
-
-    // End the editor transaction for all deltas in this call.
-    editor.endTransaction();
 
     // Re-serialize document after end of transaction because reactions may have
     // run and further changed it.
@@ -122,6 +180,64 @@ class TextDeltasDocumentEditor {
     editorImeLog.fine("Document composing region: ${composingRegion.value}");
 
     _nextImeValue = null;
+  }
+
+  /// Returns `true` if we believe the given batch of [deltas] represent a GBoard
+  /// automatically deleting the trailing space of an empty paragraph when the user
+  /// presses "newline".
+  ///
+  /// ## Explanation of Problem
+  /// We encode empty paragraphs as ". ". We do this for two reasons:
+  ///
+  ///  1. We need some non-empty content so we can detect a "backspace" at the beginning
+  ///     of a paragraph.
+  ///  2. We need to trick the IME into giving us auto-capitalization, which happens
+  ///     naturally after the end of a sentence, hence the ". ".
+  ///
+  /// Our hidden ". " encoding works fine almost everywhere, and it almost call cases.
+  /// The except is when the user tries press "newline" on a GBoard. the GBoard interprets
+  /// this situation as the user going to a new line while leaving a dangling space after
+  /// the end of a sentence, and therefore the GBoard tries to remove that space.
+  ///
+  /// Example of deltas in a real interaction:
+  ///
+  /// ```
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaNonTextUpdate - old text: '. ', offset: 2
+  /// TextEditingDeltaDeletion - old text: '. ', offset: 1
+  /// ```
+  ///
+  /// We don't know for sure why there are so many repeat non-text updates. This might be
+  /// a consequence of how the GBoard IME reporting implementation works with Flutter's
+  /// batching system.
+  bool _isGBoardTrailingSpaceRemoval(List<TextEditingDelta> deltas) {
+    if (deltas.length < 2) {
+      // We expect at least 2 deltas when the GBoard tries to remove a trailing space.
+      return false;
+    }
+
+    final lastDelta = deltas.last;
+    if (lastDelta is! TextEditingDeltaDeletion) {
+      // We expect the last delta to be a trailing space deletion, but this one isn't
+      // a deletion at all.
+      return false;
+    }
+
+    final deltasBeforeDeletion = deltas.sublist(0, deltas.length - 1);
+    if (deltasBeforeDeletion.firstWhereOrNull((delta) => delta is! TextEditingDeltaNonTextUpdate) != null) {
+      // We expect all deltas before the deletion to be repeated composing region changes.
+      // But in this case, there are some mutating deltas (insert, replace, delete) before the
+      // final deletion. So this isn't an automatic GBoard space removal in an empty paragraph.
+      return false;
+    }
+
+    // We believe that this situation represents the GBoard auto-deleting the trailing
+    // space in an empty paragraph, because we encode an empty paragraph as ". ".
+    return true;
   }
 
   void _applyInsertion(TextEditingDeltaInsertion delta) {
@@ -261,7 +377,7 @@ class TextDeltasDocumentEditor {
     editorImeLog.fine("OS-side selection - ${delta.selection}");
     editorImeLog.fine("OS-side composing - ${delta.composing}");
 
-    DocumentSelection? docSelection = _calculateNewDocumentSelection(delta);
+    var docSelection = _calculateNewDocumentSelection(delta);
     DocumentRange? docComposingRegion = _calculateNewComposingRegion([delta]);
 
     if (docSelection != null) {
@@ -583,5 +699,59 @@ class TextDeltasDocumentEditor {
     }
 
     return _serializedDoc.imeToDocumentRange(lastDelta.composing);
+  }
+}
+
+abstract class TextDeltasDocumentEditorLog {
+  void onGBoardNewlineTrailingSpaceRemoval(List<TextEditingDelta> textEditingDeltas);
+
+  void onFailedToMapImePositionToDocumentPosition(
+    FailedToMapImePositionToDocumentPositionException exception,
+    StackTrace stacktrace,
+  );
+
+  void onFailedToMapDocumentPositionToImePosition(
+    FailedToMapDocumentPositionToImePositionException exception,
+    StackTrace stacktrace,
+  );
+
+  void onFailedToApplyDeltasForUnknownReason(Object exception, StackTrace stacktrace);
+}
+
+class ConsolePrintTextDeltasDocumentEditorLog implements TextDeltasDocumentEditorLog {
+  @override
+  void onGBoardNewlineTrailingSpaceRemoval(List<TextEditingDelta> textEditingDeltas) {
+    editorImeLog.fine("Detected a GBoard newline trailing space removal. Deltas:");
+    for (final delta in textEditingDeltas) {
+      editorImeLog
+          .fine(" > ${delta.runtimeType} - old text: ${delta.oldText}, selection: ${delta.selection.extentOffset}");
+    }
+  }
+
+  @override
+  void onFailedToMapImePositionToDocumentPosition(
+    FailedToMapImePositionToDocumentPositionException exception,
+    StackTrace stacktrace,
+  ) {
+    editorImeLog.warning("Failed to apply some deltas due to bad IME-to-document mapping.");
+    editorImeLog.warning(exception);
+    editorImeLog.warning("$stacktrace");
+  }
+
+  @override
+  void onFailedToMapDocumentPositionToImePosition(
+    FailedToMapDocumentPositionToImePositionException exception,
+    StackTrace stacktrace,
+  ) {
+    editorImeLog.warning("Failed to apply some deltas due to bad document-to-IME mapping.");
+    editorImeLog.warning(exception);
+    editorImeLog.warning("$stacktrace");
+  }
+
+  @override
+  void onFailedToApplyDeltasForUnknownReason(Object exception, StackTrace stacktrace) {
+    editorImeLog.shout("Unknown exception while applying deltas:");
+    editorImeLog.shout(exception);
+    editorImeLog.shout(stacktrace);
   }
 }
