@@ -670,6 +670,73 @@ Paragraph two
       });
     });
 
+    group('GBoard >', () {
+      testWidgetsOnAndroid('can insert newline into empty paragraph', (tester) async {
+        // Verifies fix for GBoard empty paragraph newline bug:
+        // https://github.com/Flutter-Bounty-Hunters/super_editor/issues/2981
+
+        await tester //
+            .createDocument()
+            .withSingleEmptyParagraph()
+            .withInputSource(TextInputSource.ime)
+            .pump();
+
+        // Place the caret at the start of the paragraph.
+        await tester.placeCaretInParagraph('1', 0);
+
+        // Simulate press of the newline button.
+        //
+        // On GBoard this is reported as the ENTER key, followed by corrective dangling
+        // space removal deltas. Technically those deltas are sent out of order. This is
+        // because the empty paragraph is encoded as ". ".
+        await tester.pressEnter();
+
+        await tester.ime.sendDeltas(const [
+          // GBoard seems to send a bunch of identical non-text updates.
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          // After the non-text updates, there's a deletion delta that tries to remove the space.
+          TextEditingDeltaDeletion(
+            oldText: '. ',
+            deletedRange: TextRange(start: 1, end: 2),
+            selection: TextSelection.collapsed(
+              offset: 1,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: -1, end: -1),
+          ),
+        ], getter: imeClientGetter);
+
+        final document = SuperEditorInspector.findDocument();
+        expect(document, isNotNull);
+        expect(document!.length, 2);
+
+        expect(document.first, isA<ParagraphNode>());
+        expect((document.first as TextNode).text.toPlainText(), "");
+
+        expect(document.last, isA<ParagraphNode>());
+        expect((document.last as TextNode).text.toPlainText(), "");
+      });
+    });
+
     group('on iPhone 11 (iOS 13.7) with chinese keyboard', () {
       testWidgetsOnIos('applies keyboard suggestions', (tester) async {
         // Holds the composing region that we sent to the IME.

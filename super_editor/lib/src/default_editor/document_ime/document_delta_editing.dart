@@ -235,6 +235,15 @@ class TextDeltasDocumentEditor {
       return false;
     }
 
+    for (final nonTextDelta in deltasBeforeDeletion) {
+      // We expect the reported text in every non-text delta to be an empty paragraph encoding.
+      if (nonTextDelta.oldText != ". ") {
+        // This delta has a text value that isn't an empty paragraph, so this looks like
+        // some other kind of delta batch.
+        return false;
+      }
+    }
+
     // We believe that this situation represents the GBoard auto-deleting the trailing
     // space in an empty paragraph, because we encode an empty paragraph as ". ".
     return true;
