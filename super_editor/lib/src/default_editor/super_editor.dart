@@ -142,6 +142,7 @@ class SuperEditor extends StatefulWidget {
     this.plugins = const {},
     this.debugPaint = const DebugPaintConfig(),
     this.shrinkWrap = false,
+    this.log = const SuperEditorPrintLog(),
   })  : stylesheet = stylesheet ?? defaultStylesheet,
         selectionStyles = selectionStyle ?? defaultSelectionStyle,
         componentBuilders = [
@@ -382,6 +383,14 @@ class SuperEditor extends StatefulWidget {
   /// Whether the scroll view used by the editor should shrink-wrap its contents.
   /// Only used when editor is not inside an scrollable.
   final bool shrinkWrap;
+
+  /// A log that reports specific errors and exceptional events that occur while
+  /// running a [SuperEditor].
+  ///
+  /// This log was introduced to create a place to report errors to apps that those
+  /// apps might want to send to their own issue tracker to gain visibility into why
+  /// issues are happening in their editor.
+  final SuperEditorPrintLog? log;
 
   @override
   SuperEditorState createState() => SuperEditorState();
@@ -850,6 +859,7 @@ class SuperEditorState extends State<SuperEditor> {
           ],
           selectorHandlers: widget.selectorHandlers ?? defaultEditorSelectorHandlers,
           isImeConnected: _isImeConnected,
+          log: widget.log?.imeDeltas,
           child: child,
         );
     }
@@ -1841,3 +1851,16 @@ TextStyle defaultStyleBuilder(Set<Attribution> attributions) {
 const defaultSelectionStyle = SelectionStyles(
   selectionColor: Color(0xFFACCEF7),
 );
+
+/// A log that reports specific important errors and exceptional situations that
+/// happen when running a [SuperEditor].
+abstract class SuperEditorLog {
+  TextDeltasDocumentEditorLog get imeDeltas;
+}
+
+class SuperEditorPrintLog implements SuperEditorLog {
+  const SuperEditorPrintLog() : imeDeltas = const ConsolePrintTextDeltasDocumentEditorLog();
+
+  @override
+  final ConsolePrintTextDeltasDocumentEditorLog imeDeltas;
+}
