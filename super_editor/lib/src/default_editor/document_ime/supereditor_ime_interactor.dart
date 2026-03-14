@@ -51,6 +51,7 @@ class SuperEditorImeInteractor extends StatefulWidget {
     this.hardwareKeyboardActions = const [],
     required this.selectorHandlers,
     this.floatingCursorController,
+    this.log,
     required this.child,
   }) : super(key: key);
 
@@ -147,6 +148,10 @@ class SuperEditorImeInteractor extends StatefulWidget {
   /// The IME reports selectors as unique `String`s, therefore selector handlers are
   /// defined as a mapping from selector names to handler functions.
   final Map<String, SuperEditorSelectorHandler> selectorHandlers;
+
+  /// A logger that is notified of events specifically to [TextDeltasDocumentEditor],
+  /// which lets apps report those specific events to their own issue tracker.
+  final TextDeltasDocumentEditorLog? log;
 
   final Widget child;
 
@@ -399,6 +404,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
         composerPreferences: widget.editContext.composer.preferences,
         composingRegion: widget.editContext.composer.composingRegion,
         commonOps: widget.editContext.commonOps,
+        log: widget.log,
         onPerformAction: (action) => _imeClient.performAction(action),
       ),
       imeConnection: _ownedImeConnection,

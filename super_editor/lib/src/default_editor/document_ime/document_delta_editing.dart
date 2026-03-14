@@ -728,6 +728,8 @@ abstract class TextDeltasDocumentEditorLog {
 }
 
 class ConsolePrintTextDeltasDocumentEditorLog implements TextDeltasDocumentEditorLog {
+  const ConsolePrintTextDeltasDocumentEditorLog();
+
   @override
   void onGBoardNewlineTrailingSpaceRemoval(List<TextEditingDelta> textEditingDeltas) {
     editorImeLog.fine("Detected a GBoard newline trailing space removal. Deltas:");
