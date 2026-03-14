@@ -670,6 +670,127 @@ Paragraph two
       });
     });
 
+    group('on Samsung', () {
+      testWidgetsOnAndroid('handles out of order newline followed by delta suggestion application', (tester) async {
+        await tester //
+            .createDocument()
+            .withSingleEmptyParagraph()
+            .withInputSource(TextInputSource.ime)
+            .pump();
+
+        // Place the caret at the start of the paragraph.
+        await tester.placeCaretInParagraph('1', 0);
+
+        // Start typing the word "Anonymous" with typos.
+        await tester.typeImeText('Anonimoi');
+
+        // Simulate the user pressing "newline", which on Samsung results in reporting
+        // the ENTER hardware key, followed by the suggestion deltas. Notice that these
+        // two events are in the wrong order!
+        await tester.pressEnter();
+
+        await tester.ime.sendDeltas(const [
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. Anonimoi',
+            selection: TextSelection.collapsed(
+              offset: 10,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: 2, end: 10),
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. Anonimoi',
+            selection: TextSelection.collapsed(
+              offset: 10,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: 2, end: 10),
+          ),
+          TextEditingDeltaReplacement(
+            oldText: '. Anonimoi',
+            replacementText: 'Anonymous',
+            replacedRange: TextRange(start: 2, end: 10),
+            selection: TextSelection.collapsed(offset: 11, affinity: TextAffinity.downstream),
+            composing: TextRange(start: -1, end: -1),
+          ),
+        ], getter: imeClientGetter);
+
+        final document = SuperEditorInspector.findDocument()!;
+        expect(document.length, 2);
+        // Note: We expect the mis-spelled word to remain because we couldn't apply
+        //       the suggestion due to receiving events in the wrong order.
+        expect((document.first as TextNode).text.toPlainText(), 'Anonimoi');
+        expect((document.last as TextNode).text.toPlainText(), '');
+      });
+    });
+
+    group('GBoard >', () {
+      testWidgetsOnAndroid('can insert newline into empty paragraph', (tester) async {
+        // Verifies fix for GBoard empty paragraph newline bug:
+        // https://github.com/Flutter-Bounty-Hunters/super_editor/issues/2981
+
+        await tester //
+            .createDocument()
+            .withSingleEmptyParagraph()
+            .withInputSource(TextInputSource.ime)
+            .pump();
+
+        // Place the caret at the start of the paragraph.
+        await tester.placeCaretInParagraph('1', 0);
+
+        // Simulate press of the newline button.
+        //
+        // On GBoard this is reported as the ENTER key, followed by corrective dangling
+        // space removal deltas. Technically those deltas are sent out of order. This is
+        // because the empty paragraph is encoded as ". ".
+        await tester.pressEnter();
+
+        await tester.ime.sendDeltas(const [
+          // GBoard seems to send a bunch of identical non-text updates.
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange.empty,
+          ),
+          // After the non-text updates, there's a deletion delta that tries to remove the space.
+          TextEditingDeltaDeletion(
+            oldText: '. ',
+            deletedRange: TextRange(start: 1, end: 2),
+            selection: TextSelection.collapsed(
+              offset: 1,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: -1, end: -1),
+          ),
+        ], getter: imeClientGetter);
+
+        final document = SuperEditorInspector.findDocument();
+        expect(document, isNotNull);
+        expect(document!.length, 2);
+
+        expect(document.first, isA<ParagraphNode>());
+        expect((document.first as TextNode).text.toPlainText(), "");
+
+        expect(document.last, isA<ParagraphNode>());
+        expect((document.last as TextNode).text.toPlainText(), "");
+      });
+    });
+
     group('on iPhone 11 (iOS 13.7) with chinese keyboard', () {
       testWidgetsOnIos('applies keyboard suggestions', (tester) async {
         // Holds the composing region that we sent to the IME.
