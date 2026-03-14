@@ -670,6 +670,60 @@ Paragraph two
       });
     });
 
+    group('on Samsung', () {
+      testWidgetsOnAndroid('handles out of order newline followed by delta suggestion application', (tester) async {
+        await tester //
+            .createDocument()
+            .withSingleEmptyParagraph()
+            .withInputSource(TextInputSource.ime)
+            .pump();
+
+        // Place the caret at the start of the paragraph.
+        await tester.placeCaretInParagraph('1', 0);
+
+        // Start typing the word "Anonymous" with typos.
+        await tester.typeImeText('Anonimoi');
+
+        // Simulate the user pressing "newline", which on Samsung results in reporting
+        // the ENTER hardware key, followed by the suggestion deltas. Notice that these
+        // two events are in the wrong order!
+        await tester.pressEnter();
+
+        await tester.ime.sendDeltas(const [
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. Anonimoi',
+            selection: TextSelection.collapsed(
+              offset: 10,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: 2, end: 10),
+          ),
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. Anonimoi',
+            selection: TextSelection.collapsed(
+              offset: 10,
+              affinity: TextAffinity.downstream,
+            ),
+            composing: TextRange(start: 2, end: 10),
+          ),
+          TextEditingDeltaReplacement(
+            oldText: '. Anonimoi',
+            replacementText: 'Anonymous',
+            replacedRange: TextRange(start: 2, end: 10),
+            selection: TextSelection.collapsed(offset: 11, affinity: TextAffinity.downstream),
+            composing: TextRange(start: -1, end: -1),
+          ),
+        ], getter: imeClientGetter);
+
+        final document = SuperEditorInspector.findDocument()!;
+        expect(document.length, 2);
+        // Note: We expect the mis-spelled word to remain because we couldn't apply
+        //       the suggestion due to receiving events in the wrong order.
+        expect((document.first as TextNode).text.toPlainText(), 'Anonimoi');
+        expect((document.last as TextNode).text.toPlainText(), '');
+      });
+    });
+
     group('GBoard >', () {
       testWidgetsOnAndroid('can insert newline into empty paragraph', (tester) async {
         // Verifies fix for GBoard empty paragraph newline bug:
