@@ -99,6 +99,31 @@ MutableDocument singleBlockDoc() => MutableDocument(
       ],
     );
 
+MutableDocument singleOrderedListItemDoc() => MutableDocument(
+      nodes: [
+        ListItemNode(
+          id: "1",
+          itemType: ListItemType.ordered,
+          text: AttributedText(
+            "This is an ordered list item.",
+          ),
+        ),
+      ],
+    );
+
+MutableDocument orderedListItemFollowedByEmptyParagraph() => MutableDocument(
+      nodes: [
+        ListItemNode(
+          id: "1",
+          itemType: ListItemType.ordered,
+          text: AttributedText(
+            "This is an ordered list item.",
+          ),
+        ),
+        ParagraphNode(id: "2", text: AttributedText()),
+      ],
+    );
+
 MutableDocument longTextDoc() => MutableDocument(
       nodes: [
         ParagraphNode(

@@ -118,12 +118,19 @@ typedef HeaderAttributionMapping = Attribution Function(int level);
 /// Converts a [ParagraphNode] to an [UnorderedListItemNode] when the
 /// user types "* " (or similar) at the start of the paragraph.
 class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReaction {
-  static final _unorderedListItemPattern = RegExp(r'^\s*[*-]\s+$');
+  static final _unorderedListItemInEmptyParagraphPattern = RegExp(r'^\s*[*•-]\s+$');
+  static final _unorderedListItemInNonEmptyParagraphPattern = RegExp(r'^\s*[*•-]\s+');
 
-  const UnorderedListItemConversionReaction();
+  const UnorderedListItemConversionReaction({
+    this.allowConversionOfNonEmptyParagraphs = true,
+  });
+
+  final bool allowConversionOfNonEmptyParagraphs;
 
   @override
-  RegExp get pattern => _unorderedListItemPattern;
+  RegExp get pattern => allowConversionOfNonEmptyParagraphs
+      ? _unorderedListItemInNonEmptyParagraphPattern
+      : _unorderedListItemInEmptyParagraphPattern;
 
   @override
   void onPrefixMatched(
@@ -140,7 +147,7 @@ class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReact
         existingNodeId: paragraph.id,
         newNode: ListItemNode.unordered(
           id: paragraph.id,
-          text: AttributedText(),
+          text: paragraph.text.copy().removeRegion(startOffset: 0, endOffset: match.length),
         ),
       ),
       ChangeSelectionRequest(
@@ -161,15 +168,22 @@ class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReact
 /// user types " 1. " (or similar) at the start of the paragraph.
 class OrderedListItemConversionReaction extends ParagraphPrefixConversionReaction {
   /// Matches strings like ` 1. `, ` 2. `, ` 1) `, ` 2) `, etc.
-  static final _orderedListPattern = RegExp(r'^\s*\d+[.)]\s+$');
+  static final _orderedListPatternInEmptyParagraph = RegExp(r'^\s*\d+[.)]\s+$');
+  static final _orderedListPatternInNonEmptyParagraph = RegExp(r'^\s*\d+[.)]\s+');
 
   /// Matches one or more numbers.
   static final _numberRegex = RegExp(r'\d+');
 
-  const OrderedListItemConversionReaction();
+  const OrderedListItemConversionReaction({
+    this.allowConversionOfNonEmptyParagraphs = true,
+  });
+
+  final bool allowConversionOfNonEmptyParagraphs;
 
   @override
-  RegExp get pattern => _orderedListPattern;
+  RegExp get pattern => allowConversionOfNonEmptyParagraphs
+      ? _orderedListPatternInNonEmptyParagraph
+      : _orderedListPatternInEmptyParagraph;
 
   @override
   void onPrefixMatched(
