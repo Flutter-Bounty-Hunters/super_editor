@@ -147,7 +147,10 @@ class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReact
         existingNodeId: paragraph.id,
         newNode: ListItemNode.unordered(
           id: paragraph.id,
-          text: paragraph.text.copy().removeRegion(startOffset: 0, endOffset: match.length),
+          text: paragraph.text.copy().removeRegion(
+                startOffset: 0, //
+                endOffset: match.length,
+              ),
         ),
       ),
       ChangeSelectionRequest(
@@ -214,7 +217,10 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
         existingNodeId: paragraph.id,
         newNode: ListItemNode.ordered(
           id: paragraph.id,
-          text: AttributedText(),
+          text: paragraph.text.copy().removeRegion(
+                startOffset: 0,
+                endOffset: match.length,
+              ),
           indent: nextOrderedListItem.indent,
         ),
       ),
