@@ -176,9 +176,12 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
 
   const OrderedListItemConversionReaction({
     this.allowConversionOfNonEmptyParagraphs = true,
+    this.continuationStrategy,
   });
 
   final bool allowConversionOfNonEmptyParagraphs;
+
+  final OrderedListContinuationStrategy? continuationStrategy;
 
   @override
   RegExp get pattern => allowConversionOfNonEmptyParagraphs
@@ -197,26 +200,8 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     final numberMatch = _numberRegex.firstMatch(match)!;
     final numberTyped = int.parse(match.substring(numberMatch.start, numberMatch.end));
 
-    if (numberTyped > 1) {
-      // Check if the user typed a number that continues the sequence of an upstream
-      // ordered list item. For example, the list has the items 1, 2, 3 and 4,
-      // and the user types " 5. ".
-
-      final document = editContext.document;
-
-      final upstreamNode = document.getNodeBefore(paragraph);
-      if (upstreamNode == null || upstreamNode is! ListItemNode || upstreamNode.type != ListItemType.ordered) {
-        // There isn't an ordered list item immediately before this paragraph. Fizzle.
-        return;
-      }
-
-      // The node immediately before this paragraph is an ordered list item. Compute its ordinal value,
-      // so we can check if the user typed the next number in the sequence.
-      int upstreamListItemOrdinalValue = computeListItemOrdinalValue(upstreamNode, document);
-      if (numberTyped != upstreamListItemOrdinalValue + 1) {
-        // The user typed a number that doesn't continue the sequence of the upstream ordered list item.
-        return;
-      }
+    if (numberTyped > 1 && !_isListContinuation(editContext.document, paragraph, numberTyped)) {
+      return;
     }
 
     // The user started a paragraph with an ordered list item pattern.
@@ -241,7 +226,36 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
       ),
     ]);
   }
+
+  /// Returns `true` if the [typedOrdinal] should be treated at a continuation of an upstream
+  /// list, and therefore convert the [paragraph] to a list item.
+  bool _isListContinuation(Document document, ParagraphNode paragraph, int numberTyped) {
+    if (continuationStrategy != null) {
+      return continuationStrategy!.call(document, paragraph, numberTyped);
+    }
+
+    // Check if the user typed a number that continues the sequence of an upstream
+    // ordered list item. For example, the list has the items 1, 2, 3 and 4,
+    // and the user types " 5. ".
+    final upstreamNode = document.getNodeBefore(paragraph);
+    if (upstreamNode == null || upstreamNode is! ListItemNode || upstreamNode.type != ListItemType.ordered) {
+      // There isn't an ordered list item immediately before this paragraph. Fizzle.
+      return false;
+    }
+
+    // The node immediately before this paragraph is an ordered list item. Compute its ordinal value,
+    // so we can check if the user typed the next number in the sequence.
+    int upstreamListItemOrdinalValue = computeListItemOrdinalValue(upstreamNode, document);
+    if (numberTyped != upstreamListItemOrdinalValue + 1) {
+      // The user typed a number that doesn't continue the sequence of the upstream ordered list item.
+      return false;
+    }
+
+    return true;
+  }
 }
+
+typedef OrderedListContinuationStrategy = bool Function(Document document, ParagraphNode paragraph, int typedOrdinal);
 
 /// Adjusts a [ParagraphNode] to use a blockquote block attribution when a
 /// user types " > " (or similar) at the start of the paragraph.
