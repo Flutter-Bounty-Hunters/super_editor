@@ -212,17 +212,12 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
 
     // The user started a paragraph with an ordered list item pattern.
     // Convert the paragraph to an unordered list item.
+    final continuingListItemNode = createNextListItemNode(paragraph, match: match, indent: nextOrderedListItem.indent);
+
     requestDispatcher.execute([
       ReplaceNodeRequest(
         existingNodeId: paragraph.id,
-        newNode: ListItemNode.ordered(
-          id: paragraph.id,
-          text: paragraph.text.copy().removeRegion(
-                startOffset: 0,
-                endOffset: match.length,
-              ),
-          indent: nextOrderedListItem.indent,
-        ),
+        newNode: continuingListItemNode,
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
@@ -266,6 +261,27 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
       // In this implementation, we don't care about the ordinal value
       // because it's auto-computed when laying out the document UI.
       indent: upstreamNode.indent,
+    );
+  }
+
+  /// Creates the [ListItemNode] that will replace the paragraph with the typed
+  /// prefix.
+  ///
+  /// This method is protected so that client apps can choose their own implementation
+  /// of list items, if needed.
+  @protected
+  ListItemNode createNextListItemNode(
+    ParagraphNode paragraph, {
+    required String match,
+    required int indent,
+  }) {
+    return ListItemNode.ordered(
+      id: paragraph.id,
+      text: paragraph.text.copy().removeRegion(
+            startOffset: 0,
+            endOffset: match.length,
+          ),
+      indent: indent,
     );
   }
 }
