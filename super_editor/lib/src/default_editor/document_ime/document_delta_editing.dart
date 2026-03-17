@@ -215,6 +215,14 @@ class TextDeltasDocumentEditor {
   /// a consequence of how the GBoard IME reporting implementation works with Flutter's
   /// batching system.
   bool _isGBoardTrailingSpaceRemoval(List<TextEditingDelta> deltas) {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      // As far as we know, this issue only happens on GBoards, which only runs
+      // on Android. iOS legitimately uses deltas for almost everything, including
+      // backspace deletion, so we have to very careful if we don't gate this on
+      // the platform.
+      return false;
+    }
+
     if (deltas.length < 2) {
       // We expect at least 2 deltas when the GBoard tries to remove a trailing space.
       return false;
@@ -240,6 +248,14 @@ class TextDeltasDocumentEditor {
       if (nonTextDelta.oldText != ". ") {
         // This delta has a text value that isn't an empty paragraph, so this looks like
         // some other kind of delta batch.
+        return false;
+      }
+
+      if (!nonTextDelta.selection.isCollapsed) {
+        // When iOS backspaces with a delta at the start of a paragraph, it reports
+        // a selection from offset 1 -> 2. Even though we're gating this whole method
+        // on the Android platform, we explicitly exclude this situation as well, just
+        // in case.
         return false;
       }
     }
