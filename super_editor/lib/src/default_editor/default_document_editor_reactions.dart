@@ -200,7 +200,10 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     final numberMatch = _numberRegex.firstMatch(match)!;
     final numberTyped = int.parse(match.substring(numberMatch.start, numberMatch.end));
 
-    if (numberTyped > 1 && !_isListContinuation(editContext.document, paragraph, numberTyped)) {
+    final nextOrderedListItem = numberTyped == 1
+        ? const NextOrderedListItem()
+        : _maybeContinueList(editContext.document, paragraph, numberTyped);
+    if (nextOrderedListItem == null) {
       return;
     }
 
@@ -212,6 +215,7 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
         newNode: ListItemNode.ordered(
           id: paragraph.id,
           text: AttributedText(),
+          indent: nextOrderedListItem.indent,
         ),
       ),
       ChangeSelectionRequest(
@@ -227,9 +231,10 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     ]);
   }
 
-  /// Returns `true` if the [typedOrdinal] should be treated at a continuation of an upstream
-  /// list, and therefore convert the [paragraph] to a list item.
-  bool _isListContinuation(Document document, ParagraphNode paragraph, int numberTyped) {
+  /// Checks if the [numberTyped] at the start of the [paragraph] should continue an
+  /// existing list, and returns the configuration of that new ordered list item, or returns
+  /// `null` if no list continuation is desired.
+  NextOrderedListItem? _maybeContinueList(Document document, ParagraphNode paragraph, int numberTyped) {
     if (continuationStrategy != null) {
       return continuationStrategy!.call(document, paragraph, numberTyped);
     }
@@ -240,7 +245,7 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     final upstreamNode = document.getNodeBefore(paragraph);
     if (upstreamNode == null || upstreamNode is! ListItemNode || upstreamNode.type != ListItemType.ordered) {
       // There isn't an ordered list item immediately before this paragraph. Fizzle.
-      return false;
+      return null;
     }
 
     // The node immediately before this paragraph is an ordered list item. Compute its ordinal value,
@@ -248,14 +253,41 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     int upstreamListItemOrdinalValue = computeListItemOrdinalValue(upstreamNode, document);
     if (numberTyped != upstreamListItemOrdinalValue + 1) {
       // The user typed a number that doesn't continue the sequence of the upstream ordered list item.
-      return false;
+      return null;
     }
 
-    return true;
+    return NextOrderedListItem(
+      // In this implementation, we don't care about the ordinal value
+      // because it's auto-computed when laying out the document UI.
+      indent: upstreamNode.indent,
+    );
   }
 }
 
-typedef OrderedListContinuationStrategy = bool Function(Document document, ParagraphNode paragraph, int typedOrdinal);
+/// Strategy for deciding whether a typed prefix number should continue an existing list,
+/// and if so, what the next number should be.
+///
+/// Contract:
+///  * Returns `null` if no continuation is desired.
+///  * Returns a non-null [NextOrderedListItem.ordinalValue], if the app cares about explicit
+///    ordinal values per list item, or a `null` [NextOrderedListItem.ordinalValue] if the app
+///    auto-increments list items as the document UI is built.
+///  * Returns the desired indent of the new list item in [NextOrderedListItem.indent].
+typedef OrderedListContinuationStrategy = NextOrderedListItem? Function(
+    Document document, ParagraphNode paragraph, int typedOrdinal);
+
+/// Data structure that reports the configuration for a new ordered list item that
+/// should be created due to an automatic prefix conversion, e.g., typing "1. ".
+class NextOrderedListItem {
+  const NextOrderedListItem({
+    this.ordinalValue,
+    this.indent = 0,
+  })  : assert(ordinalValue == null || ordinalValue >= 0),
+        assert(indent >= 0);
+
+  final int? ordinalValue;
+  final int indent;
+}
 
 /// Adjusts a [ParagraphNode] to use a blockquote block attribution when a
 /// user types " > " (or similar) at the start of the paragraph.
