@@ -212,7 +212,12 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
 
     // The user started a paragraph with an ordered list item pattern.
     // Convert the paragraph to an unordered list item.
-    final continuingListItemNode = createNextListItemNode(paragraph, match: match, indent: nextOrderedListItem.indent);
+    final continuingListItemNode = createNextListItemNode(
+      paragraph,
+      match: match,
+      numberTyped: numberTyped,
+      indent: nextOrderedListItem.indent,
+    );
 
     requestDispatcher.execute([
       ReplaceNodeRequest(
@@ -273,6 +278,7 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
   ListItemNode createNextListItemNode(
     ParagraphNode paragraph, {
     required String match,
+    required int numberTyped,
     required int indent,
   }) {
     return ListItemNode.ordered(
