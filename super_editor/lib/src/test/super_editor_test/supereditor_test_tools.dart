@@ -88,6 +88,20 @@ class TestDocumentSelector {
     );
   }
 
+  TestSuperEditorConfigurator withSingleOrderedListItem() {
+    return TestSuperEditorConfigurator._(
+      _widgetTester,
+      singleOrderedListItemDoc(),
+    );
+  }
+
+  TestSuperEditorConfigurator withOrderedListItemFollowedByEmptyParagraph() {
+    return TestSuperEditorConfigurator._(
+      _widgetTester,
+      orderedListItemFollowedByEmptyParagraph(),
+    );
+  }
+
   TestSuperEditorConfigurator withLongTextContent() {
     return TestSuperEditorConfigurator._(
       _widgetTester,

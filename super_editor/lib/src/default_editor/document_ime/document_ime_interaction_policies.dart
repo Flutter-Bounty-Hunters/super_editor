@@ -110,22 +110,24 @@ class _ImeFocusPolicyState extends State<ImeFocusPolicy> {
       return;
     }
 
+    var didTakeOwnership = false;
     if (_focusNode.hasFocus && !SuperIme.instance.isOwner(widget.inputId)) {
       // We have focus but we don't own the IME. Take it over.
       SuperIme.instance.takeOwnership(widget.inputId);
+      didTakeOwnership = true;
     }
 
     bool shouldOpenIme = false;
     if (_focusNode.hasPrimaryFocus &&
         widget.openImeOnPrimaryFocusGain &&
-        !SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
+        (!SuperIme.instance.isInputAttachedToOS(widget.inputId) || didTakeOwnership)) {
       editorPoliciesLog
           .info("[${widget.runtimeType}] - Document editor gained primary focus. Opening an IME connection.");
       shouldOpenIme = true;
     } else if (!_focusNode.hasPrimaryFocus &&
         _focusNode.hasFocus &&
         widget.openImeOnNonPrimaryFocusGain &&
-        !SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
+        (!SuperIme.instance.isInputAttachedToOS(widget.inputId) || didTakeOwnership)) {
       editorPoliciesLog
           .info("[${widget.runtimeType}] - Document editor gained non-primary focus. Opening an IME connection.");
       shouldOpenIme = true;
@@ -356,11 +358,13 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
     if (widget.selection.value != null && widget.focusNode.hasPrimaryFocus && widget.openKeyboardOnSelectionChange) {
       // There's a new document selection, and our policy wants the keyboard to be
       // displayed whenever the selection changes. Show the keyboard.
+      var didTakeOwnership = false;
       if (!SuperIme.instance.isOwner(widget.inputId)) {
         SuperIme.instance.takeOwnership(widget.inputId);
+        didTakeOwnership = true;
       }
 
-      if (!SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
+      if (!SuperIme.instance.isInputAttachedToOS(widget.inputId) || didTakeOwnership) {
         WidgetsBinding.instance.runAsSoonAsPossible(() {
           if (!mounted) {
             return;
@@ -421,6 +425,17 @@ class _DocumentSelectionOpenAndCloseImePolicyState extends State<DocumentSelecti
 
     if (!_wasAttached || SuperIme.instance.isInputAttachedToOS(widget.inputId)) {
       // We didn't go from closed to open. Our policy doesn't apply.
+      return;
+    }
+
+    if (SuperIme.instance.owner != widget.inputId && SuperIme.instance.owner?.role == widget.inputId.role) {
+      // Our SuperEditor has been replaced by a different one, which now owns the IME,
+      // but the other SuperEditor is playing the same role. Our widget tree got
+      // disposed and replaced by another widget tree.
+      //
+      // Since the role of the owning SuperEditor didn't change, we don't want to
+      // mess with selection, IME, or anything else. Leave it alone for the new
+      // version of us.
       return;
     }
 

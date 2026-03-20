@@ -80,19 +80,22 @@ class PasteStructuredContentEditorCommand extends EditCommand {
           textToInsert: (pastedNode as TextNode).text,
         ),
       );
-      executor.executeCommand(
-        ChangeSelectionCommand(
-          DocumentSelection.collapsed(
-            position: DocumentPosition(
-              nodeId: pastePosition.nodeId,
-              nodePosition: TextNodePosition(
-                  offset: (pastePosition.nodePosition as TextNodePosition).offset + pastedNode.text.length),
+      executor
+        ..executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: pastePosition.nodeId,
+                nodePosition: TextNodePosition(
+                    offset: (pastePosition.nodePosition as TextNodePosition).offset + pastedNode.text.length),
+              ),
             ),
+            SelectionChangeType.insertContent,
+            SelectionReason.userInteraction,
           ),
-          SelectionChangeType.insertContent,
-          SelectionReason.userInteraction,
-        ),
-      );
+        )
+        // Clear the composing region after content change and selection move.
+        ..executeCommand(ChangeComposingRegionCommand(null));
 
       return;
     }
@@ -172,15 +175,18 @@ class PasteStructuredContentEditorCommand extends EditCommand {
     );
 
     // Place the caret at the end of the pasted content.
-    executor.executeCommand(
-      ChangeSelectionCommand(
-        DocumentSelection.collapsed(
-          position: caretPositionAfterPaste,
+    executor
+      ..executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(
+            position: caretPositionAfterPaste,
+          ),
+          SelectionChangeType.insertContent,
+          SelectionReason.userInteraction,
         ),
-        SelectionChangeType.insertContent,
-        SelectionReason.userInteraction,
-      ),
-    );
+      )
+      // Clear the composing region after content change and selection move.
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 
   void _pasteMultipleNodes(
@@ -293,13 +299,17 @@ class PasteStructuredContentEditorCommand extends EditCommand {
     }
 
     // Place the caret at the end of the pasted content.
-    executor.executeCommand(
-      ChangeSelectionCommand(
-        DocumentSelection.collapsed(position: pasteEndPosition),
-        SelectionChangeType.insertContent,
-        SelectionReason.userInteraction,
-      ),
-    );
+    executor
+      ..executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(position: pasteEndPosition),
+          SelectionChangeType.insertContent,
+          SelectionReason.userInteraction,
+        ),
+      )
+      // The content changed, and the selection moved. Clear the composing region to
+      // ensure we don't try to report an invalid region.
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 
   (String upstreamNode, String downstreamNode) _splitPasteParagraph(
@@ -566,11 +576,15 @@ class InsertNodeAtCaretCommand extends EditCommand {
       );
     }
 
-    executor.executeCommand(ChangeSelectionCommand(
-      newSelection,
-      SelectionChangeType.insertContent,
-      SelectionReason.userInteraction,
-    ));
+    executor
+      ..executeCommand(ChangeSelectionCommand(
+        newSelection,
+        SelectionChangeType.insertContent,
+        SelectionReason.userInteraction,
+      ))
+      // The existing composing region is probably still valid (in terms of content),
+      // but the selection moved, so clear it.
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 }
 
@@ -730,17 +744,21 @@ class ReplaceNodeWithEmptyParagraphWithCaretCommand extends EditCommand {
       ),
     ]);
 
-    executor.executeCommand(ChangeSelectionCommand(
-      DocumentSelection.collapsed(
-        position: DocumentPosition(
-          nodeId: newNode.id,
-          nodePosition: newNode.beginningPosition,
+    executor
+      ..executeCommand(ChangeSelectionCommand(
+        DocumentSelection.collapsed(
+          position: DocumentPosition(
+            nodeId: newNode.id,
+            nodePosition: newNode.beginningPosition,
+          ),
         ),
-      ),
-      SelectionChangeType.placeCaret,
-      SelectionReason.userInteraction,
-      notifyListeners: false,
-    ));
+        SelectionChangeType.placeCaret,
+        SelectionReason.userInteraction,
+        notifyListeners: false,
+      ))
+      // The content changed, and selection moved, so the previous composing region
+      // no longer applies, and might even be invalid. Clear it.
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 }
 
@@ -1338,6 +1356,10 @@ class DeleteSelectionCommand extends EditCommand {
         ),
       );
     }
+
+    // We expect that the selection is now collapsed, and also is probably in a different
+    // location. Clear the composing region.
+    executor.executeCommand(ChangeComposingRegionCommand(null));
   }
 }
 
@@ -1429,6 +1451,9 @@ class ReplaceDocumentCommand extends EditCommand {
       )
       ..executeCommand(ClearDocumentCommand())
       // Clear selection again because `ClearDocumentCommand` sets a selection.
+      //
+      // Note: `ClearDocumentCommand` also clears the composing region, which we
+      //       want here as well.
       ..executeCommand(
         const ChangeSelectionCommand(
           null,

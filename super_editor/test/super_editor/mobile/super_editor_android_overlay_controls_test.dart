@@ -69,7 +69,31 @@ void main() {
       await tester.pump(kTapMinTime);
     });
 
-    testWidgetsOnAndroid("shows and hides toolbar upon tap on collapsed handle", (tester) async {
+    testWidgetsOnAndroid("toggles toolbar upon tap on caret (with software keyboard)", (tester) async {
+      await _pumpSingleParagraphApp(tester);
+
+      // Place the caret at the beginning of the document.
+      await tester.tapInParagraph("1", 0);
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+      // Tap the caret to show the toolbar.
+      await tester.tapInParagraph("1", 0);
+      await tester.pump();
+
+      // Ensure the toolbar is visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isTrue);
+
+      // Tap the caret to hide the toolbar.
+      await tester.tapOnCollapsedMobileHandle();
+      await tester.pump();
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+    });
+
+    testWidgetsOnAndroid("toggles toolbar upon tap on collapsed handle (with software keyboard)", (tester) async {
       await _pumpSingleParagraphApp(tester);
 
       // Place the caret at the beginning of the document.
@@ -90,6 +114,110 @@ void main() {
       await tester.pump();
 
       // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+    });
+
+    testWidgetsOnAndroid("hides toolbar when the IME connection closes (with software keyboard)", (tester) async {
+      await _pumpSingleParagraphApp(tester);
+
+      // Place the caret at the beginning of the document.
+      await tester.tapInParagraph("1", 0);
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+      // Tap the caret to show the toolbar.
+      await tester.tapInParagraph("1", 0);
+      await tester.pump();
+
+      // Ensure the toolbar is visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isTrue);
+
+      // Take the IME connection away from Super Editor. The best we can do to
+      // simulate this is to move the focus somewhere else. In practice, this is
+      // how it actually occurs. It's not obvious under which circumstances the OS
+      // forcibly reclaims the IME, or how we should simulate that in tests.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.pump();
+
+      // Ensure that the toolbar is hidden.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+    });
+
+    testWidgetsOnAndroid("toggles toolbar upon tap on caret (with hardware keyboard)", (tester) async {
+      await _pumpSingleParagraphApp(tester, simulateSoftwareKeyboardAppearance: false);
+
+      // Place the caret at the beginning of the document.
+      await tester.tapInParagraph("1", 0);
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+      // Tap the caret to show the toolbar.
+      await tester.tapInParagraph("1", 0);
+      await tester.pump();
+
+      // Ensure the toolbar is visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isTrue);
+
+      // Tap the caret to hide the toolbar.
+      await tester.tapOnCollapsedMobileHandle();
+      await tester.pump();
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+    });
+
+    testWidgetsOnAndroid("toggles toolbar upon tap on collapsed handle (with hardware keyboard)", (tester) async {
+      await _pumpSingleParagraphApp(tester, simulateSoftwareKeyboardAppearance: false);
+
+      // Place the caret at the beginning of the document.
+      await tester.placeCaretInParagraph("1", 0);
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+      // Tap the drag handle to show the toolbar.
+      await tester.tapOnCollapsedMobileHandle();
+      await tester.pump();
+
+      // Ensure the toolbar is visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isTrue);
+
+      // Tap the drag handle to hide the toolbar.
+      await tester.tapOnCollapsedMobileHandle();
+      await tester.pump();
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+    });
+
+    testWidgetsOnAndroid("hides toolbar when the IME connection closes (with hardware keyboard)", (tester) async {
+      await _pumpSingleParagraphApp(tester, simulateSoftwareKeyboardAppearance: false);
+
+      // Place the caret at the beginning of the document.
+      await tester.tapInParagraph("1", 0);
+
+      // Ensure the toolbar isn't visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+      // Tap the caret to show the toolbar.
+      await tester.tapInParagraph("1", 0);
+      await tester.pump();
+
+      // Ensure the toolbar is visible.
+      expect(SuperEditorInspector.isMobileToolbarVisible(), isTrue);
+
+      // Take the IME connection away from Super Editor. The best we can do to
+      // simulate this is to move the focus somewhere else. In practice, this is
+      // how it actually occurs. It's not obvious under which circumstances the OS
+      // forcibly reclaims the IME, or how we should simulate that in tests.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.pump();
+
+      // Ensure that the toolbar is hidden.
       expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
     });
 
@@ -716,10 +844,14 @@ void main() {
   });
 }
 
-Future<TestDocumentContext> _pumpSingleParagraphApp(WidgetTester tester) async {
+Future<TestDocumentContext> _pumpSingleParagraphApp(
+  WidgetTester tester, {
+  bool simulateSoftwareKeyboardAppearance = true,
+}) async {
   return await tester
       .createDocument()
       // Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor...
       .withSingleParagraph()
+      .simulateSoftwareKeyboardInsets(simulateSoftwareKeyboardAppearance)
       .pump();
 }

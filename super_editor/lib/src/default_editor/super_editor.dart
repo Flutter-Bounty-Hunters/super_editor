@@ -142,6 +142,7 @@ class SuperEditor extends StatefulWidget {
     this.plugins = const {},
     this.debugPaint = const DebugPaintConfig(),
     this.shrinkWrap = false,
+    this.log = const SuperEditorPrintLog(),
   })  : stylesheet = stylesheet ?? defaultStylesheet,
         selectionStyles = selectionStyle ?? defaultSelectionStyle,
         componentBuilders = [
@@ -294,7 +295,7 @@ class SuperEditor extends StatefulWidget {
   /// The `SuperEditor` gesture mode, e.g., mouse or touch.
   final DocumentGestureMode? gestureMode;
 
-  /// List of factories that creates a [ContentTapDelegate], which is given an
+  /// List of factories that create a [ContentTapDelegate], which is given an
   /// opportunity to respond to taps on content before the editor, itself.
   ///
   /// A [ContentTapDelegate] might be used, for example, to launch a URL
@@ -382,6 +383,14 @@ class SuperEditor extends StatefulWidget {
   /// Whether the scroll view used by the editor should shrink-wrap its contents.
   /// Only used when editor is not inside an scrollable.
   final bool shrinkWrap;
+
+  /// A log that reports specific errors and exceptional events that occur while
+  /// running a [SuperEditor].
+  ///
+  /// This log was introduced to create a place to report errors to apps that those
+  /// apps might want to send to their own issue tracker to gain visibility into why
+  /// issues are happening in their editor.
+  final SuperEditorPrintLog? log;
 
   @override
   SuperEditorState createState() => SuperEditorState();
@@ -850,6 +859,7 @@ class SuperEditorState extends State<SuperEditor> {
           ],
           selectorHandlers: widget.selectorHandlers ?? defaultEditorSelectorHandlers,
           isImeConnected: _isImeConnected,
+          log: widget.log?.imeDeltas,
           child: child,
         );
     }
@@ -909,6 +919,7 @@ class SuperEditorState extends State<SuperEditor> {
               ),
             ]);
           },
+          isImeConnected: _isImeConnected,
           scrollChangeSignal: _scrollChangeSignal,
           dragHandleAutoScroller: _dragHandleAutoScroller,
           defaultToolbarBuilder: (overlayContext, mobileToolbarKey, focalPoint) => defaultAndroidEditorToolbarBuilder(
@@ -956,6 +967,7 @@ class SuperEditorState extends State<SuperEditor> {
           document: editContext.document,
           getDocumentLayout: () => editContext.documentLayout,
           selection: editContext.composer.selectionNotifier,
+          isImeConnected: _isImeConnected,
           openKeyboardWhenTappingExistingSelection: widget.selectionPolicies.openKeyboardWhenTappingExistingSelection,
           openKeyboardOnSelectionChange: widget.imePolicies.openKeyboardOnSelectionChange,
           openSoftwareKeyboard: _openSoftwareKeyboard,
@@ -977,6 +989,7 @@ class SuperEditorState extends State<SuperEditor> {
           document: editContext.document,
           getDocumentLayout: () => editContext.documentLayout,
           selection: editContext.composer.selectionNotifier,
+          isImeConnected: _isImeConnected,
           openKeyboardWhenTappingExistingSelection: widget.selectionPolicies.openKeyboardWhenTappingExistingSelection,
           openKeyboardOnSelectionChange: widget.imePolicies.openKeyboardOnSelectionChange,
           openSoftwareKeyboard: _openSoftwareKeyboard,
@@ -1844,3 +1857,16 @@ TextStyle defaultStyleBuilder(Set<Attribution> attributions) {
 const defaultSelectionStyle = SelectionStyles(
   selectionColor: Color(0xFFACCEF7),
 );
+
+/// A log that reports specific important errors and exceptional situations that
+/// happen when running a [SuperEditor].
+abstract class SuperEditorLog {
+  TextDeltasDocumentEditorLog get imeDeltas;
+}
+
+class SuperEditorPrintLog implements SuperEditorLog {
+  const SuperEditorPrintLog() : imeDeltas = const ConsolePrintTextDeltasDocumentEditorLog();
+
+  @override
+  final ConsolePrintTextDeltasDocumentEditorLog imeDeltas;
+}
