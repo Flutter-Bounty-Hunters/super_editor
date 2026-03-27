@@ -33,7 +33,7 @@ dependencies:
   characters: ^1.3.0
   collection: ^1.15.0
   dart_quill_delta: ^9.4.1
-  follow_the_leader: ^0.5.2
+  follow_the_leader: ^0.5.3
   http: ^1.2.2
   linkify: ^5.0.0
   logging: ^1.3.0
