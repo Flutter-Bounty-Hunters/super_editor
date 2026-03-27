@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -228,6 +229,26 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
   }
 
   @override
+  double computeMaxIntrinsicHeight(double width) {
+    final banner = childForSlot(ShadowSheetSlot.banner);
+    final bannerHeight = banner != null
+        ? banner.getMaxIntrinsicHeight(width - _style.padding.horizontal) + _style.padding.vertical
+        : 0.0;
+    final result = bannerHeight + (childForSlot(ShadowSheetSlot.editorSheet)?.getMaxIntrinsicHeight(width) ?? 0.0);
+    return result;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    final banner = childForSlot(ShadowSheetSlot.banner);
+    final bannerHeight = banner != null
+        ? banner.getMinIntrinsicHeight(width - _style.padding.horizontal) + _style.padding.vertical
+        : 0.0;
+    final result = bannerHeight + (childForSlot(ShadowSheetSlot.editorSheet)?.getMinIntrinsicHeight(width) ?? 0.0);
+    return result;
+  }
+
+  @override
   bool hitTestSelf(Offset position) => false;
 
   @override
@@ -265,7 +286,14 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     // We force the banner to be the same width as the editor sheet.
     final bannerContentWidth = editorSheetSize.width - _style.padding.horizontal;
     banner?.layout(
-      constraints.copyWith(minWidth: bannerContentWidth, maxWidth: bannerContentWidth),
+      constraints.copyWith(
+        minWidth: bannerContentWidth,
+        maxWidth: bannerContentWidth,
+        // Even if our incoming constraints are tight, we don't want to apply
+        // a strict height to our banner. We'll let the child content figure
+        // out how to expand to the strict height.
+        minHeight: 0,
+      ),
       parentUsesSize: true,
     );
     final bannerSize = banner?.size ?? Size.zero;
@@ -275,7 +303,10 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     // editor, forcing it to be shorter.
     if (bannerAndPaddingHeight + editorSheetSize.height > constraints.maxHeight) {
       editorSheet.layout(
-        constraints.copyWith(maxHeight: constraints.maxHeight - bannerAndPaddingHeight),
+        constraints.copyWith(
+          maxHeight: constraints.maxHeight - bannerAndPaddingHeight,
+          minHeight: max(constraints.minHeight - bannerAndPaddingHeight, 0),
+        ),
         parentUsesSize: true,
       );
       editorSheetSize = editorSheet.size;
@@ -289,6 +320,96 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     // sheet to fit a wide banner width.
     size = Size(editorSheetSize.width, bannerAndPaddingHeight + editorSheetSize.height);
   }
+
+  // @override
+  // void paint(PaintingContext context, Offset offset) {
+  //   print("Painting shadow sheet - size: $size");
+  //   final banner = childForSlot(ShadowSheetSlot.banner);
+  //   final editorSheet = childForSlot(ShadowSheetSlot.editorSheet)!;
+  //   if (banner != null) {
+  //     print(" - banner height: ${banner.size.height}");
+  //   }
+  //   print(" - editor height: ${editorSheet.size.height}");
+  //
+  //   final editorSheetOffset = offset + (editorSheet.parentData as BoxParentData).offset;
+  //   final editorSheetBoundary = Path()
+  //     ..addRSuperellipse(
+  //       RSuperellipse.fromLTRBR(
+  //         editorSheetOffset.dx,
+  //         editorSheetOffset.dy,
+  //         editorSheetOffset.dx + size.width,
+  //         editorSheetOffset.dy + editorSheet.size.height,
+  //         _style.borderRadius,
+  //       ),
+  //     );
+  //
+  //   // Shadow sheet includes the banner and the editor sheet.
+  //   final shadowSheetBoundary = RSuperellipse.fromLTRBR(
+  //     offset.dx,
+  //     offset.dy,
+  //     offset.dx + size.width,
+  //     offset.dy + size.height,
+  //     _style.borderRadius,
+  //   );
+  //   final shadowSheetBoundaryPath = Path()..addRSuperellipse(shadowSheetBoundary);
+  //
+  //   // Paint the shadow for the entire shadow sheet.
+  //   // final shadowPaint = Paint()
+  //   //   ..color = Colors.black.withValues(alpha: 0.2)
+  //   //   ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12);
+  //   final shadowPaint = Paint()
+  //     ..color = _style.shadow.color
+  //     // Note: We use a normal blur instead of an outer blur because we have to
+  //     // clip the shadow no matter what. If we do an outer blur without clipping
+  //     // the shadow then any backdrop blur that the editor sheet applies will pull
+  //     // in a little bit of that surrounding shadow, giving a beveled or shaded edge
+  //     // look that we don't want.
+  //     ..maskFilter = MaskFilter.blur(BlurStyle.normal, _style.shadow.blur);
+  //
+  //   context.canvas.saveLayer(null, Paint());
+  //   context.canvas
+  //     ..save()
+  //     ..drawPath(shadowSheetBoundaryPath, shadowPaint);
+  //   context.canvas.restore();
+  //
+  //   // Cut the sheet out of the shadow, so the sheet can be translucent without
+  //   // showing an ugly shadow behind it.
+  //   final clearPaint = Paint()..blendMode = BlendMode.dstOut;
+  //   context.canvas.drawPath(shadowSheetBoundaryPath, clearPaint);
+  //
+  //   // Paint the shadow sheet and the banner at the top of the shadow sheet.
+  //   //
+  //   // This also requires cutting the editor sheet out of the shadow sheet, to
+  //   // support translucent editor sheets.
+  //   if (banner != null) {
+  //     final hollowShadowSheet = Path.combine(PathOperation.xor, shadowSheetBoundaryPath, editorSheetBoundary);
+  //     context.canvas.drawPath(hollowShadowSheet, Paint()..color = _style.background);
+  //
+  //     // Clip the banner at the shadow sheet boundary.
+  //     context.canvas
+  //       ..save()
+  //       ..clipRSuperellipse(shadowSheetBoundary);
+  //
+  //     banner.paint(context, offset + (banner.parentData as BoxParentData).offset);
+  //
+  //     // Get rid of the banner clip.
+  //     context.canvas.restore();
+  //   }
+  //
+  //   // Clip any part of the editor sheet outside the expected superellipse shape.
+  //   //
+  //   // We do this by pushing a clip layer because there's a high likelihood that the editor
+  //   // sheet blurs its backdrop, which can only be clipped by pushing a clip path.
+  //   final clipLayer = (layer as ClipPathLayer? ?? ClipPathLayer())
+  //     ..clipPath = editorSheetBoundary
+  //     ..clipBehavior = Clip.hardEdge;
+  //   layer = clipLayer;
+  //
+  //   context.pushLayer(clipLayer, (clippedContext, clippedOffset) {
+  //     // Paint the editor sheet.
+  //     editorSheet.paint(clippedContext, clippedOffset);
+  //   }, editorSheetOffset);
+  // }
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -317,53 +438,46 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     );
     final shadowSheetBoundaryPath = Path()..addRSuperellipse(shadowSheetBoundary);
 
-    // Paint the shadow for the entire shadow sheet.
-    // final shadowPaint = Paint()
-    //   ..color = Colors.black.withValues(alpha: 0.2)
-    //   ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12);
     final shadowPaint = Paint()
       ..color = _style.shadow.color
-      // Note: We use a normal blur instead of an outer blur because we have to
-      // clip the shadow no matter what. If we do an outer blur without clipping
-      // the shadow then any backdrop blur that the editor sheet applies will pull
-      // in a little bit of that surrounding shadow, giving a beveled or shaded edge
-      // look that we don't want.
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, _style.shadow.blur);
 
+    // 1. Push an offscreen buffer to isolate the shadow and knockout operations
     context.canvas.saveLayer(null, Paint());
+
     context.canvas
       ..save()
-      ..drawPath(shadowSheetBoundaryPath, shadowPaint);
-    context.canvas.restore();
+      ..drawPath(shadowSheetBoundaryPath, shadowPaint)
+      ..restore(); // Pop the save() state, but keep the saveLayer() active
 
-    // Cut the sheet out of the shadow, so the sheet can be translucent without
-    // showing an ugly shadow behind it.
+    // 2. Cut the sheet out of the shadow WHILE STILL IN THE OFFSCREEN BUFFER.
+    // This ensures we only punch a hole in the shadow, not the UI behind it.
     final clearPaint = Paint()..blendMode = BlendMode.dstOut;
     context.canvas.drawPath(shadowSheetBoundaryPath, clearPaint);
 
+    // 3. Composite the offscreen buffer (the shadow with the hole in it) onto the main canvas.
+    context.canvas.restore();
+
     // Paint the shadow sheet and the banner at the top of the shadow sheet.
-    //
-    // This also requires cutting the editor sheet out of the shadow sheet, to
-    // support translucent editor sheets.
     if (banner != null) {
       final hollowShadowSheet = Path.combine(PathOperation.xor, shadowSheetBoundaryPath, editorSheetBoundary);
       context.canvas.drawPath(hollowShadowSheet, Paint()..color = _style.background);
 
-      // Clip the banner at the shadow sheet boundary.
+      final bannerOffset = offset + (banner.parentData as BoxParentData).offset;
+
+      // Reverting back to a raw canvas clip for the banner.
+      // This paints directly into the context's PictureLayer, ensuring the framework
+      // doesn't orphan the banner when `layer = clipLayer` is assigned below.
       context.canvas
         ..save()
-        ..clipRSuperellipse(shadowSheetBoundary);
+        ..clipPath(shadowSheetBoundaryPath);
 
-      banner.paint(context, offset + (banner.parentData as BoxParentData).offset);
+      banner.paint(context, bannerOffset);
 
-      // Get rid of the banner clip.
       context.canvas.restore();
     }
 
     // Clip any part of the editor sheet outside the expected superellipse shape.
-    //
-    // We do this by pushing a clip layer because there's a high likelihood that the editor
-    // sheet blurs its backdrop, which can only be clipped by pushing a clip path.
     final clipLayer = (layer as ClipPathLayer? ?? ClipPathLayer())
       ..clipPath = editorSheetBoundary
       ..clipBehavior = Clip.hardEdge;
@@ -371,7 +485,8 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
 
     context.pushLayer(clipLayer, (clippedContext, clippedOffset) {
       // Paint the editor sheet.
-      editorSheet.paint(clippedContext, clippedOffset);
+      // editorSheet.paint(clippedContext, clippedOffset);
+      clippedContext.paintChild(editorSheet, clippedOffset);
     }, editorSheetOffset);
   }
 }
