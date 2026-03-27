@@ -309,7 +309,7 @@ void main() {
 
       // The decision about showing the toolbar depends on the keyboard visibility.
       // Simulate the keyboard being visible immediately after the IME is connected.
-      TestSuperKeyboard.install(id: '1', tester, keyboardAnimationTime: Duration.zero);
+      TestSuperKeyboard.install(id: '1', vsync: tester, keyboardAnimationTime: Duration.zero);
       addTearDown(() => TestSuperKeyboard.uninstall('1'));
 
       // Ensure the toolbar is not visible.
