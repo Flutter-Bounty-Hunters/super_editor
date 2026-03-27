@@ -698,6 +698,7 @@ Building keyboard scaffold
               return const SizedBox.shrink();
             }
 
+            print("Building KeyboardPanelScaffold - wants to show panel? $shouldShowKeyboardPanel ($_activePanel)");
             return Positioned(
               bottom: 0,
               left: 0,

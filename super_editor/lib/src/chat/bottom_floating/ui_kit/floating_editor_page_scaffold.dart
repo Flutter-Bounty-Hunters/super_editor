@@ -462,7 +462,7 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     //
     // We don't rebuild our content widget because we only want content to
     // build during layout.
-    updateChild(_bottomSheet, widget.bottomSheetBuilder(this), _bottomSheetSlot);
+    _bottomSheet = updateChild(_bottomSheet, widget.bottomSheetBuilder(this), _bottomSheetSlot);
 
     if (widget.pageController.isKeyboardPanelOpen) {
       updateOrInflateKeyboardPanel();
@@ -536,7 +536,9 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   }
 
   void updateOrInflateKeyboardPanel() {
+    print("updateOrInflateKeyboardPanel()");
     final panel = widget.pageController.openPanel;
+    print(" - open panel: $panel");
     if (panel == null) {
       return;
     }
@@ -615,6 +617,18 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
       renderObject._bottomSheet = child;
     } else if (newSlot == _keyboardPanelSlot) {
       renderObject._keyboardPanel = child;
+    }
+  }
+
+  @override
+  void forgetChild(Element child) {
+    super.forgetChild(child);
+    if (child == _content) {
+      _content = null;
+    } else if (child == _bottomSheet) {
+      _bottomSheet = null;
+    } else if (child == _keyboardPanel) {
+      _keyboardPanel = null;
     }
   }
 
@@ -1412,6 +1426,9 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     adoptChild(child);
   }
 
+  @override
+  bool get isRepaintBoundary => true;
+
   void removeChild(RenderObject child, Object slot) {
     assert(
       _isChatScaffoldSlot(slot),
@@ -1442,6 +1459,41 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     }
   }
 
+  // I added these while writing golden tests in ClickUp. Adding these didn't
+  // solve my particular layout issue. Decide if we should support intrinsic sizing.
+  //
+  // @override
+  // double computeMinIntrinsicHeight(double width) {
+  //   print("computeMinIntrinsicHeight($width)");
+  //   if (_content == null && _bottomSheet == null) {
+  //     return 0;
+  //   }
+  //   if (_content == null) {
+  //     return _bottomSheet!.getMinIntrinsicHeight(width);
+  //   }
+  //   if (_bottomSheet == null) {
+  //     return _content!.getMinIntrinsicHeight(width);
+  //   }
+  //
+  //   return max(_content!.getMinIntrinsicHeight(width), _bottomSheet!.getMinIntrinsicHeight(width));
+  // }
+  //
+  // @override
+  // double computeMaxIntrinsicHeight(double width) {
+  //   print("computeMaxIntrinsicHeight($width)");
+  //   if (_content == null && _bottomSheet == null) {
+  //     return 0;
+  //   }
+  //   if (_content == null) {
+  //     return _bottomSheet!.getMaxIntrinsicHeight(width);
+  //   }
+  //   if (_bottomSheet == null) {
+  //     return _content!.getMaxIntrinsicHeight(width);
+  //   }
+  //
+  //   return max(_content!.getMaxIntrinsicHeight(width), _bottomSheet!.getMaxIntrinsicHeight(width));
+  // }
+
   @override
   void performLayout() {
     messagePageLayoutLog.info('---------- LAYOUT -------------');
@@ -1457,7 +1509,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     _runningLayout = true;
 
     size = constraints.biggest;
-    _bottomSheetMaximumHeight = size.height - _bottomSheetMinimumTopGap;
+    _bottomSheetMaximumHeight = max(size.height - _bottomSheetMinimumTopGap, 0);
 
     messagePageLayoutLog.info(
       "Measuring the bottom sheet's preview height",
@@ -1633,6 +1685,9 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       " - Clamping child's height within [$_bottomSheetMinimumHeight, $_bottomSheetMaximumHeight]",
     );
 
+    print("About to bottomSheetHeight.clamp()");
+    print(" - min: $_bottomSheetMinimumHeight");
+    print(" - max: $_bottomSheetMaximumHeight");
     final boundedIntrinsicHeight = bottomSheetHeight.clamp(
       _bottomSheetMinimumHeight,
       _bottomSheetMaximumHeight,
@@ -1699,7 +1754,20 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   }
 
   @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    if (child == _bottomSheet) {
+      final offset = (_bottomSheet!.parentData as BoxParentData).offset;
+      transform.translate(offset.dx, offset.dy);
+    } else if (child == _keyboardPanel) {
+      final offset = (_keyboardPanel!.parentData as BoxParentData).offset;
+      transform.translate(offset.dx, offset.dy);
+    }
+  }
+
+  @override
   void paint(PaintingContext context, Offset offset) {
+    print("Painting scaffold...");
+    print(" - panel: $_keyboardPanel");
     messagePagePaintLog.info('---------- PAINT ------------');
     if (_content != null) {
       messagePagePaintLog.info('Painting content');
@@ -1707,6 +1775,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     }
 
     if (_bottomSheet != null) {
+      print("Painting bottom sheet");
       final bottomSheetOffset = (_bottomSheet!.parentData! as BoxParentData).offset;
       messagePagePaintLog.info('Painting message editor - y-offset: $bottomSheetOffset');
       context.paintChild(

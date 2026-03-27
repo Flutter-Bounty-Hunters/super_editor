@@ -41,6 +41,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     this.scrollController,
     this.softwareKeyboardController,
     this.isImeConnected,
+    this.hint = "Send a message...",
   });
 
   /// Optional [FocusNode], which is attached to the internal [SuperEditor].
@@ -80,6 +81,8 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
   /// Shared knowledge about whether the IME is currently connected to Super Editor - Super Editor
   /// sets this value, and other clients can read it.
   final ValueNotifier<bool>? isImeConnected;
+
+  final String hint;
 
   @override
   State<SuperChatEditor<PanelType>> createState() => _SuperChatEditorState<PanelType>();
@@ -223,7 +226,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   void _onImeConnectionChange() {
     print("_onImeConnectionChange() - is IME connected? ${_isImeConnected.value}");
-    print("${StackTrace.current}");
+    // print("${StackTrace.current}");
     widget.pageController.collapsedMode =
         _isImeConnected.value ? MessagePageSheetCollapsedMode.intrinsic : MessagePageSheetCollapsedMode.preview;
   }
@@ -241,7 +244,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   @override
   Widget build(BuildContext context) {
-    print("chat_editor.dart - building with _scrollController: ${_scrollController.hashCode}");
+    print("Building SuperChatEditor");
     return SuperEditorFocusOnTap(
       editorFocusNode: _editorFocusNode,
       editor: widget.editor,
@@ -258,8 +261,8 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
           selectionPolicies: const SuperEditorSelectionPolicies(),
           shrinkWrap: false,
           stylesheet: _chatStylesheet,
-          componentBuilders: const [
-            HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
+          componentBuilders: [
+            HintComponentBuilder(widget.hint, _hintTextStyleBuilder),
             ...defaultComponentBuilders,
           ],
           plugins: {
@@ -427,6 +430,8 @@ class SuperEditorFocusOnTap extends StatelessWidget {
           builder: (context, child) {
             final shouldControlTap = editor.composer.selection == null || !editorFocusNode.hasFocus;
             print("Is SuperEditorFocusOnTap waiting for a tap? $shouldControlTap");
+            print(" - has selection? ${editor.composer.selection != null}");
+            print(" - has focus? ${editorFocusNode.hasFocus}");
 
             return GestureDetector(
               onTap: shouldControlTap ? _selectEditor : null,
@@ -447,8 +452,11 @@ class SuperEditorFocusOnTap extends StatelessWidget {
   }
 
   void _selectEditor() {
-    print("Tap on editor, giving focus");
+    print("Tap on editor, giving focus - focus node: ${editorFocusNode.hashCode}");
     editorFocusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("Next frame after focus request. Has focus? ${editorFocusNode.hasFocus} (${editorFocusNode.hashCode})");
+    });
 
     final endNode = editor.document.last;
     editor.execute([
