@@ -21,7 +21,6 @@ import 'package:super_keyboard/src/super_keyboard_unified.dart';
 class SoftwareKeyboardHeightSimulator extends StatefulWidget {
   const SoftwareKeyboardHeightSimulator({
     super.key,
-    required this.tester,
     this.isEnabled = true,
     this.enableForAllPlatforms = false,
     this.initialKeyboardState = KeyboardState.closed,
@@ -30,10 +29,6 @@ class SoftwareKeyboardHeightSimulator extends StatefulWidget {
     this.renderSimulatedKeyboard = false,
     required this.child,
   });
-
-  /// Flutter's [WidgetTester], which is used to intercept platform messages
-  /// about opening/closing the keyboard.
-  final WidgetTester tester;
 
   /// Whether or not to enable the simulated software keyboard insets.
   ///
@@ -88,8 +83,8 @@ class _SoftwareKeyboardHeightSimulatorState extends State<SoftwareKeyboardHeight
 
     if (widget.isEnabled) {
       TestSuperKeyboard.install(
-        widget.tester,
         id: _testKeyboardId,
+        vsync: this,
         initialKeyboardState: widget.initialKeyboardState,
         fakeKeyboardHeight: widget.keyboardHeight,
         keyboardAnimationTime: widget.animateKeyboard ? const Duration(milliseconds: 600) : Duration.zero,
@@ -103,8 +98,8 @@ class _SoftwareKeyboardHeightSimulatorState extends State<SoftwareKeyboardHeight
 
     if (widget.animateKeyboard != oldWidget.animateKeyboard || widget.keyboardHeight != oldWidget.keyboardHeight) {
       TestSuperKeyboard.install(
-        widget.tester,
         id: _testKeyboardId,
+        vsync: this,
         initialKeyboardState: widget.initialKeyboardState,
         fakeKeyboardHeight: widget.keyboardHeight,
         keyboardAnimationTime: widget.animateKeyboard ? const Duration(milliseconds: 600) : Duration.zero,
@@ -179,9 +174,9 @@ class _SoftwareKeyboardHeightSimulatorState extends State<SoftwareKeyboardHeight
 }
 
 class TestSuperKeyboard implements SuperKeyboard {
-  static void install(
-    WidgetTester tester, {
+  static void install({
     required String id,
+    required TickerProvider vsync,
     KeyboardState initialKeyboardState = KeyboardState.closed,
     double fakeKeyboardHeight = _defaultKeyboardHeight,
     Duration keyboardAnimationTime = const Duration(milliseconds: 600),
@@ -191,8 +186,8 @@ class TestSuperKeyboard implements SuperKeyboard {
     }
 
     _instance = TestSuperKeyboard(
-      tester,
       id: id,
+      vsync: vsync,
       initialKeyboardState: initialKeyboardState,
       fakeKeyboardHeight: fakeKeyboardHeight,
       keyboardAnimationTime: keyboardAnimationTime,
@@ -222,9 +217,9 @@ class TestSuperKeyboard implements SuperKeyboard {
 
   static TestSuperKeyboard? _instance;
 
-  TestSuperKeyboard(
-    this.tester, {
+  TestSuperKeyboard({
     required this.id,
+    required TickerProvider vsync,
     KeyboardState initialKeyboardState = KeyboardState.closed,
     this.fakeKeyboardHeight = 400.0,
     Duration keyboardAnimationTime = const Duration(milliseconds: 600),
@@ -238,7 +233,7 @@ class TestSuperKeyboard implements SuperKeyboard {
 
     _keyboardHeightController = AnimationController(
       duration: keyboardAnimationTime,
-      vsync: tester,
+      vsync: vsync,
     )
       ..addListener(() {
         _geometry.value = _geometry.value.updateWith(
@@ -251,7 +246,7 @@ class TestSuperKeyboard implements SuperKeyboard {
   }
 
   void _interceptPlatformChannel() {
-    tester.interceptChannel(SystemChannels.textInput.name) //
+    TestDefaultBinaryMessengerBinding.instance.interceptChannel(SystemChannels.textInput.name) //
       ..interceptMethod(
         'TextInput.setClient',
         (methodCall) {
@@ -283,7 +278,8 @@ class TestSuperKeyboard implements SuperKeyboard {
   }
 
   void dispose() {
-    tester.binding.defaultBinaryMessenger.setMockMessageHandler(SystemChannels.textInput.name, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(SystemChannels.textInput.name, null);
     _keyboardHeightController.dispose();
   }
 
@@ -291,8 +287,6 @@ class TestSuperKeyboard implements SuperKeyboard {
   Future<void> enablePlatformLogging(bool isEnabled) async {
     // no-op
   }
-
-  final WidgetTester tester;
 
   /// An ID for this specific test keyboard instance, which is used primarily to
   /// ensure that one test keyboard doesn't accidentally uninstall some other
@@ -537,3 +531,15 @@ class _SoftwareKeyboardButton extends StatelessWidget {
 }
 
 const _defaultKeyboardHeight = 300.0;
+
+extension on TestDefaultBinaryMessengerBinding {
+  PlatformMessageHandler interceptChannel(String channel) {
+    final handler = PlatformMessageHandler();
+
+    defaultBinaryMessenger.setMockMessageHandler(channel, (message) async {
+      return await handler.handleMessage(message);
+    });
+
+    return handler;
+  }
+}
