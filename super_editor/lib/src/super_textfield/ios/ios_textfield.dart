@@ -575,47 +575,53 @@ class SuperIOSTextFieldState extends State<SuperIOSTextField>
 
   @override
   Widget build(BuildContext context) {
-    return TapRegion(
-      groupId: widget.tapRegionGroupId,
-      child: Focus(
-        key: _textFieldKey,
-        focusNode: _focusNode,
-        child: CompositedTransformTarget(
-          link: _textFieldLayerLink,
-          child: IOSTextFieldTouchInteractor(
-            focusNode: _focusNode,
-            tapHandlers: widget.tapHandlers,
-            selectableTextKey: _textContentKey,
-            getGlobalCaretRect: _getGlobalCaretRect,
-            textFieldLayerLink: _textFieldLayerLink,
-            textController: _textEditingController,
-            editingOverlayController: _editingOverlayController,
-            textScrollController: _textScrollController,
-            isMultiline: _isMultiline,
-            handleColor: widget.handlesColor,
-            showDebugPaint: widget.showDebugPaint,
-            child: TextScrollView(
-              key: _scrollKey,
+    return Semantics(
+      textField: true,
+      focusable: true,
+      focused: _focusNode.hasFocus,
+      value: _textEditingController.text.toPlainText(),
+      child: TapRegion(
+        groupId: widget.tapRegionGroupId,
+        child: Focus(
+          key: _textFieldKey,
+          focusNode: _focusNode,
+          child: CompositedTransformTarget(
+            link: _textFieldLayerLink,
+            child: IOSTextFieldTouchInteractor(
+              focusNode: _focusNode,
+              tapHandlers: widget.tapHandlers,
+              selectableTextKey: _textContentKey,
+              getGlobalCaretRect: _getGlobalCaretRect,
+              textFieldLayerLink: _textFieldLayerLink,
+              textController: _textEditingController,
+              editingOverlayController: _editingOverlayController,
               textScrollController: _textScrollController,
-              textKey: _textContentKey,
-              textEditingController: _textEditingController,
-              textAlign: _textAlign,
-              minLines: widget.minLines,
-              maxLines: widget.maxLines,
-              lineHeight: widget.lineHeight,
-              padding: EdgeInsets.only(top: widget.padding?.top ?? 0, bottom: widget.padding?.bottom ?? 0),
-              perLineAutoScrollDuration: const Duration(milliseconds: 100),
+              isMultiline: _isMultiline,
+              handleColor: widget.handlesColor,
               showDebugPaint: widget.showDebugPaint,
-              child: FillWidthIfConstrained(
-                child: Padding(
-                  padding: EdgeInsets.only(left: widget.padding?.left ?? 0, right: widget.padding?.right ?? 0),
-                  child: CompositedTransformTarget(
-                    link: _textContentLayerLink,
-                    child: ListenableBuilder(
-                      listenable: _textEditingController,
-                      builder: (context, _) {
-                        return _buildSelectableText();
-                      },
+              child: TextScrollView(
+                key: _scrollKey,
+                textScrollController: _textScrollController,
+                textKey: _textContentKey,
+                textEditingController: _textEditingController,
+                textAlign: _textAlign,
+                minLines: widget.minLines,
+                maxLines: widget.maxLines,
+                lineHeight: widget.lineHeight,
+                padding: EdgeInsets.only(top: widget.padding?.top ?? 0, bottom: widget.padding?.bottom ?? 0),
+                perLineAutoScrollDuration: const Duration(milliseconds: 100),
+                showDebugPaint: widget.showDebugPaint,
+                child: FillWidthIfConstrained(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: widget.padding?.left ?? 0, right: widget.padding?.right ?? 0),
+                    child: CompositedTransformTarget(
+                      link: _textContentLayerLink,
+                      child: ListenableBuilder(
+                        listenable: _textEditingController,
+                        builder: (context, _) {
+                          return _buildSelectableText();
+                        },
+                      ),
                     ),
                   ),
                 ),
