@@ -43,7 +43,6 @@ void main() {
 Widget _buildKeyboardSimulatorScaffold(WidgetTester tester) {
   return MaterialApp(
     home: SoftwareKeyboardHeightSimulator(
-      tester: tester,
       animateKeyboard: true,
       renderSimulatedKeyboard: true,
       child: Scaffold(
