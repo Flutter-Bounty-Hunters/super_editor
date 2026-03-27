@@ -13,7 +13,7 @@ void main() {
     testWidgetsOnIos("takes control of native paste when toolbar is shown", (tester) async {
       // Simulate fake keyboard expand/collapse because this impacts decisions to
       // show the popover toolbar on iOS.
-      TestSuperKeyboard.install(tester, id: "editor");
+      TestSuperKeyboard.install(id: "editor", vsync: tester);
 
       try {
         int enableCustomPasteCount = 0;
