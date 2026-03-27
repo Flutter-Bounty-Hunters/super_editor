@@ -1,3 +1,7 @@
+## [0.3.0-dev.51]
+### Mar 27, 2026
+* ADJUSTMENT: Upgraded `super_keyboard` dependency to `0.4.0`.
+
 ## [0.3.0-dev.50]
 ### Feb 24, 2026
 * FIX: `SuperMessage` Android and iOS popover toolbars now dismiss themselves after tapping a button.
