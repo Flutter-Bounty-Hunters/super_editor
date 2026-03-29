@@ -1,3 +1,7 @@
+## [0.2.10]
+### March 28, 2026
+* Adjustment: Updated `super_keyboard` dep to `v0.4.0`.
+
 ## [0.2.9]
 ### Feb 25, 2026
 * Feature: Added Markdown to the series of default clipboard paste behaviors that is attempted when

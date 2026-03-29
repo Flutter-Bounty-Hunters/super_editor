@@ -666,7 +666,7 @@ packages:
       path: "../../super_editor"
       relative: true
     source: path
-    version: "0.3.0-dev.50"
+    version: "0.3.0-dev.51"
   super_editor_clipboard:
     dependency: "direct main"
     description:
