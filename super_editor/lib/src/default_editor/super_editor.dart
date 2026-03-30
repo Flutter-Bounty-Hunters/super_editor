@@ -1754,6 +1754,14 @@ final defaultStylesheet = Stylesheet(
       },
     ),
     StyleRule(
+      const BlockSelector("task"),
+      (doc, docNode) {
+        return {
+          Styles.padding: const CascadingPadding.only(top: 24),
+        };
+      },
+    ),
+    StyleRule(
       const BlockSelector("blockquote"),
       (doc, docNode) {
         return {
