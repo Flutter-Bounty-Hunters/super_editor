@@ -39,6 +39,7 @@ class _SoftwareKeyboardOpenerState extends State<SoftwareKeyboardOpener> impleme
   @override
   void initState() {
     super.initState();
+    print("SoftwareKeyboardOpener - initState()");
     widget.controller?.attach(this);
   }
 

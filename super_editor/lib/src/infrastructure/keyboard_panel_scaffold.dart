@@ -281,6 +281,7 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   }
 
   void _onPanelHeightChange() {
+    print("_onPanelHeightChange() - panel height: ${_panelHeight.value}, keyboard height: $_currentKeyboardHeight");
     _updateSafeArea();
     _currentBottomSpacing.value = max(_panelHeight.value, _currentKeyboardHeight);
   }
@@ -697,6 +698,7 @@ Building keyboard scaffold
               return const SizedBox.shrink();
             }
 
+            print("Building KeyboardPanelScaffold - wants to show panel? $shouldShowKeyboardPanel ($_activePanel)");
             return Positioned(
               bottom: 0,
               left: 0,
