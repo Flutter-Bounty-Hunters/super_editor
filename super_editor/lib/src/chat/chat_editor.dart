@@ -7,11 +7,14 @@ import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/document_ime/document_input_ime.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
 import 'package:super_editor/src/default_editor/layout_single_column/super_editor_dry_layout.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/super_editor.dart';
+import 'package:super_editor/src/default_editor/tap_handlers/tap_handlers.dart';
+import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
-import 'package:super_editor/src/infrastructure/keyboard_panel_scaffold.dart';
+import 'package:super_editor/src/default_editor/unknown_component.dart';
 import 'package:super_keyboard/super_keyboard.dart';
 
 /// An editor for composing chat messages.
@@ -33,16 +36,52 @@ import 'package:super_keyboard/super_keyboard.dart';
 //             ),
 //           );
 class SuperChatEditor<PanelType> extends StatefulWidget {
-  const SuperChatEditor({
+  SuperChatEditor({
     super.key,
+    this.inputRole,
     this.editorFocusNode,
     required this.editor,
+    this.documentLayoutKey,
+    this.hint = "Send a message...",
+    Stylesheet? stylesheet,
     required this.pageController,
     this.scrollController,
     this.softwareKeyboardController,
+    this.selectionPolicies = const SuperEditorSelectionPolicies(),
+    this.imePolicies = const SuperEditorImePolicies(),
     this.isImeConnected,
-    this.hint = "Send a message...",
-  });
+    this.contentTapDelegateFactories = const [superEditorLaunchLinkTapHandlerFactory],
+    this.documentUnderlayBuilders = const [],
+    this.documentOverlayBuilders = defaultSuperEditorDocumentOverlayBuilders,
+    List<ComponentBuilder>? componentBuilders,
+    this.plugins = const {},
+  })  : stylesheet = stylesheet ?? _chatStylesheet,
+        componentBuilders = [
+          for (final plugin in plugins) ...plugin.componentBuilders,
+          if (componentBuilders != null)
+            ...componentBuilders
+          else ...[
+            HintComponentBuilder(hint, _hintTextStyleBuilder),
+            ...defaultComponentBuilders,
+            TaskComponentBuilder(editor),
+          ],
+          const UnknownComponentBuilder(),
+        ];
+
+  /// A name/ID that differentiates this [SuperChatEditor]'s purpose from any other [SuperEditor]
+  /// that might be on screen.
+  ///
+  /// The [inputRole] is used to control access to the operating system's IME. Imagine that you have
+  /// Editor1 and Editor2 on screen. You want Editor1 to be able to hold onto the IME connection
+  /// across widget tree rebuilds, which requires a global connection, but you don't want Editor2 to
+  /// accidentally take over that global IME connection. The solution is to pass a different [inputRole]
+  /// for Editor1 and Editor2.
+  ///
+  /// If you're sure that you'll only have one editor on screen, you don't need to provide an [inputRole].
+  ///
+  /// The value for [inputRole] is arbitrary. It can be any name you choose, so long as other editors
+  /// use different names.
+  final String? inputRole;
 
   /// Optional [FocusNode], which is attached to the internal [SuperEditor].
   final FocusNode? editorFocusNode;
@@ -53,36 +92,79 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
   /// the user's message outside of this widget, query [editor.document].
   final Editor editor;
 
+  /// [GlobalKey] that's bound to the [DocumentLayout] within this [SuperChatEditor].
+  ///
+  /// This key can be used to lookup visual components in the document layout within
+  /// this [SuperEditor].
+  final GlobalKey? documentLayoutKey;
+
+  final String hint;
+
+  /// Style rules applied through the document presentation.
+  final Stylesheet stylesheet;
+
+  /// Policies that determine how selection is modified by other factors, such as
+  /// gaining or losing focus.
+  final SuperEditorSelectionPolicies selectionPolicies;
+
   /// The [MessagePageController] that controls the message page scaffold around this editor and its
   /// bottom sheet.
   ///
   /// [SuperChatEditor] requires a [MessagePageController] to monitor when the message page scaffold goes into
-  /// and out of "preview" mode. For example, whenever we're in "preview" mode, the internal [SuperEditor] is
+  /// and out of "preview" mode. For example, whenever we're in "preview" mode, the internal [SuperChatEditor] is
   /// forced to scroll to the top and stay there.
   final MessagePageController pageController;
 
-  /// The scroll controller attached to the internal [SuperEditor].
+  /// The scroll controller attached to the internal [SuperChatEditor].
   ///
-  /// When provided, this [scrollController] is given to the [SuperEditor], to share
+  /// When provided, this [scrollController] is given to the [SuperChatEditor], to share
   /// control inside and outside of this widget.
   ///
-  /// When not provided, a [ScrollController] is created internally and given to the [SuperEditor].
+  /// When not provided, a [ScrollController] is created internally and given to the [SuperChatEditor].
   final ScrollController? scrollController;
 
-  /// The [SoftwareKeyboardController] used by the [SuperEditor] to interact with the
+  /// The [SoftwareKeyboardController] used by the [SuperChatEditor] to interact with the
   /// operating system's IME.
   ///
-  /// When provided, this [softwareKeyboardController] is given to the [SuperEditor], to
+  /// When provided, this [softwareKeyboardController] is given to the [SuperChatEditor], to
   /// share control inside and outside of this widget.
   ///
-  /// When not provided, a [SoftwareKeyboardController] is created internally and given to the [SuperEditor].
+  /// When not provided, a [SoftwareKeyboardController] is created internally and given to the [SuperChatEditor].
   final SoftwareKeyboardController? softwareKeyboardController;
+
+  /// Policies that dictate when and how [SuperChatEditor] should interact with the
+  /// platform IME, such as automatically opening the software keyboard when
+  /// [SuperChatEditor]'s selection changes.
+  final SuperEditorImePolicies imePolicies;
 
   /// Shared knowledge about whether the IME is currently connected to Super Editor - Super Editor
   /// sets this value, and other clients can read it.
   final ValueNotifier<bool>? isImeConnected;
 
-  final String hint;
+  /// List of factories that create a [ContentTapDelegate], which is given an
+  /// opportunity to respond to taps on content before the editor, itself.
+  ///
+  /// A [ContentTapDelegate] might be used, for example, to launch a URL
+  /// when a user taps on a link.
+  ///
+  /// If a handler returns [TapHandlingInstruction.halt], no subsequent handlers
+  /// nor the default tap behavior will be executed.
+  final List<SuperEditorContentTapDelegateFactory>? contentTapDelegateFactories;
+
+  /// Layers that are displayed under the document layout, aligned
+  /// with the location and size of the document layout.
+  final List<SuperEditorLayerBuilder> documentUnderlayBuilders;
+
+  /// Layers that are displayed on top of the document layout, aligned
+  /// with the location and size of the document layout.
+  final List<SuperEditorLayerBuilder> documentOverlayBuilders;
+
+  /// Priority list of widget factories that create instances of
+  /// each visual component displayed in the document layout, e.g.,
+  /// paragraph component, image component, horizontal rule component, etc.
+  final List<ComponentBuilder> componentBuilders;
+
+  final Set<SuperEditorPlugin> plugins;
 
   @override
   State<SuperChatEditor<PanelType>> createState() => _SuperChatEditorState<PanelType>();
@@ -253,61 +335,26 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
         superEditor: SuperEditor(
           key: _editorKey,
           focusNode: _editorFocusNode,
+          inputRole: widget.inputRole,
           editor: widget.editor,
+          documentLayoutKey: widget.documentLayoutKey,
           scrollController: _scrollController,
           softwareKeyboardController: widget.softwareKeyboardController,
+          selectionPolicies: widget.selectionPolicies,
+          imePolicies: widget.imePolicies,
           isImeConnected: _isImeConnected,
-          imePolicies: const SuperEditorImePolicies(),
-          selectionPolicies: const SuperEditorSelectionPolicies(),
           shrinkWrap: false,
-          stylesheet: _chatStylesheet,
-          componentBuilders: [
-            HintComponentBuilder(widget.hint, _hintTextStyleBuilder),
-            ...defaultComponentBuilders,
-          ],
+          stylesheet: widget.stylesheet,
+          documentUnderlayBuilders: widget.documentUnderlayBuilders,
+          documentOverlayBuilders: widget.documentOverlayBuilders,
+          componentBuilders: widget.componentBuilders,
           plugins: {
-            // TODO: pass in additional plugins from outside the widget.
             _previewModePlugin,
+            ...widget.plugins,
           },
         ),
       ),
     );
-
-    // return KeyboardPanelScaffold<PanelType>(
-    //   controller: _keyboardPanelController,
-    //   isImeConnected: _isImeConnected,
-    //   toolbarBuilder: (BuildContext context, PanelType? openPanel) {
-    //     return const SizedBox();
-    //   },
-    //   keyboardPanelBuilder: (BuildContext context, PanelType? openPanel) {
-    //     return const SizedBox();
-    //   },
-    //   contentBuilder: (BuildContext context, PanelType? openPanel) {
-    //     return SuperEditorFocusOnTap(
-    //       editorFocusNode: _editorFocusNode,
-    //       editor: widget.editor,
-    //       child: SuperEditorDryLayout(
-    //         controller: widget.scrollController,
-    //         superEditor: SuperEditor(
-    //           key: _editorKey,
-    //           focusNode: _editorFocusNode,
-    //           editor: widget.editor,
-    //           scrollController: _scrollController,
-    //           softwareKeyboardController: widget.softwareKeyboardController,
-    //           isImeConnected: _isImeConnected,
-    //           imePolicies: const SuperEditorImePolicies(),
-    //           selectionPolicies: const SuperEditorSelectionPolicies(),
-    //           shrinkWrap: false,
-    //           stylesheet: _chatStylesheet,
-    //           componentBuilders: const [
-    //             HintComponentBuilder("Send a message...", _hintTextStyleBuilder),
-    //             ...defaultComponentBuilders,
-    //           ],
-    //         ),
-    //       ),
-    //     );
-    //   },
-    // );
   }
 }
 
