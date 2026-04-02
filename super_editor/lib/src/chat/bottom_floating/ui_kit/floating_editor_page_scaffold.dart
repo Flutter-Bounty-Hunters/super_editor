@@ -289,7 +289,7 @@ class _AboveKeyboardMessagePageScaffold<PanelType> extends RenderObjectWidget {
     this.bottomSheetMinimumHeight = 150,
     this.bottomSheetCollapsedMaximumHeight = double.infinity,
     this.keyboardPanelBuilder,
-    this.fallbackKeyboardHeight = 250.0,
+    this.fallbackKeyboardHeight = 300.0,
   });
 
   final TickerProvider vsync;
@@ -377,6 +377,7 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   Element? _bottomSheet;
   Element? _keyboardPanel;
   PanelType? _lastBuiltPanel;
+  bool _waitingForPanelAnimationToCompleteBeforeRemoval = false;
 
   @override
   _AboveKeyboardMessagePageScaffold<PanelType> get widget =>
@@ -400,12 +401,16 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
 
     _bottomSheet = inflateWidget(widget.bottomSheetBuilder(this), _bottomSheetSlot);
 
-    if (widget.keyboardPanelBuilder != null && widget.pageController.openPanel != null) {
-      updateOrInflateKeyboardPanel();
-    }
+    // if (widget.keyboardPanelBuilder != null && widget.pageController.openPanel != null) {
+    updateOrInflateKeyboardPanel();
+    // }
 
     print("Element - mount() - adding listener to page controller");
     widget.pageController.addListener(markNeedsBuild);
+
+    renderObject.onPanelClosedListener = _onPanelAnimatedClosed;
+
+    SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardHeightChange);
   }
 
   @override
@@ -413,6 +418,10 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     messagePageElementLog.info('ContentLayersElement - activating');
     _didActivateSinceLastBuild = false;
     super.activate();
+
+    renderObject.onPanelClosedListener = _onPanelAnimatedClosed;
+
+    SuperKeyboard.instance.mobileGeometry.addListener(_onKeyboardHeightChange);
   }
 
   // Whether this `Element` has been built since the last time `activate()` was run.
@@ -421,6 +430,10 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   @override
   void deactivate() {
     messagePageElementLog.info('ContentLayersElement - deactivating');
+    renderObject.onPanelClosedListener = null;
+
+    SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardHeightChange);
+
     _didDeactivateSinceLastBuild = false;
     super.deactivate();
   }
@@ -432,6 +445,10 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   void unmount() {
     messagePageElementLog.info('ContentLayersElement - unmounting');
     print("Element - unmount() - removing page controller listener");
+    renderObject.onPanelClosedListener = null;
+
+    SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardHeightChange);
+
     widget.pageController.removeListener(markNeedsBuild);
     super.unmount();
   }
@@ -464,9 +481,9 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     // build during layout.
     _bottomSheet = updateChild(_bottomSheet, widget.bottomSheetBuilder(this), _bottomSheetSlot);
 
-    if (widget.pageController.isKeyboardPanelOpen) {
-      updateOrInflateKeyboardPanel();
-    }
+    // if (widget.pageController.isKeyboardPanelOpen) {
+    updateOrInflateKeyboardPanel();
+    // }
   }
 
   void buildContent(FloatingEditorPageGeometry pageGeometry) {
@@ -516,20 +533,22 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     // take the same keyboard panel update behavior here that we take any time the
     // controller changes - possibly inflate, or update, or deactivate the keyboard
     // panel.
-    final openPanel = widget.pageController.openPanel;
-    if (openPanel != null && _keyboardPanel == null && widget.keyboardPanelBuilder != null) {
-      // We want to show a keyboard panel, but we haven't built one yet. Build it.
-      updateOrInflateKeyboardPanel();
-    } else if (openPanel != null && openPanel != _lastBuiltPanel) {
-      // The user switched to a different panel. Rebuild the keyboard panel widget.
-      updateOrInflateKeyboardPanel();
-    } else if (openPanel == null && _keyboardPanel != null) {
-      // We don't want to show a keyboard panel, but we still have a keyboard panel
-      // child. Throw it away.
-      deactivateChild(_keyboardPanel!);
-      _keyboardPanel = null;
-      _lastBuiltPanel = null;
-    }
+    updateOrInflateKeyboardPanel();
+    // final openPanel = widget.pageController.openPanel;
+    // print(" - openPanel: $openPanel");
+    // if (openPanel != null && _keyboardPanel == null && widget.keyboardPanelBuilder != null) {
+    //   // We want to show a keyboard panel, but we haven't built one yet. Build it.
+    //   updateOrInflateKeyboardPanel();
+    // } else if (openPanel != null && openPanel != _lastBuiltPanel) {
+    //   // The user switched to a different panel. Rebuild the keyboard panel widget.
+    //   updateOrInflateKeyboardPanel();
+    // } else if (openPanel == null && _keyboardPanel != null) {
+    //   // We don't want to show a keyboard panel, but we still have a keyboard panel
+    //   // child. Throw it away.
+    //   deactivateChild(_keyboardPanel!);
+    //   _keyboardPanel = null;
+    //   _lastBuiltPanel = null;
+    // }
 
     print("Element - update() - adding listener to new widget controller");
     widget.pageController.addListener(markNeedsBuild);
@@ -540,9 +559,35 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     final panel = widget.pageController.openPanel;
     print(" - open panel: $panel");
     if (panel == null) {
-      return;
+      if (_keyboardPanel == null) {
+        return;
+      }
+
+      if (renderObject.isPanelClosed ||
+          SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
+        // The panel is hidden behind a fully open keyboard, or the panel has already
+        // completely closed. Either way, we can now remove it from the UI without any
+        // visual disturbance.
+        print("REMOVING PANEL FROM ELEMENT");
+        print(" - keyboard state: ${SuperKeyboard.instance.mobileGeometry.value.keyboardState}");
+        _keyboardPanel = updateChild(_keyboardPanel, null, _keyboardPanelSlot);
+        _lastBuiltPanel = null;
+        _waitingForPanelAnimationToCompleteBeforeRemoval = false;
+        return;
+      } else {
+        // The panel is animating closed. We want to let it finish the animation.
+        print("TODO: WAITING FOR PANEL TO CLOSE");
+        _keyboardPanel = updateChild(
+          _keyboardPanel,
+          widget.keyboardPanelBuilder!(this, _lastBuiltPanel!),
+          _keyboardPanelSlot,
+        );
+        _waitingForPanelAnimationToCompleteBeforeRemoval = true;
+        return;
+      }
     }
 
+    print("BUILDING PANEL WIDGET FOR: $panel");
     if (_keyboardPanel == null) {
       _keyboardPanel = inflateWidget(
         widget.keyboardPanelBuilder!(this, panel),
@@ -556,6 +601,38 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
       );
     }
     _lastBuiltPanel = panel;
+    _waitingForPanelAnimationToCompleteBeforeRemoval = false;
+  }
+
+  void _onPanelAnimatedClosed() {
+    if (!_waitingForPanelAnimationToCompleteBeforeRemoval) {
+      return;
+    }
+
+    // We're waiting for an opportunity to remove the bottom panel from the
+    // render object. The panel just fully animated closed. This is our chance to
+    // remove the panel without any visual disturbance.
+    //
+    // The update method already knows how to remove the panel, so we defer it.
+    print("PANEL ANIMATION CLOSED - REMOVING THE PANEL");
+    updateOrInflateKeyboardPanel();
+  }
+
+  void _onKeyboardHeightChange() {
+    if (!_waitingForPanelAnimationToCompleteBeforeRemoval) {
+      return;
+    }
+    if (SuperKeyboard.instance.mobileGeometry.value.keyboardState != KeyboardState.open) {
+      return;
+    }
+
+    // We're waiting for an opportunity to remove the bottom panel from the
+    // render object. The keyboard just fully opened. This is our chance to
+    // remove the panel without any visual disturbance.
+    //
+    // The update method already knows how to remove the panel, so we defer it.
+    print("KEYBOARD OPENED - REMOVING THE PANEL");
+    updateOrInflateKeyboardPanel();
   }
 
   @override
@@ -744,6 +821,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     required double mediaQueryBottomInsets,
     required double mediaQueryBottomPadding,
     double fallbackKeyboardHeight = 250.0,
+    this.onPanelClosedListener,
   })  : _viewId = viewId,
         _bottomSheetMinimumTopGap = bottomSheetMinimumTopGap,
         _bottomSheetMinimumHeight = bottomSheetMinimumHeight,
@@ -760,9 +838,15 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       // TODO: If we do keep the vsync here, we need to figure out when in the render object lifecycle we need to pause, stop, and whether the widget needs to be able to provide a new vsync.
       vsync: vsync,
       duration: const Duration(milliseconds: 250),
-    )..addListener(() {
+    )
+      ..addListener(() {
         print("Panel height change: ${_panelHeightController.value}%");
         markNeedsLayout();
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.dismissed && onPanelClosedListener != null) {
+          onPanelClosedListener!();
+        }
       });
 
     _attachToPageController();
@@ -852,6 +936,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   double _animatedVelocity = 0;
 
   void _attachToPageController() {
+    print("ATTACHING TO PAGE CONTROLLER (${_pageController.hashCode})");
     _currentDragMode = _pageController.dragMode;
     _pageController.attach(this);
     _pageController.addListener(_onMessagePageControllerChange);
@@ -1008,6 +1093,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   }
 
   void _detachFromPageController() {
+    print("DETACHING FROM MESSAGE PAGE CONTROLLER (${_pageController.hashCode})");
     _pageController.removeListener(_onMessagePageControllerChange);
     _pageController.detach();
 
@@ -1057,6 +1143,9 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   /// The height of the visible panel at this moment.
   late final AnimationController _panelHeightController;
   late Animation<double> _panelHeight;
+
+  bool get isPanelClosed => _panelHeightController.status == AnimationStatus.dismissed;
+  VoidCallback? onPanelClosedListener;
 
   /// The currently visible panel.
   PanelType? _activePanel;
@@ -1180,6 +1269,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     _wantsToShowSoftwareKeyboard = false;
     _activePanel = null;
     _pageController.softwareKeyboardController.close();
+    print("REVERSING THE PANEL ANIMATION (CLOSED)");
     _panelHeightController.reverse();
 
     // TODO: do we need to mark layout? paint?
@@ -1192,12 +1282,21 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     print("_onKeyboardHeightChange() - ${SuperKeyboard.instance.mobileGeometry.value.keyboardHeight}");
     _updateMaxPanelHeight();
 
+    if (SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
+      print("KEYBOARD IS OPEN");
+      print(" - wants to show keyboard: $_wantsToShowSoftwareKeyboard");
+      print(" - wants to show panel: $_wantsToShowKeyboardPanel");
+      print(" - active panel: $_activePanel");
+    }
+
     if (_wantsToShowSoftwareKeyboard &&
         _wantsToShowKeyboardPanel &&
         SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
       // We kept a keyboard panel visible while the keyboard came back up. The
       // keyboard is now fully open. Get rid of the keyboard panel.
+      print("KEYBOARD IS UP - CLEARING PREVIOUS ACTIVE PANEL");
       _wantsToShowKeyboardPanel = false;
+      _activePanel = null;
       notifyListeners();
     }
 
@@ -1207,7 +1306,12 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
 
   void _updateMaxPanelHeight() {
     final currentKeyboardHeight = SuperKeyboard.instance.mobileGeometry.value.keyboardHeight ?? 0;
+    print("Updating max panel height...");
+    print(" - current keyboard height: $currentKeyboardHeight");
+    print(" - existing best guess: $_bestGuessMaxKeyboardHeight");
     _bestGuessMaxKeyboardHeight = max(currentKeyboardHeight, _bestGuessMaxKeyboardHeight);
+    print(" - new best guess: $_bestGuessMaxKeyboardHeight");
+    print(" - fallback: $_fallbackPanelHeight");
 
     _panelHeight = Tween(
       begin: 0.0,
@@ -1215,6 +1319,9 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     ) //
         .chain(CurveTween(curve: Curves.easeInOut))
         .animate(_panelHeightController);
+
+    print(
+        " - chosen height: ${_bestGuessMaxKeyboardHeight > 100 ? _bestGuessMaxKeyboardHeight : _fallbackPanelHeight}");
   }
 
   void _maybeAnimatePanelClosed() {
@@ -1430,6 +1537,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   bool get isRepaintBoundary => true;
 
   void removeChild(RenderObject child, Object slot) {
+    print("SCAFFOLD RO - removeChild(): $slot");
     assert(
       _isChatScaffoldSlot(slot),
       'Render object protocol violation - tried to remove a child for an invalid slot ($slot)',
@@ -1626,6 +1734,8 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     }
 
     final keyboardOrPanelHeight = max(max(_panelHeight.value, _keyboardHeight), _mediaQueryBottomPadding);
+    print("Keyboard or panel height: $keyboardOrPanelHeight");
+
     (_bottomSheet!.parentData! as BoxParentData).offset =
         Offset(0, size.height - _bottomSheet!.size.height - keyboardOrPanelHeight);
     _bottomSheetNeedsLayout = false;
@@ -1648,7 +1758,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     messagePageLayoutLog.info('Content layout size: ${_content!.size}');
 
     // (Maybe) Layout a keyboard panel, which appears where the keyboard would be.
-    if (isKeyboardPanelOpen && _keyboardPanel != null) {
+    if (_keyboardPanel != null) {
       print("Laying out keyboard panel render object");
       _keyboardPanel!.layout(
         constraints.copyWith(
@@ -1778,6 +1888,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       print("Painting bottom sheet");
       final bottomSheetOffset = (_bottomSheet!.parentData! as BoxParentData).offset;
       messagePagePaintLog.info('Painting message editor - y-offset: $bottomSheetOffset');
+      print('Painting message editor - y-offset: $bottomSheetOffset');
       context.paintChild(
         _bottomSheet!,
         offset + bottomSheetOffset,
@@ -1785,7 +1896,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     }
 
     if (_keyboardPanel != null) {
-      print("Painting keyboard panel");
+      print("Painting keyboard panel - height: ${_keyboardPanel!.size.height}");
       final keyboardPanelOffset = (_keyboardPanel!.parentData! as BoxParentData).offset;
       messagePagePaintLog.info('Painting keyboard panel - y-offset: $keyboardPanelOffset');
       context.paintChild(_keyboardPanel!, offset + keyboardPanelOffset);
