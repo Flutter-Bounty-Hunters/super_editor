@@ -187,7 +187,10 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
     _editorFocusNode = widget.editorFocusNode ?? FocusNode();
     _editorFocusNode.addListener(_onFocusChange);
-    _syncPreviewModeWithFocus();
+
+    widget.editor.composer.selectionNotifier.addListener(_syncPreviewModeWithFocusAndSelection);
+
+    _syncPreviewModeWithFocusAndSelection();
 
     _scrollController = widget.scrollController ?? ScrollController();
 
@@ -216,7 +219,14 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
       _editorFocusNode = widget.editorFocusNode ?? FocusNode();
       _editorFocusNode.addListener(_onFocusChange);
 
-      _syncPreviewModeWithFocus();
+      _syncPreviewModeWithFocusAndSelection();
+    }
+
+    if (widget.editor.composer != oldWidget.editor.composer) {
+      oldWidget.editor.composer.selectionNotifier.removeListener(_syncPreviewModeWithFocusAndSelection);
+      widget.editor.composer.selectionNotifier.addListener(_syncPreviewModeWithFocusAndSelection);
+
+      _syncPreviewModeWithFocusAndSelection();
     }
 
     if (widget.scrollController != oldWidget.scrollController) {
@@ -269,6 +279,8 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
     // _keyboardPanelController.dispose();
     // _isImeConnected.dispose();
 
+    widget.editor.composer.selectionNotifier.removeListener(_syncPreviewModeWithFocusAndSelection);
+
     _editorFocusNode.removeListener(_onFocusChange);
     if (widget.editorFocusNode == null) {
       print("Disposing _editorFocusNode");
@@ -281,11 +293,18 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
   }
 
   void _onFocusChange() {
-    _syncPreviewModeWithFocus();
+    _syncPreviewModeWithFocusAndSelection();
   }
 
-  void _syncPreviewModeWithFocus() {
-    _previewModePlugin.isInPreviewMode = !_editorFocusNode.hasFocus;
+  void _onSelectionChange() {
+    _syncPreviewModeWithFocusAndSelection();
+  }
+
+  void _syncPreviewModeWithFocusAndSelection() {
+    // Note: Make sure we don't show preview mode when the editor has a selection. If the
+    //       selection sits in a node other than the first node, the selection painter will
+    //       blow up because the view model for that selection won't exist.
+    _previewModePlugin.isInPreviewMode = !_editorFocusNode.hasFocus && widget.editor.composer.selection == null;
   }
 
   void _onKeyboardChange() {
@@ -476,9 +495,6 @@ class SuperEditorFocusOnTap extends StatelessWidget {
           listenable: editor.composer.selectionNotifier,
           builder: (context, child) {
             final shouldControlTap = editor.composer.selection == null || !editorFocusNode.hasFocus;
-            print("Is SuperEditorFocusOnTap waiting for a tap? $shouldControlTap");
-            print(" - has selection? ${editor.composer.selection != null}");
-            print(" - has focus? ${editorFocusNode.hasFocus}");
 
             return GestureDetector(
               onTap: shouldControlTap ? _selectEditor : null,

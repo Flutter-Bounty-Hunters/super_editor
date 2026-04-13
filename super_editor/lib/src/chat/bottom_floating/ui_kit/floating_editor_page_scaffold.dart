@@ -405,7 +405,6 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     updateOrInflateKeyboardPanel();
     // }
 
-    print("Element - mount() - adding listener to page controller");
     widget.pageController.addListener(markNeedsBuild);
 
     renderObject.onPanelClosedListener = _onPanelAnimatedClosed;
@@ -444,7 +443,6 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   @override
   void unmount() {
     messagePageElementLog.info('ContentLayersElement - unmounting');
-    print("Element - unmount() - removing page controller listener");
     renderObject.onPanelClosedListener = null;
 
     SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardHeightChange);
@@ -519,7 +517,6 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
   @override
   void update(_AboveKeyboardMessagePageScaffold newWidget) {
     // Remove listener on previous widget.
-    print("Element - update() - removing listener from previous widget controller");
     widget.pageController.removeListener(markNeedsBuild);
 
     super.update(newWidget);
@@ -550,7 +547,6 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     //   _lastBuiltPanel = null;
     // }
 
-    print("Element - update() - adding listener to new widget controller");
     widget.pageController.addListener(markNeedsBuild);
   }
 
@@ -576,7 +572,7 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
         return;
       } else {
         // The panel is animating closed. We want to let it finish the animation.
-        print("TODO: WAITING FOR PANEL TO CLOSE");
+        print("WAITING FOR PANEL TO CLOSE");
         _keyboardPanel = updateChild(
           _keyboardPanel,
           widget.keyboardPanelBuilder!(this, _lastBuiltPanel!),
@@ -649,7 +645,6 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
 
   @override
   void insertRenderObjectChild(RenderObject child, Object? slot) {
-    print("Element - insertRenderObjectChild - $child, slot: $slot");
     renderObject.insertChild(child, slot!);
   }
 
@@ -1795,9 +1790,6 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       " - Clamping child's height within [$_bottomSheetMinimumHeight, $_bottomSheetMaximumHeight]",
     );
 
-    print("About to bottomSheetHeight.clamp()");
-    print(" - min: $_bottomSheetMinimumHeight");
-    print(" - max: $_bottomSheetMaximumHeight");
     final boundedIntrinsicHeight = bottomSheetHeight.clamp(
       _bottomSheetMinimumHeight,
       _bottomSheetMaximumHeight,
