@@ -63,6 +63,12 @@ class ChatPreviewModePlugin extends SuperEditorPlugin {
     );
   }
 
+  set previewAdjusters(List<PreviewComponentViewModelAdjuster> previewAdjusters) {
+    _previewStylePhase.previewAdjusters
+      ..clear()
+      ..addAll(previewAdjusters);
+  }
+
   late final ChatPreviewStylePhase _previewStylePhase;
 
   /// Returns `true` if this plugin is currently restricting the editor visuals
@@ -130,8 +136,11 @@ class ChatPreviewModePlugin extends SuperEditorPlugin {
 class ChatPreviewStylePhase extends SingleColumnLayoutStylePhase {
   ChatPreviewStylePhase({
     bool isInPreviewMode = false,
-    this.previewAdjusters = const [],
-  }) : _isInPreviewMode = isInPreviewMode;
+    List<PreviewComponentViewModelAdjuster> previewAdjusters = const [],
+  }) : _isInPreviewMode = isInPreviewMode {
+    // We create a list here so that the list is modifiable (not const).
+    this.previewAdjusters = [...previewAdjusters];
+  }
 
   bool get isInPreviewMode => _isInPreviewMode;
   late bool _isInPreviewMode;
@@ -144,7 +153,7 @@ class ChatPreviewStylePhase extends SingleColumnLayoutStylePhase {
     markDirty();
   }
 
-  final List<PreviewComponentViewModelAdjuster> previewAdjusters;
+  late final List<PreviewComponentViewModelAdjuster> previewAdjusters;
 
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
