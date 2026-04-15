@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/src/chat/message_page_scaffold.dart';
 import 'package:super_editor/src/chat/plugins/chat_preview_mode_plugin.dart';
@@ -54,6 +55,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperEditorDocumentOverlayBuilders,
     List<ComponentBuilder>? componentBuilders,
+    this.previewModeComponentAdjusters = ChatPreviewModePlugin.defaultPreviewAdjusters,
     this.plugins = const {},
   })  : stylesheet = stylesheet ?? _chatStylesheet,
         componentBuilders = [
@@ -164,6 +166,8 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
   /// paragraph component, image component, horizontal rule component, etc.
   final List<ComponentBuilder> componentBuilders;
 
+  final List<PreviewComponentViewModelAdjuster> previewModeComponentAdjusters;
+
   final Set<SuperEditorPlugin> plugins;
 
   @override
@@ -190,6 +194,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
     widget.editor.composer.selectionNotifier.addListener(_syncPreviewModeWithFocusAndSelection);
 
+    _previewModePlugin.previewAdjusters = widget.previewModeComponentAdjusters;
     _syncPreviewModeWithFocusAndSelection();
 
     _scrollController = widget.scrollController ?? ScrollController();
@@ -227,6 +232,11 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
       widget.editor.composer.selectionNotifier.addListener(_syncPreviewModeWithFocusAndSelection);
 
       _syncPreviewModeWithFocusAndSelection();
+    }
+
+    if (!const DeepCollectionEquality()
+        .equals(widget.previewModeComponentAdjusters, oldWidget.previewModeComponentAdjusters)) {
+      _previewModePlugin.previewAdjusters = widget.previewModeComponentAdjusters;
     }
 
     if (widget.scrollController != oldWidget.scrollController) {
