@@ -815,7 +815,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     required double bottomSheetCollapsedMaximumHeight,
     required double mediaQueryBottomInsets,
     required double mediaQueryBottomPadding,
-    double fallbackKeyboardHeight = 250.0,
+    double fallbackKeyboardHeight = 350.0,
     this.onPanelClosedListener,
   })  : _viewId = viewId,
         _bottomSheetMinimumTopGap = bottomSheetMinimumTopGap,
