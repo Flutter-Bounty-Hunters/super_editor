@@ -537,6 +537,19 @@ class SuperEditorState extends State<SuperEditor> {
       _createEditContext();
       _createLayoutPresenter();
     } else {
+      // The editor didn't change, but the plugin set may have. Detach any
+      // plugins that were removed, and attach any plugins that were added.
+      for (final oldPlugin in oldWidget.plugins) {
+        if (!widget.plugins.contains(oldPlugin)) {
+          oldPlugin._detachFromSuperEditor(widget.editor);
+        }
+      }
+      for (final newPlugin in widget.plugins) {
+        if (!oldWidget.plugins.contains(newPlugin)) {
+          newPlugin._attachToSuperEditor(widget.editor);
+        }
+      }
+
       if (widget.selectionStyles != oldWidget.selectionStyles) {
         _docLayoutSelectionStyler.selectionStyles = widget.selectionStyles;
       }
