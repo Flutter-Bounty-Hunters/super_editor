@@ -16,10 +16,13 @@ class FloatingEditorPageScaffold<PanelType> extends StatefulWidget {
     this.pageController,
     this.softwareKeyboardController,
     required this.pageBuilder,
+    this.bottomSheetDecorator,
     required this.editorSheet,
     this.keyboardPanelBuilder,
-    this.shadowSheetBanner,
-    this.style = const FloatingEditorStyle(),
+    this.editorSheetMargin = const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    this.collapsedMinimumHeight = 0,
+    // TODO: Remove keyboard height from any of our calculations, which should reduce this number to something closer to 250 or 300.
+    this.collapsedMaximumHeight = 650,
   });
 
   final FloatingEditorPageController<PanelType>? pageController;
@@ -27,12 +30,31 @@ class FloatingEditorPageScaffold<PanelType> extends StatefulWidget {
 
   final FloatingEditorContentBuilder pageBuilder;
 
-  final Widget? shadowSheetBanner;
+  /// Optional widget builder that surrounds the given [bottomSheet] with additional
+  /// widget decoration.
+  ///
+  /// This decorate might be used, for example, to add a decoration widget that slightly
+  /// enlarges the sheet when the user touches it, similar to how Liquid Glass typically works.
+  final Widget Function(BuildContext, Widget bottomSheet)? bottomSheetDecorator;
+
   final Widget editorSheet;
 
   final KeyboardPanelBuilder<PanelType>? keyboardPanelBuilder;
 
-  final FloatingEditorStyle style;
+  final EdgeInsets editorSheetMargin;
+
+  /// The shortest that the sheet can be, even if the intrinsic height of the content
+  /// within the sheet is shorter than this.
+  final double collapsedMinimumHeight;
+
+  /// The maximum height the bottom sheet can grow, as the user enters more lines of content,
+  /// before it stops growing and starts scrolling.
+  ///
+  /// This height applies to the sheet when its "collapsed", i.e., when it's not "expanded". The
+  /// sheet includes an "expanded" mode, which is typically triggered by the user dragging the
+  /// sheet up. When expanded, the sheet always takes up all available vertical space. When
+  /// not expanded, this height is as tall as the sheet can grow.
+  final double collapsedMaximumHeight;
 
   @override
   State<FloatingEditorPageScaffold> createState() => _FloatingEditorPageScaffoldState<PanelType>();
@@ -92,33 +114,20 @@ class _FloatingEditorPageScaffoldState<PanelType> extends State<FloatingEditorPa
         );
       },
       bottomSheetBuilder: (messageContext) {
-        return FloatingChatBottomSheet(
-          child: BottomFloatingChatSheet(
-            messagePageController: _pageController,
-            editorSheet: widget.editorSheet,
-            shadowSheetBanner: widget.shadowSheetBanner,
-            style: widget.style,
+        final sheet = Padding(
+          padding: widget.editorSheetMargin,
+          child: FloatingBottomSheetBoundary(
+            child: widget.editorSheet,
           ),
         );
 
-        // // TODO: Figure out where this KeyboardScaffoldSafeArea goes and why. We have a number of different
-        // //       scaffolds and sheets being composed. Where exactly do we want to push up above the keyboard,
-        // //       and where do we need to place a KeyboardScaffoldSafeArea to satisfy the expectations of a
-        // //       KeyboardPanelScaffold?
-        // return KeyboardScaffoldSafeArea(
-        //   child: FloatingChatBottomSheet(
-        //     child: BottomFloatingChatSheet(
-        //       messagePageController: _messagePageController,
-        //       editorSheet: widget.editorSheet,
-        //       shadowSheetBanner: widget.shadowSheetBanner,
-        //       style: widget.style,
-        //     ),
-        //   ),
-        // );
+        return widget.bottomSheetDecorator != null //
+            ? widget.bottomSheetDecorator!(messageContext, sheet)
+            : sheet;
       },
-      bottomSheetMinimumTopGap: widget.style.margin.top,
-      bottomSheetMinimumHeight: widget.style.collapsedMinimumHeight,
-      bottomSheetCollapsedMaximumHeight: widget.style.collapsedMaximumHeight,
+      bottomSheetMinimumTopGap: widget.editorSheetMargin.top,
+      bottomSheetMinimumHeight: widget.collapsedMinimumHeight,
+      bottomSheetCollapsedMaximumHeight: widget.collapsedMaximumHeight,
       keyboardPanelBuilder: widget.keyboardPanelBuilder,
     );
   }
@@ -1962,14 +1971,14 @@ const _keyboardPanelSlot = 'keyboard_panel';
 /// and global position of the floating sheet. This is useful, for example, when
 /// implementing drag behaviors to expand/collapse the bottom sheet. The part of the
 /// widget tree that contains the drag handle may not have access to the overall sheet.
-class FloatingChatBottomSheet extends StatefulWidget {
+class FloatingBottomSheetBoundary extends StatefulWidget {
   static BuildContext of(BuildContext context) =>
-      context.findAncestorStateOfType<_FloatingChatBottomSheetState>()!._sheetKey.currentContext!;
+      context.findAncestorStateOfType<_FloatingBottomSheetBoundaryState>()!._sheetKey.currentContext!;
 
   static BuildContext? maybeOf(BuildContext context) =>
-      context.findAncestorStateOfType<_FloatingChatBottomSheetState>()?._sheetKey.currentContext;
+      context.findAncestorStateOfType<_FloatingBottomSheetBoundaryState>()?._sheetKey.currentContext;
 
-  const FloatingChatBottomSheet({
+  const FloatingBottomSheetBoundary({
     super.key,
     required this.child,
   });
@@ -1977,11 +1986,11 @@ class FloatingChatBottomSheet extends StatefulWidget {
   final Widget child;
 
   @override
-  State<FloatingChatBottomSheet> createState() => _FloatingChatBottomSheetState();
+  State<FloatingBottomSheetBoundary> createState() => _FloatingBottomSheetBoundaryState();
 }
 
-class _FloatingChatBottomSheetState extends State<FloatingChatBottomSheet> {
-  final _sheetKey = GlobalKey(debugLabel: "FloatingChatBottomSheet");
+class _FloatingBottomSheetBoundaryState extends State<FloatingBottomSheetBoundary> {
+  final _sheetKey = GlobalKey(debugLabel: "FloatingBottomSheet");
 
   @override
   Widget build(BuildContext context) {
