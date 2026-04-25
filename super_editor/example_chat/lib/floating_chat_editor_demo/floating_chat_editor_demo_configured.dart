@@ -75,7 +75,7 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
         editorSheet: _buildEditorSheet(),
         keyboardPanelBuilder: _buildKeyboardPanel,
         style: FloatingEditorStyle(
-          margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
+          editorSheetMargin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
         ),
       ),
     );

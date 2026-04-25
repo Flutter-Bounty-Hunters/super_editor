@@ -5,116 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:super_editor/super_editor.dart';
 
-/// The whole bottom sheet for the floating editor demo, which includes a [FloatingShadowSheet] with
-/// a banner, which then contains an [FloatingEditorSheet], which has a drag handle, an
-/// editor, and a toolbar.
-class BottomFloatingChatSheet extends StatefulWidget {
-  const BottomFloatingChatSheet({
-    super.key,
-    required this.messagePageController,
-    this.shadowSheetBanner,
-    required this.editorSheet,
-    this.style = const FloatingEditorStyle(),
-  });
-
-  final MessagePageController messagePageController;
-
-  final Widget? shadowSheetBanner;
-
-  final Widget editorSheet;
-
-  final FloatingEditorStyle style;
-
-  @override
-  State<BottomFloatingChatSheet> createState() => _BottomFloatingChatSheetState();
-}
-
-class _BottomFloatingChatSheetState extends State<BottomFloatingChatSheet> {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: widget.style.margin,
-      child: FloatingShadowSheet(
-        banner: widget.shadowSheetBanner,
-        editorSheet: widget.editorSheet,
-        style: widget.style.shadowSheet,
-      ),
-    );
-  }
-}
-
-class FloatingEditorStyle {
-  const FloatingEditorStyle({
-    this.margin = const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-    this.borderRadius = const Radius.circular(28),
-    this.collapsedMinimumHeight = 0,
-    // TODO: Remove keyboard height from any of our calculations, which should reduce this number to something closer to 250 or 300.
-    this.collapsedMaximumHeight = 650,
-    this.shadowSheetBackground = Colors.grey,
-    this.shadowSheetPadding = const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
-    this.shadow = const FloatingEditorShadow(),
-    this.editorSheetBackground = Colors.white,
-  });
-
-  final EdgeInsets margin;
-  final Radius borderRadius;
-
-  /// The shortest that the sheet can be, even if the intrinsic height of the content
-  /// within the sheet is shorter than this.
-  final double collapsedMinimumHeight;
-
-  /// The maximum height the bottom sheet can grow, as the user enters more lines of content,
-  /// before it stops growing and starts scrolling.
-  ///
-  /// This height applies to the sheet when its "collapsed", i.e., when it's not "expanded". The
-  /// sheet includes an "expanded" mode, which is typically triggered by the user dragging the
-  /// sheet up. When expanded, the sheet always takes up all available vertical space. When
-  /// not expanded, this height is as tall as the sheet can grow.
-  final double collapsedMaximumHeight;
-
-  final Color shadowSheetBackground;
-  final EdgeInsets shadowSheetPadding;
-  final FloatingEditorShadow shadow;
-
-  final Color editorSheetBackground;
-
-  EditorSheetStyle get editorSheet => EditorSheetStyle(
-        borderRadius: borderRadius,
-        background: editorSheetBackground,
-      );
-
-  FloatingShadowSheetStyle get shadowSheet => FloatingShadowSheetStyle(
-        borderRadius: borderRadius,
-        background: shadowSheetBackground,
-        padding: shadowSheetPadding,
-        shadow: shadow,
-      );
-}
-
-/// Shadow configuration for a [BottomFloatingChatSheet].
-///
-/// This configuration is a custom selection of properties because with the way that
-/// the bottom sheet is clipped, a shadow with any y-offset will look buggy. Therefore,
-/// we can't allow for a typical `BoxShadow` or other shadow configuration. We can only
-/// support a color and a blur amount.
-class FloatingEditorShadow {
-  const FloatingEditorShadow({
-    this.color = const Color(0x33000000),
-    this.blur = 12,
-  });
-
-  final Color color;
-  final double blur;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FloatingEditorShadow && runtimeType == other.runtimeType && color == other.color && blur == other.blur;
-
-  @override
-  int get hashCode => color.hashCode ^ blur.hashCode;
-}
-
 /// A superellipse sheet which has a [banner] at the top and an [editorSheet] below that.
 ///
 /// This widget paints a superellipse background around the [banner] and the [editorSheet], but
@@ -187,6 +77,30 @@ class FloatingShadowSheetStyle {
 
   @override
   int get hashCode => background.hashCode ^ padding.hashCode ^ borderRadius.hashCode ^ shadow.hashCode;
+}
+
+/// Shadow configuration for a [BottomFloatingChatSheet].
+///
+/// This configuration is a custom selection of properties because with the way that
+/// the bottom sheet is clipped, a shadow with any y-offset will look buggy. Therefore,
+/// we can't allow for a typical `BoxShadow` or other shadow configuration. We can only
+/// support a color and a blur amount.
+class FloatingEditorShadow {
+  const FloatingEditorShadow({
+    this.color = const Color(0x33000000),
+    this.blur = 12,
+  });
+
+  final Color color;
+  final double blur;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FloatingEditorShadow && runtimeType == other.runtimeType && color == other.color && blur == other.blur;
+
+  @override
+  int get hashCode => color.hashCode ^ blur.hashCode;
 }
 
 enum ShadowSheetSlot {
@@ -320,96 +234,6 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
     // sheet to fit a wide banner width.
     size = Size(editorSheetSize.width, bannerAndPaddingHeight + editorSheetSize.height);
   }
-
-  // @override
-  // void paint(PaintingContext context, Offset offset) {
-  //   print("Painting shadow sheet - size: $size");
-  //   final banner = childForSlot(ShadowSheetSlot.banner);
-  //   final editorSheet = childForSlot(ShadowSheetSlot.editorSheet)!;
-  //   if (banner != null) {
-  //     print(" - banner height: ${banner.size.height}");
-  //   }
-  //   print(" - editor height: ${editorSheet.size.height}");
-  //
-  //   final editorSheetOffset = offset + (editorSheet.parentData as BoxParentData).offset;
-  //   final editorSheetBoundary = Path()
-  //     ..addRSuperellipse(
-  //       RSuperellipse.fromLTRBR(
-  //         editorSheetOffset.dx,
-  //         editorSheetOffset.dy,
-  //         editorSheetOffset.dx + size.width,
-  //         editorSheetOffset.dy + editorSheet.size.height,
-  //         _style.borderRadius,
-  //       ),
-  //     );
-  //
-  //   // Shadow sheet includes the banner and the editor sheet.
-  //   final shadowSheetBoundary = RSuperellipse.fromLTRBR(
-  //     offset.dx,
-  //     offset.dy,
-  //     offset.dx + size.width,
-  //     offset.dy + size.height,
-  //     _style.borderRadius,
-  //   );
-  //   final shadowSheetBoundaryPath = Path()..addRSuperellipse(shadowSheetBoundary);
-  //
-  //   // Paint the shadow for the entire shadow sheet.
-  //   // final shadowPaint = Paint()
-  //   //   ..color = Colors.black.withValues(alpha: 0.2)
-  //   //   ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12);
-  //   final shadowPaint = Paint()
-  //     ..color = _style.shadow.color
-  //     // Note: We use a normal blur instead of an outer blur because we have to
-  //     // clip the shadow no matter what. If we do an outer blur without clipping
-  //     // the shadow then any backdrop blur that the editor sheet applies will pull
-  //     // in a little bit of that surrounding shadow, giving a beveled or shaded edge
-  //     // look that we don't want.
-  //     ..maskFilter = MaskFilter.blur(BlurStyle.normal, _style.shadow.blur);
-  //
-  //   context.canvas.saveLayer(null, Paint());
-  //   context.canvas
-  //     ..save()
-  //     ..drawPath(shadowSheetBoundaryPath, shadowPaint);
-  //   context.canvas.restore();
-  //
-  //   // Cut the sheet out of the shadow, so the sheet can be translucent without
-  //   // showing an ugly shadow behind it.
-  //   final clearPaint = Paint()..blendMode = BlendMode.dstOut;
-  //   context.canvas.drawPath(shadowSheetBoundaryPath, clearPaint);
-  //
-  //   // Paint the shadow sheet and the banner at the top of the shadow sheet.
-  //   //
-  //   // This also requires cutting the editor sheet out of the shadow sheet, to
-  //   // support translucent editor sheets.
-  //   if (banner != null) {
-  //     final hollowShadowSheet = Path.combine(PathOperation.xor, shadowSheetBoundaryPath, editorSheetBoundary);
-  //     context.canvas.drawPath(hollowShadowSheet, Paint()..color = _style.background);
-  //
-  //     // Clip the banner at the shadow sheet boundary.
-  //     context.canvas
-  //       ..save()
-  //       ..clipRSuperellipse(shadowSheetBoundary);
-  //
-  //     banner.paint(context, offset + (banner.parentData as BoxParentData).offset);
-  //
-  //     // Get rid of the banner clip.
-  //     context.canvas.restore();
-  //   }
-  //
-  //   // Clip any part of the editor sheet outside the expected superellipse shape.
-  //   //
-  //   // We do this by pushing a clip layer because there's a high likelihood that the editor
-  //   // sheet blurs its backdrop, which can only be clipped by pushing a clip path.
-  //   final clipLayer = (layer as ClipPathLayer? ?? ClipPathLayer())
-  //     ..clipPath = editorSheetBoundary
-  //     ..clipBehavior = Clip.hardEdge;
-  //   layer = clipLayer;
-  //
-  //   context.pushLayer(clipLayer, (clippedContext, clippedOffset) {
-  //     // Paint the editor sheet.
-  //     editorSheet.paint(clippedContext, clippedOffset);
-  //   }, editorSheetOffset);
-  // }
 
   @override
   void paint(PaintingContext context, Offset offset) {
