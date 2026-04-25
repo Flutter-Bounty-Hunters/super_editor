@@ -115,7 +115,7 @@ class _DefaultFloatingEditorSheetState extends State<DefaultFloatingEditorSheet>
   }
 
   double get _dragIndicatorOffsetFromTop {
-    final bottomSheetBox = FloatingChatBottomSheet.of(context).findRenderObject();
+    final bottomSheetBox = FloatingBottomSheetBoundary.of(context).findRenderObject();
     final dragIndicatorBox = _dragIndicatorKey.currentContext!.findRenderObject()! as RenderBox;
 
     return dragIndicatorBox.localToGlobal(Offset.zero, ancestor: bottomSheetBox).dy;
