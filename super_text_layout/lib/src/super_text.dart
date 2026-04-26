@@ -28,6 +28,7 @@ class SuperText extends StatefulWidget {
     this.textAlign = TextAlign.left,
     this.textDirection = TextDirection.ltr,
     this.textScaler,
+    this.strutStyle,
     this.maxLines,
     this.overflow = TextOverflow.clip,
     this.layerBeneathBuilder,
@@ -48,6 +49,12 @@ class SuperText extends StatefulWidget {
   ///
   /// Defaults to `MediaQuery.textScalerOf`.
   final TextScaler? textScaler;
+
+  /// The strut style to use for [richText] display.
+  ///
+  /// If null, [SuperText] falls back to the nearest [SuperTextStrutStyle]
+  /// ancestor, if one exists.
+  final StrutStyle? strutStyle;
 
   /// The maximum number of lines of text that are permitted to be displayed until [overflow]
   /// is applied to the text.
@@ -101,6 +108,7 @@ class SuperTextState extends ProseTextState<SuperText> with ProseTextBlock {
         textAlign: widget.textAlign,
         textDirection: widget.textDirection,
         textScaler: widget.textScaler ?? MediaQuery.textScalerOf(context),
+        strutStyle: widget.strutStyle ?? SuperTextStrutStyle.maybeOf(context),
         maxLines: widget.maxLines,
         overflow: widget.overflow,
         onMarkNeedsLayout: _invalidateParagraph,
@@ -138,6 +146,35 @@ class SuperTextState extends ProseTextState<SuperText> with ProseTextBlock {
         },
       ),
     );
+  }
+}
+
+/// Provides a [StrutStyle] to descendant [SuperText] widgets.
+///
+/// Use [SuperTextStrutStyle] when a text surface needs consistent line metrics
+/// across a subtree without threading a [StrutStyle] through every [SuperText]
+/// instance. A [SuperText.strutStyle] value takes precedence over the inherited
+/// value.
+class SuperTextStrutStyle extends InheritedWidget {
+  const SuperTextStrutStyle({
+    Key? key,
+    required this.strutStyle,
+    required Widget child,
+  }) : super(key: key, child: child);
+
+  /// Returns the nearest inherited [StrutStyle], or null when no
+  /// [SuperTextStrutStyle] exists above [context].
+  static StrutStyle? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<SuperTextStrutStyle>()
+        ?.strutStyle;
+  }
+
+  final StrutStyle strutStyle;
+
+  @override
+  bool updateShouldNotify(SuperTextStrutStyle oldWidget) {
+    return strutStyle != oldWidget.strutStyle;
   }
 }
 
@@ -309,6 +346,7 @@ class LayoutAwareRichText extends RichText {
     super.textAlign = TextAlign.left,
     super.textDirection = TextDirection.ltr,
     super.textScaler = TextScaler.noScaling,
+    super.strutStyle,
     super.maxLines,
     super.overflow,
     required this.onMarkNeedsLayout,
