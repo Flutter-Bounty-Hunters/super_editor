@@ -1,3 +1,7 @@
+# FVM
+.fvm
+.fvmrc
+
 # Golden failures
 **/failures/
 
