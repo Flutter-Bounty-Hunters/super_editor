@@ -1237,7 +1237,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   @override
   void toggleKeyboardPanel(PanelType panel) {
     if (_activePanel == panel) {
-      hideKeyboardPanel();
+      hideKeyboardPanel(openKeyboard: true);
     } else {
       showKeyboardPanel(panel);
     }
@@ -1245,19 +1245,25 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
 
   /// Hides the keyboard panel, if it's open.
   @override
-  void hideKeyboardPanel() {
+  void hideKeyboardPanel({
+    bool openKeyboard = false,
+  }) {
     // Close panel.
     print("hideKeyboardPanel()");
     _wantsToShowKeyboardPanel = false;
     _activePanel = null;
-    // Note: We don't animate the panel away because as the panel goes
-    //       down, it drags the bottom sheet down with it, until the
-    //       bottom sheet hits the keyboard as the keyboard comes up.
-    //       Instead, we keep the bottom sheet around until the keyboard
-    //       fully opens.
 
-    // Open the keyboard.
-    _pageController.softwareKeyboardController.open(viewId: _viewId);
+    if (openKeyboard) {
+      // Note: We don't animate the panel away because as the panel goes
+      //       down, it drags the bottom sheet down with it, until the
+      //       bottom sheet hits the keyboard as the keyboard comes up.
+      //       Instead, we keep the bottom sheet around until the keyboard
+      //       fully opens.
+      _pageController.softwareKeyboardController.open(viewId: _viewId);
+    } else {
+      // We're not opening the keyboard, so we need to animate the panel.
+      _panelHeightController.reverse();
+    }
 
     // TODO: do we need to mark layout? paint?
 
@@ -1273,7 +1279,6 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     _wantsToShowSoftwareKeyboard = false;
     _activePanel = null;
     _pageController.softwareKeyboardController.close();
-    print("REVERSING THE PANEL ANIMATION (CLOSED)");
     _panelHeightController.reverse();
 
     // TODO: do we need to mark layout? paint?
