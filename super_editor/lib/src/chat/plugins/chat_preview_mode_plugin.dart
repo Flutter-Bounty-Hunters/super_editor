@@ -48,11 +48,9 @@ class ChatPreviewModePlugin extends SuperEditorPlugin {
     }
 
     return previewModel
-      ..padding = previewModel.padding
-          .subtract(
-            EdgeInsets.only(left: previewModel.padding.resolve(TextDirection.ltr).left),
-          )
-          .add(const EdgeInsets.only(bottom: 12));
+      ..padding = previewModel.padding.subtract(
+        EdgeInsets.only(left: previewModel.padding.resolve(TextDirection.ltr).left),
+      );
   }
 
   ChatPreviewModePlugin({
