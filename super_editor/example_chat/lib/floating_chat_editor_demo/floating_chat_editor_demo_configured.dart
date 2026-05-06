@@ -69,7 +69,7 @@ class _FloatingChatEditorBuilderDemoState extends State<FloatingChatEditorBuilde
         pageBuilder: (context, pageGeometry) {
           return _ChatPage(
             appBar: _buildAppBar(),
-            scrollPadding: EdgeInsets.only(bottom: pageGeometry.bottomSafeArea),
+            scrollPadding: EdgeInsets.only(bottom: pageGeometry.bottomSafeArea ?? 0),
           );
         },
         editorSheet: _buildEditorSheet(),
