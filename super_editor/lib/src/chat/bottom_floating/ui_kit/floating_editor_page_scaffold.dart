@@ -401,10 +401,10 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
     super.mount(parent, newSlot);
 
     _content = inflateWidget(
-      // Run initial build with zero bottom spacing because we haven't
+      // Run initial build with unknown bottom spacing because we haven't
       // run layout on the message editor yet, which determines the content
       // bottom spacing.
-      widget.contentBuilder(this, FloatingEditorPageGeometry.zero),
+      widget.contentBuilder(this, FloatingEditorPageGeometry.unknown),
       _contentSlot,
     );
 
@@ -530,8 +530,11 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
 
     super.update(newWidget);
 
-    _content =
-        updateChild(_content, widget.contentBuilder(this, FloatingEditorPageGeometry.zero), _contentSlot) ?? _content;
+    _content = updateChild(
+            _content,
+            widget.contentBuilder(this, renderObject.mostRecentPageGeometry ?? FloatingEditorPageGeometry.unknown),
+            _contentSlot) ??
+        _content;
 
     _bottomSheet = updateChild(_bottomSheet, widget.bottomSheetBuilder(this), _bottomSheetSlot);
 
@@ -1443,6 +1446,9 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
   bool get bottomSheetNeedsLayout => _bottomSheetNeedsLayout;
   bool _bottomSheetNeedsLayout = true;
 
+  FloatingEditorPageGeometry? get mostRecentPageGeometry => _mostRecentPageGeometry;
+  FloatingEditorPageGeometry? _mostRecentPageGeometry;
+
   /// Whether we are at the middle of a [performLayout] call.
   bool _runningLayout = false;
 
@@ -1755,12 +1761,16 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     messagePageLayoutLog.info('');
     messagePageLayoutLog.info('Building chat scaffold content');
     invokeLayoutCallback((constraints) {
-      _element!.buildContent(FloatingEditorPageGeometry(
+      final pageGeometry = FloatingEditorPageGeometry(
         keyboardHeight: _keyboardHeight,
         panelHeight: _panelHeight.value,
         bottomViewPadding: _mediaQueryBottomPadding,
         bottomSheetHeight: _bottomSheet!.size.height,
-      ));
+      );
+
+      _element!.buildContent(pageGeometry);
+
+      _mostRecentPageGeometry = pageGeometry;
     });
     messagePageLayoutLog.info('Laying out chat scaffold content');
     _content!.layout(constraints, parentUsesSize: true);
@@ -1924,6 +1934,13 @@ class FloatingEditorPageGeometry {
     bottomSheetHeight: 0,
   );
 
+  static const unknown = FloatingEditorPageGeometry(
+    keyboardHeight: null,
+    panelHeight: null,
+    bottomViewPadding: null,
+    bottomSheetHeight: null,
+  );
+
   const FloatingEditorPageGeometry({
     required this.keyboardHeight,
     required this.panelHeight,
@@ -1931,14 +1948,16 @@ class FloatingEditorPageGeometry {
     required this.bottomSheetHeight,
   });
 
-  final double keyboardHeight;
-  final double panelHeight;
-  final double bottomViewPadding;
-  final double bottomSheetHeight;
+  final double? keyboardHeight;
+  final double? panelHeight;
+  final double? bottomViewPadding;
+  final double? bottomSheetHeight;
 
   /// Space at the bottom of the page that's obscured by some combination of operating
   /// system controls, the keyboard, a keyboard panel, and the floating editor bottom sheet.
-  double get bottomSafeArea => max(keyboardOrPanelHeight, bottomViewPadding) + bottomSheetHeight;
+  double? get bottomSafeArea => keyboardOrPanelHeight != null && bottomViewPadding != null && bottomSheetHeight != null
+      ? max(keyboardOrPanelHeight!, bottomViewPadding!) + bottomSheetHeight!
+      : null;
 
   /// The height of the software keyboard, or the keyboard panel, whichever is currently
   /// taller.
@@ -1946,7 +1965,8 @@ class FloatingEditorPageGeometry {
   /// Typically, either the software keyboard is open, or a panel is open, not both. However,
   /// when one switches to the other, one animates down while the other animates up, which
   /// results in both heights being greater than zero for a period of time.
-  double get keyboardOrPanelHeight => max(keyboardHeight, panelHeight);
+  double? get keyboardOrPanelHeight =>
+      keyboardHeight != null && panelHeight != null ? max(keyboardHeight!, panelHeight!) : null;
 
   @override
   bool operator ==(Object other) =>

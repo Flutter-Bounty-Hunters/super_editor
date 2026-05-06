@@ -41,6 +41,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     super.key,
     this.inputRole,
     this.editorFocusNode,
+    this.autofocus = false,
     required this.editor,
     this.documentLayoutKey,
     this.hint = "Send a message...",
@@ -87,6 +88,8 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
 
   /// Optional [FocusNode], which is attached to the internal [SuperEditor].
   final FocusNode? editorFocusNode;
+
+  final bool autofocus;
 
   /// The logical [Editor] for the user's message.
   ///
@@ -364,6 +367,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
         superEditor: SuperEditor(
           key: _editorKey,
           focusNode: _editorFocusNode,
+          autofocus: widget.autofocus,
           inputRole: widget.inputRole,
           editor: widget.editor,
           documentLayoutKey: widget.documentLayoutKey,
