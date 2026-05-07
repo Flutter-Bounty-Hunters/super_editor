@@ -216,8 +216,10 @@ class AttributedSpans {
         if (spanStart == null) continue;
 
         final spanEnd = marker.offset;
+
+        // Does span overlap requested range?
         if (spanStart <= end && spanEnd >= start) {
-          // Span overlaps requested range.
+          // Add the span to the set. Duplicate are automatically ignored.
           matchingAttributionSpans.add(AttributionSpan(
             attribution: marker.attribution,
             start: resizeSpansToFitInRange ? max(spanStart, start) : spanStart,
