@@ -93,22 +93,36 @@ class AttributedSpans {
     required int start,
     required int end,
   }) {
-    if (attributions.isEmpty) return {};
+    if (attributions.isEmpty) {
+      return {};
+    }
 
-    final matchingIds = {for (final a in attributions) a.id};
+    final desiredIds = {
+      for (final a in attributions) //
+        a.id
+    };
     final matchingAttributions = <Attribution>{};
     final Map<String, int> openSpans = {};
 
     for (final marker in _markers) {
       if (marker.isStart) {
-        if (matchingIds.contains(marker.attribution.id)) {
+        if (desiredIds.contains(marker.attribution.id)) {
+          // We found the start of an attribution span we're interested in.
           openSpans[marker.attribution.id] = marker.offset;
         }
       } else {
         final spanStart = openSpans.remove(marker.attribution.id);
-        if (spanStart == null) continue;
+        if (spanStart == null) {
+          // We haven't found a corresponding start to this attribution range that
+          // we care about. This means that this is not one of the `attributions`
+          // we're looking for. Skip it.
+          continue;
+        }
 
         if (spanStart <= end && marker.offset >= start) {
+          // We found the end of an attribution span we're interested in. Also,
+          // that span starts and ends within the range of interest. Add this
+          // attribution to the set we return.
           matchingAttributions.add(marker.attribution);
         }
       }
