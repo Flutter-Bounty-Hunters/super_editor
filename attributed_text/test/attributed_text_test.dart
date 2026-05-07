@@ -348,12 +348,12 @@ void main() {
         expect(ranges.length, 4);
         expect(
           ranges,
-          [
+          {
             const AttributionSpan(attribution: ExpectedSpans.bold, start: 2, end: 3),
             const AttributionSpan(attribution: ExpectedSpans.italics, start: 5, end: 7),
             const AttributionSpan(attribution: ExpectedSpans.bold, start: 6, end: 7),
             const AttributionSpan(attribution: ExpectedSpans.italics, start: 9, end: 10),
-          ],
+          },
         );
       });
 

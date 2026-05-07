@@ -193,27 +193,26 @@ class AttributedSpans {
     bool resizeSpansToFitInRange = false,
   }) {
     final matchingAttributionSpans = <AttributionSpan>{};
+    final Map<String, int> openSpans = {};
 
-    // For every unit in the given range...
-    for (int i = start; i <= end; ++i) {
-      final attributionsAtOffset = getAllAttributionsAt(i);
-      // For every attribution overlaps this unit...
-      for (final attribution in attributionsAtOffset) {
-        // If the caller wants this attribution...
-        if (attributionFilter(attribution)) {
-          // Calculate the span for this attribution.
-          AttributionSpan span = expandAttributionToSpan(
-            attribution: attribution,
-            offset: i,
-          );
+    for (final marker in _markers) {
+      if (marker.isStart) {
+        if (attributionFilter(marker.attribution)) {
+          openSpans[marker.attribution.id] = marker.offset;
+        }
+      } else {
+        // If there is start marker matching this end marker.
+        final spanStart = openSpans.remove(marker.attribution.id);
+        if (spanStart == null) continue;
 
-          // If desired, resize the span to fit within the range.
-          if (resizeSpansToFitInRange) {
-            span = span.constrain(start: start, end: end);
-          }
-
-          // Add the span to the set. Duplicate are automatically ignored.
-          matchingAttributionSpans.add(span);
+        final spanEnd = marker.offset;
+        if (spanStart <= end && spanEnd >= start) {
+          // Span overlaps requested range.
+          matchingAttributionSpans.add(AttributionSpan(
+            attribution: marker.attribution,
+            start: resizeSpansToFitInRange ? max(spanStart, start) : spanStart,
+            end: resizeSpansToFitInRange ? min(spanEnd, end) : spanEnd,
+          ));
         }
       }
     }
