@@ -93,17 +93,27 @@ class AttributedSpans {
     required int start,
     required int end,
   }) {
+    if (attributions.isEmpty) return {};
+
+    final matchingIds = {for (final a in attributions) a.id};
     final matchingAttributions = <Attribution>{};
-    for (int i = start; i <= end; ++i) {
-      for (final attribution in attributions) {
-        final otherAttributions = getAllAttributionsAt(i);
-        for (final otherAttribution in otherAttributions) {
-          if (otherAttribution.id == attribution.id) {
-            matchingAttributions.add(otherAttribution);
-          }
+    final Map<String, int> openSpans = {};
+
+    for (final marker in _markers) {
+      if (marker.isStart) {
+        if (matchingIds.contains(marker.attribution.id)) {
+          openSpans[marker.attribution.id] = marker.offset;
+        }
+      } else {
+        final spanStart = openSpans.remove(marker.attribution.id);
+        if (spanStart == null) continue;
+
+        if (spanStart <= end && marker.offset >= start) {
+          matchingAttributions.add(marker.attribution);
         }
       }
     }
+
     return matchingAttributions;
   }
 
