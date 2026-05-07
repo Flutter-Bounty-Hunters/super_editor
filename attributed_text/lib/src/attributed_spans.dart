@@ -227,7 +227,12 @@ class AttributedSpans {
       } else {
         // Is there a start marker matching this end marker?
         final spanStart = openSpans.remove(marker.attribution.id);
-        if (spanStart == null) continue;
+        if (spanStart == null) {
+          // We don't have a start marker for this end marker. This is
+          // because this attribution failed the `attributionFilter`. We
+          // don't care about it.
+          continue;
+        }
 
         final spanEnd = marker.offset;
 
