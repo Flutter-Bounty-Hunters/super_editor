@@ -1,5 +1,7 @@
 library super_text_field;
 
+export 'package:super_text_layout/super_text_layout.dart' show BlinkController, BlinkTimingMode;
+
 // The whole text field.
 export 'src/super_textfield/super_textfield.dart';
 
