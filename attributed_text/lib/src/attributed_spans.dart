@@ -108,7 +108,7 @@ class AttributedSpans {
       if (marker.isStart) {
         if (desiredIds.contains(marker.attribution.id)) {
           // We found the start of an attribution span we're interested in.
-          openSpans[marker.attribution.id] = marker.offset;
+          openSpans[marker.attribution.id] ??= marker.offset;
         }
       } else {
         final spanStart = openSpans.remove(marker.attribution.id);
@@ -222,7 +222,7 @@ class AttributedSpans {
     for (final marker in _markers) {
       if (marker.isStart) {
         if (attributionFilter(marker.attribution)) {
-          openSpans[marker.attribution.id] = marker.offset;
+          openSpans[marker.attribution.id] ??= marker.offset;
         }
       } else {
         // Is there a start marker matching this end marker?
