@@ -201,7 +201,7 @@ class AttributedSpans {
           openSpans[marker.attribution.id] = marker.offset;
         }
       } else {
-        // If there is start marker matching this end marker.
+        // Is there a start marker matching this end marker?
         final spanStart = openSpans.remove(marker.attribution.id);
         if (spanStart == null) continue;
 
