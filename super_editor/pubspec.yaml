@@ -29,7 +29,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  attributed_text: ^0.4.0
+  attributed_text: ^0.4.7
   characters: ^1.3.0
   collection: ^1.15.0
   dart_quill_delta: ^9.4.1
