@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:super_editor/src/core/editor.dart';
 
 import 'document.dart';
@@ -75,6 +76,10 @@ abstract class DocumentLayout {
   /// in that text component would return a bounding box for the character "l".
   Rect? getRectForPosition(DocumentPosition position);
 
+  /// Returns the [CaretGeometry] for the given [position], within the document's
+  /// coordinate system.
+  CaretGeometry getCaretForPosition(DocumentPosition position);
+
   /// Returns a [Rect] that bounds the content selected between
   /// [basePosition] and [extentPosition].
   Rect? getRectForSelection(DocumentPosition basePosition, DocumentPosition extentPosition);
@@ -136,6 +141,10 @@ mixin DocumentComponent<T extends StatefulWidget> on State<T> {
   /// See [Document] for more information about [DocumentNode]s and
   /// node positions.
   Offset getOffsetForPosition(NodePosition nodePosition);
+
+  /// Returns a [CaretGeometry] that should be displayed for the given [nodePosition]
+  /// within this component.
+  CaretGeometry getCaretForPosition(NodePosition nodePosition);
 
   /// Returns the upstream edge or downstream edge of the content at the given
   /// [position].
@@ -304,6 +313,56 @@ mixin DocumentComponent<T extends StatefulWidget> on State<T> {
   MouseCursor? getDesiredCursorAtOffset(Offset localOffset);
 }
 
+/// Geometry for a caret, which includes the x-value in a component where the
+/// caret should sit, and the top/bottom y-values for the caret.
+///
+/// This geometry is used instead of a `Rect` because it's up to the editor
+/// to choose a width for a caret. However, [toRect] is provided as a quick
+/// way to create a caret `Rect` from a [CaretGeometry].
+class CaretGeometry {
+  const CaretGeometry({
+    required this.x,
+    required this.top,
+    required this.bottom,
+  });
+
+  /// Horizontal center offset for the caret.
+  final double x;
+
+  /// Top y-value for the caret.
+  final double top;
+
+  /// Bottom y-value for the caret.
+  final double bottom;
+
+  /// Returns a new [CaretGeometry] that's the same as this one, except moved by the
+  /// given [offset.dx] and [offset.dy].
+  CaretGeometry translate(Offset offset) => CaretGeometry(
+        x: x + offset.dx,
+        top: top + offset.dy,
+        bottom: bottom + offset.dy,
+      );
+
+  /// Creates a [Rect] at this caret's [x], [top], and [bottom], with the
+  /// given [width].
+  Rect toRect(double width) => RectDip.fromLTRB(x - (width / 2), top, x + (width / 2), bottom);
+
+  @override
+  String toString() => "[CaretGeometry] - x: $x, top: $top, bottom: $bottom";
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CaretGeometry &&
+          runtimeType == other.runtimeType &&
+          x == other.x &&
+          top == other.top &&
+          bottom == other.bottom;
+
+  @override
+  int get hashCode => Object.hash(x, top, bottom);
+}
+
 /// A [DocumentComponent] that wraps, and defers to, another [DocumentComponent].
 ///
 /// Consider a text component that displays hint text when it's empty. A `TextComponent`
@@ -358,6 +417,11 @@ mixin ProxyDocumentComponent<T extends StatefulWidget> implements DocumentCompon
     return _getOffsetFromChild(
       _childDocumentComponent.getOffsetForPosition(nodePosition),
     );
+  }
+
+  @override
+  CaretGeometry getCaretForPosition(NodePosition nodePosition) {
+    return _childDocumentComponent.getCaretForPosition(nodePosition);
   }
 
   @override
