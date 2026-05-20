@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:super_editor/src/core/edit_context.dart';
@@ -69,7 +70,7 @@ class _SuperEditorHardwareKeyHandlerState extends State<SuperEditorHardwareKeyHa
   }
 
   KeyEventResult _onKeyPressed(FocusNode node, KeyEvent keyEvent) {
-    if (!node.hasPrimaryFocus) {
+    if (!node.hasPrimaryFocus && !_shouldHandleNonPrimaryFocusKey(keyEvent)) {
       // The editor is focused, but doesn't have primary focus. For example:
       // - The editor has a node with a focused widget.
       // - There is a focused widget somewhere else in the tree which shares
@@ -95,6 +96,14 @@ class _SuperEditorHardwareKeyHandlerState extends State<SuperEditorHardwareKeyHa
       case ExecutionInstruction.blocked:
         return KeyEventResult.ignored;
     }
+  }
+
+  bool _shouldHandleNonPrimaryFocusKey(KeyEvent keyEvent) {
+    // Android's software keyboard can report backspace through the hardware key pipeline
+    // while a popover has primary focus.
+    return defaultTargetPlatform == TargetPlatform.android &&
+        (keyEvent is KeyDownEvent || keyEvent is KeyRepeatEvent) &&
+        keyEvent.logicalKey == LogicalKeyboardKey.backspace;
   }
 
   @override

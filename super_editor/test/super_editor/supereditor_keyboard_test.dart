@@ -411,6 +411,54 @@ void main() {
         ),
       );
     });
+
+    testWidgetsOnAndroid('handles backspace when a popover has primary focus', (tester) async {
+      final editorFocusNode = FocusNode();
+      final popoverFocusNode = FocusNode();
+      final overlayController = OverlayPortalController();
+
+      final testContext = await tester //
+          .createDocument()
+          .fromMarkdown("This is some testing text.") // Length is 26
+          .withFocusNode(editorFocusNode)
+          .withInputSource(TextInputSource.ime)
+          .withCustomWidgetTreeBuilder(
+            (superEditor) => MaterialApp(
+              home: Scaffold(
+                body: OverlayPortal(
+                  controller: overlayController,
+                  overlayChildBuilder: (context) => Focus(
+                    focusNode: popoverFocusNode,
+                    parentNode: editorFocusNode,
+                    child: const SizedBox(width: 100, height: 100),
+                  ),
+                  child: superEditor,
+                ),
+              ),
+            ),
+          )
+          .pump();
+
+      final nodeId = testContext.findEditContext().document.first.id;
+      await tester.placeCaretInParagraph(nodeId, 5);
+
+      overlayController.show();
+      popoverFocusNode.requestFocus();
+      await tester.pump();
+
+      expect(editorFocusNode.hasFocus, isTrue);
+      expect(editorFocusNode.hasPrimaryFocus, isFalse);
+      expect(popoverFocusNode.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+
+      expect(SuperEditorInspector.findTextInComponent(nodeId).toPlainText(), "Thisis some testing text.");
+      expect(
+        SuperEditorInspector.findDocumentSelection(),
+        selectionEquivalentTo(_caretInParagraph(nodeId, 4)),
+      );
+    });
   });
 
   group('SuperEditor software keyboard', () {
