@@ -16,7 +16,8 @@ export 'src/core/editor.dart';
 export 'src/core/styles.dart';
 
 // Chat
-export 'src/chat/attachments/attachment_list.dart';
+export 'src/chat/attachments/attachment_list_component.dart';
+export 'src/chat/attachments/attachment_list_node.dart';
 export 'src/chat/message_page_scaffold.dart';
 export 'src/chat/plugins/chat_preview_mode_plugin.dart';
 export 'src/chat/super_message.dart';
@@ -93,6 +94,7 @@ export 'src/infrastructure/keyboard.dart';
 export 'src/infrastructure/multi_tap_gesture.dart';
 export 'src/infrastructure/pausable_value_notifier.dart';
 export 'src/infrastructure/flutter/overlay_with_groups.dart';
+export 'src/infrastructure/flutter/row_wrap.dart';
 export 'src/infrastructure/flutter/text_selection.dart';
 export 'src/infrastructure/platforms/android/android_document_controls.dart';
 export 'src/infrastructure/platforms/android/toolbar.dart';

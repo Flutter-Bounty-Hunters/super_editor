@@ -31,6 +31,15 @@ class TableBlockNode extends BlockNode {
   int get rowCount => _cells.length;
   int get columnCount => _cells.isEmpty ? 0 : _cells[0].length;
 
+  @override
+  bool isPositionCloserToStart(NodePosition position) {
+    if (position is! UpstreamDownstreamNodeSelection) {
+      throw Exception('Expected a UpstreamDownstreamNodeSelection for position but received a ${position.runtimeType}');
+    }
+
+    return position == const UpstreamDownstreamNodePosition.upstream();
+  }
+
   List<TextNode> getRow(int index) {
     if (index < 0 || index >= _cells.length) {
       throw RangeError.range(index, 0, _cells.length - 1, 'index');

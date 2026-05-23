@@ -384,6 +384,14 @@ abstract class DocumentNode {
   /// apply to this [DocumentNode].
   bool containsPosition(Object position);
 
+  /// Returns `true` if the given [position] is closer to the start of this node's
+  /// content than it is to the end.
+  bool isPositionCloserToStart(NodePosition position);
+
+  /// Returns `true` if the given [position] is closer to the end of this node's
+  /// content than it is to the end.
+  bool isPositionCloserToEnd(NodePosition position) => !isPositionCloserToStart(position);
+
   /// Inspects [position1] and [position2] and returns the one that's
   /// positioned further upstream in this [DocumentNode].
   ///
@@ -470,6 +478,44 @@ abstract class DocumentNode {
   // unequal, because the hashCodes would be different.
   @override
   int get hashCode => 1;
+}
+
+/// A [DocumentNode] that supports editing.
+///
+/// The concept of "supports editing" refers to the ability insert and/or delete content
+/// within the node. Typically, all nodes should implementing editing, and should extend
+/// [EditableDocumentNode] instead of extending [DocumentNode]. The reason that [DocumentNode]
+/// exists without editing APIs is because some users might use `super_editor` only to
+/// render documents, rather than edit documents. In that case, there's no reason for users
+/// to implement editing capabilities for their custom nodes.
+@immutable
+abstract class EditableDocumentNode extends DocumentNode {
+  /// Returns `true` if this node can split itself at the given [position].
+  ///
+  /// It's expected that various nodes can't split at all, e.g., images and
+  /// horizontal rules. Those nodes should return `false`.
+  bool canSplitAt(NodePosition position);
+
+  /// Splits this node at the given [position] into two separate nodes.
+  ///
+  /// The [firstPart] retains the existing node's ID and the [secondPart] is given the [newId].
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode firstPart, DocumentNode secondPart) splitAt(nodePosition, {required String newId});
+
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteFromStartToPosition(NodePosition position);
+
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteFromPositionToEnd(NodePosition position);
+
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteSelection(NodePosition base, NodePosition extent);
+
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteUpstream(NodePosition position);
+
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteDownstream(NodePosition position);
 }
 
 extension InspectNodeAffinity on DocumentNode {

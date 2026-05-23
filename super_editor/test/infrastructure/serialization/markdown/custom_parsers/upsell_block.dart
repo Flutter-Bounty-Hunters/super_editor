@@ -18,6 +18,15 @@ class UpsellNode extends BlockNode {
   final String id;
 
   @override
+  bool isPositionCloserToStart(NodePosition position) {
+    if (position is! UpstreamDownstreamNodePosition) {
+      throw Exception('Expected a UpstreamDownstreamNodePosition for position but received a ${position.runtimeType}');
+    }
+
+    return position == const UpstreamDownstreamNodePosition.upstream();
+  }
+
+  @override
   UpsellNode copyAndReplaceMetadata(Map<String, dynamic> newMetadata) {
     return UpsellNode(id);
   }

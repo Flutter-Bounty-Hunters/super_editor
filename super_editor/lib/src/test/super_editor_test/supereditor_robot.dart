@@ -10,6 +10,30 @@ import 'package:super_editor/super_editor.dart';
 /// Extensions on [WidgetTester] for interacting with a [SuperEditor] the way
 /// a user would.
 extension SuperEditorRobot on WidgetTester {
+  Future<void> placeCaretInComponent(
+    String nodeId,
+    NodePosition nodePosition, {
+    Finder? superEditorFinder,
+    bool settle = true,
+  }) async {
+    // Calculate the global tap position for the node position.
+    final globalTapOffset = _findGlobalOffsetForPosition(nodeId, nodePosition);
+
+    // TODO: check that the tap offset is visible within the viewport. Add option to
+    // auto-scroll, or throw exception when it's not tappable.
+
+    // Tap the desired number of times in SuperEditor at the given position.
+    await tapAt(globalTapOffset);
+    await pump(kTapMinTime + const Duration(milliseconds: 1));
+
+    // Pump long enough to prevent the next tap from being seen as a sequence on top of these taps.
+    await pump(kTapTimeout);
+
+    if (settle) {
+      await pumpAndSettle();
+    }
+  }
+
   /// Place the caret at the given [offset] in a paragraph with the given [nodeId],
   /// by simulating a user gesture.
   ///
@@ -401,13 +425,25 @@ extension SuperEditorRobot on WidgetTester {
     await _updateFloatingCursor(action: "FloatingCursorDragState.end", offset: Offset.zero);
   }
 
+  Offset _findGlobalOffsetForPosition(
+    String nodeId,
+    NodePosition position, [
+    Finder? superEditorFinder,
+  ]) {
+    final componentKey = _findComponentKeyForNode(nodeId, superEditorFinder);
+    final componentBox = componentKey.currentContext!.findRenderObject() as RenderBox;
+
+    final localTapOffset = _findOffsetInComponentForPosition(nodeId, position, superEditorFinder);
+    return componentBox.localToGlobal(localTapOffset);
+  }
+
   Offset _findGlobalOffsetForTextPosition(
     String nodeId,
     int offset,
     TextAffinity affinity, [
     Finder? superEditorFinder,
   ]) {
-    final textComponentKey = _findComponentKeyForTextNode(nodeId, superEditorFinder);
+    final textComponentKey = _findComponentKeyForNode(nodeId, superEditorFinder);
     final textRenderBox = textComponentKey.currentContext!.findRenderObject() as RenderBox;
 
     final localTapOffset = _findLocalOffsetForTextPosition(nodeId, offset, affinity, superEditorFinder);
@@ -420,7 +456,7 @@ extension SuperEditorRobot on WidgetTester {
     TextAffinity affinity, [
     Finder? superEditorFinder,
   ]) {
-    final textComponentKey = _findComponentKeyForTextNode(nodeId, superEditorFinder);
+    final textComponentKey = _findComponentKeyForNode(nodeId, superEditorFinder);
     final textLayout = (textComponentKey.currentState as TextComponentState).textLayout;
 
     // Calculate the global tap position based on the TextLayout and desired
@@ -499,11 +535,9 @@ extension SuperEditorRobot on WidgetTester {
     return layoutFinder.evaluate().single as StatefulElement;
   }
 
-  /// Finds the [GlobalKey] that's attached to the [TextComponent], which presents the
+  /// Finds the [GlobalKey] that's attached to the [DocumentComponent], which presents the
   /// given [nodeId].
-  ///
-  /// The given [nodeId] must refer to a [TextNode] or subclass.
-  GlobalKey _findComponentKeyForTextNode(String nodeId, [Finder? superEditorFinder]) {
+  GlobalKey _findComponentKeyForNode(String nodeId, [Finder? superEditorFinder]) {
     final documentLayout = _findDocumentLayout(superEditorFinder);
 
     final componentState = documentLayout.getComponentByNodeId(nodeId) as State;
@@ -512,6 +546,16 @@ extension SuperEditorRobot on WidgetTester {
     } else {
       return componentState.widget.key as GlobalKey;
     }
+  }
+
+  Offset _findOffsetInComponentForPosition(
+    String nodeId,
+    NodePosition position, [
+    Finder? superEditorFinder,
+  ]) {
+    final componentKey = _findComponentKeyForNode(nodeId, superEditorFinder);
+    final componentLayout = componentKey.currentState as DocumentComponent;
+    return componentLayout.getOffsetForPosition(position);
   }
 
   Future<void> _updateFloatingCursor({required String action, required Offset offset}) async {

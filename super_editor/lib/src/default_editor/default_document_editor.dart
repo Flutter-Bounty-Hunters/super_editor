@@ -212,6 +212,12 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
   (editor, request) => request is ClearDocumentRequest //
       ? ClearDocumentCommand()
       : null,
+  (editor, request) => request is DeleteUpstreamRequest //
+      ? const DeleteUpstreamCommand()
+      : null,
+  (editor, request) => request is DeleteDownstreamRequest //
+      ? const DeleteDownstreamCommand()
+      : null,
   (editor, request) => request is DeleteUpstreamCharacterRequest //
       ? const DeleteUpstreamCharacterCommand()
       : null,

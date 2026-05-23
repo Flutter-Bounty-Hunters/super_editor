@@ -773,9 +773,11 @@ class DeleteContentRequest implements EditRequest {
 class DeleteContentCommand extends EditCommand {
   DeleteContentCommand({
     required this.documentRange,
+    this.updateSelection = false,
   });
 
   final DocumentRange documentRange;
+  final bool updateSelection;
 
   @override
   HistoryBehavior get historyBehavior => HistoryBehavior.undoable;
@@ -786,6 +788,7 @@ class DeleteContentCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     _log.log('DeleteSelectionCommand', 'DocumentEditor: deleting selection: $documentRange');
+    print("DeleteContentCommand: $documentRange");
     final document = context.document;
     final selection = context.composer.selection;
     final nodes = document.getNodesInside(documentRange.start, documentRange.end);
@@ -815,16 +818,29 @@ class DeleteContentCommand extends EditCommand {
         }
         return;
       }
-      final changeList = _deleteSelectionWithinSingleNode(
+
+      final (changeList, caretPosition) = _deleteSelectionWithinSingleNode(
         document: document,
         normalizedRange: normalizedRange,
         node: nodes.first,
       );
-
       executor.logChanges(changeList);
+
+      if (updateSelection) {
+        executor.executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+                position: DocumentPosition(nodeId: nodes.first.id, nodePosition: caretPosition)),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        );
+      }
 
       return;
     }
+
+    late final DocumentPosition caretPosition;
 
     final startNode = document.getNode(normalizedRange.start);
     if (startNode == null) {
@@ -851,25 +867,70 @@ class DeleteContentCommand extends EditCommand {
 
     if (startNode.isDeletable) {
       _log.log('DeleteSelectionCommand', ' - deleting partial selection within the starting node.');
-      executor.logChanges(
-        _deleteRangeWithinNodeFromPositionToEnd(
-          document: document,
-          node: startNode,
-          nodePosition: normalizedRange.start.nodePosition,
-          replaceWithParagraph: false,
-        ),
+      if (startNode is EditableDocumentNode) {
+        if (normalizedRange.start.nodePosition == startNode.beginningPosition) {
+          // All content was deleted. Delete the node.
+          document.deleteNode(startNode.id);
+          executor.logChanges([
+            DocumentEdit(
+              NodeRemovedEvent(startNode.id, startNode),
+            )
+          ]);
+        } else {
+          final (updatedNode, updatedPosition) = startNode.deleteFromPositionToEnd(normalizedRange.start.nodePosition);
+          document.replaceNodeById(startNode.id, updatedNode);
+          executor.logChanges([
+            DocumentEdit(
+              NodeChangeEvent(startNode.id),
+            ),
+          ]);
+        }
+      } else {
+        executor.logChanges(
+          _deleteRangeWithinNodeFromPositionToEnd(
+            document: document,
+            node: startNode,
+            nodePosition: normalizedRange.start.nodePosition,
+            replaceWithParagraph: false,
+          ),
+        );
+      }
+
+      caretPosition = DocumentPosition(
+        nodeId: startNode.id,
+        nodePosition: normalizedRange.start.nodePosition,
       );
     }
 
     if (endNode.isDeletable) {
       _log.log('DeleteSelectionCommand', ' - deleting partial selection within ending node.');
-      executor.logChanges(
-        _deleteRangeWithinNodeFromStartToPosition(
-          document: document,
-          node: endNode,
-          nodePosition: normalizedRange.end.nodePosition,
-        ),
-      );
+      if (endNode is EditableDocumentNode) {
+        if (normalizedRange.end.nodePosition == endNode.endPosition) {
+          // All content was deleted. Delete the node.
+          document.deleteNode(endNode.id);
+          executor.logChanges([
+            DocumentEdit(
+              NodeRemovedEvent(endNode.id, endNode),
+            )
+          ]);
+        } else {
+          final (updatedNode, updatedPosition) = endNode.deleteFromStartToPosition(normalizedRange.end.nodePosition);
+          document.replaceNodeById(endNode.id, updatedNode);
+          executor.logChanges([
+            DocumentEdit(
+              NodeChangeEvent(endNode.id),
+            ),
+          ]);
+        }
+      } else {
+        executor.logChanges(
+          _deleteRangeWithinNodeFromStartToPosition(
+            document: document,
+            node: endNode,
+            nodePosition: normalizedRange.end.nodePosition,
+          ),
+        );
+      }
     }
 
     final wereAllDeletableNodesInRangeDeleted = nodes.every(
@@ -908,6 +969,8 @@ class DeleteContentCommand extends EditCommand {
           NodeChangeEvent(emptyParagraphId),
         )
       ]);
+
+      caretPosition = DocumentPosition(nodeId: emptyParagraphId, nodePosition: const TextNodePosition(offset: 0));
     }
 
     // The start/end nodes may have been deleted due to empty content.
@@ -922,6 +985,16 @@ class DeleteContentCommand extends EditCommand {
     if (startNodeAfterDeletion is! TextNode || endNodeAfterDeletion is! TextNode) {
       // Neither of the end nodes are `TextNode`s, so there's nothing
       // for us to merge. We're done.
+      if (updateSelection) {
+        executor.executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(position: caretPosition),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        );
+      }
+
       return;
     }
 
@@ -950,24 +1023,60 @@ class DeleteContentCommand extends EditCommand {
         NodeRemovedEvent(endNodeAfterDeletion.id, endNodeAfterDeletion),
       )
     ]);
+
+    caretPosition = DocumentPosition(
+      nodeId: startNodeAfterDeletion.id,
+      nodePosition: TextNodePosition(offset: startNodeAfterDeletion.text.length),
+    );
+
+    if (updateSelection) {
+      executor.executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(position: caretPosition),
+          SelectionChangeType.deleteContent,
+          SelectionReason.userInteraction,
+        ),
+      );
+    }
+
     _log.log('DeleteSelectionCommand', ' - done with selection deletion');
   }
 
-  List<EditEvent> _deleteSelectionWithinSingleNode({
+  (List<EditEvent>, NodePosition caretPosition) _deleteSelectionWithinSingleNode({
     required MutableDocument document,
     required DocumentRange normalizedRange,
     required DocumentNode node,
   }) {
+    print("DELETE SELECTION WITHIN SINGLE NODE");
+    print(" - RANGE: $normalizedRange");
+    print("${StackTrace.current}");
     _log.log('_deleteSelectionWithinSingleNode', ' - deleting selection within single node');
     final startPosition = normalizedRange.start.nodePosition;
     final endPosition = normalizedRange.end.nodePosition;
 
-    if (startPosition is UpstreamDownstreamNodePosition) {
-      if (startPosition == endPosition) {
-        // The selection is collapsed. Nothing to delete.
-        return [];
-      }
+    if (startPosition.isEquivalentTo(endPosition)) {
+      // The selection is collapsed. Nothing to delete.
+      return ([], startPosition);
+    }
 
+    if (node is EditableDocumentNode) {
+      print("THIS IS AN EDITABLE DOCUMENT NODE - FROM: $startPosition, TO: $endPosition");
+      final (updatedNode, caretPosition) = node.deleteSelection(startPosition, endPosition);
+
+      document.replaceNodeById(
+        node.id,
+        updatedNode,
+      );
+
+      return (
+        [
+          DocumentEdit(
+            NodeChangeEvent(node.id),
+          )
+        ],
+        caretPosition
+      );
+    } else if (startPosition is UpstreamDownstreamNodePosition) {
       // The range is expanded within a block-level node. The only
       // possibility is that the entire node is selected. Delete the node
       // and replace it with an empty paragraph.
@@ -976,11 +1085,14 @@ class DeleteContentCommand extends EditCommand {
         ParagraphNode(id: node.id, text: AttributedText()),
       );
 
-      return [
-        DocumentEdit(
-          NodeChangeEvent(node.id),
-        )
-      ];
+      return (
+        [
+          DocumentEdit(
+            NodeChangeEvent(node.id),
+          )
+        ],
+        const TextNodePosition(offset: 0),
+      );
     } else if (node is TextNode) {
       _log.log('_deleteSelectionWithinSingleNode', ' - its a TextNode');
       final startOffset = (startPosition as TextPosition).offset;
@@ -998,18 +1110,21 @@ class DeleteContentCommand extends EditCommand {
         ),
       );
 
-      return [
-        DocumentEdit(
-          TextDeletedEvent(
-            node.id,
-            deletedText: deletedText,
-            offset: startOffset,
+      return (
+        [
+          DocumentEdit(
+            TextDeletedEvent(
+              node.id,
+              deletedText: deletedText,
+              offset: startOffset,
+            ),
           ),
-        ),
-      ];
+        ],
+        TextNodePosition(offset: startOffset),
+      );
     }
 
-    return [];
+    return ([], startPosition);
   }
 
   List<EditEvent> _deleteNodesBetweenFirstAndLast({
@@ -1119,7 +1234,24 @@ class DeleteContentCommand extends EditCommand {
     required DocumentNode node,
     required NodePosition nodePosition,
   }) {
-    if (nodePosition is UpstreamDownstreamNodePosition) {
+    if (node is EditableDocumentNode) {
+      if (nodePosition == node.endPosition) {
+        // All content was deleted. Delete the node.
+        return _deleteBlockLevelNode(
+          document: document,
+          node: node,
+          replaceWithParagraph: false,
+        );
+      }
+
+      node.deleteFromStartToPosition(nodePosition);
+
+      return [
+        DocumentEdit(
+          NodeChangeEvent(node.id),
+        ),
+      ];
+    } else if (nodePosition is UpstreamDownstreamNodePosition) {
       if (nodePosition.affinity == TextAffinity.upstream) {
         // The position is already at the beginning of the node. Nothing to do.
         return [];
@@ -1256,6 +1388,8 @@ class DeleteSelectionCommand extends EditCommand {
       return;
     }
 
+    print("DeleteSelectionCommand: $selection");
+
     if (selection.base.nodeId == selection.extent.nodeId) {
       // The selection is contained within a single node. Prevent the deletion
       // if the node is non-deletable. When there are multiple nodes selected,
@@ -1344,18 +1478,20 @@ class DeleteSelectionCommand extends EditCommand {
     executor.executeCommand(
       DeleteContentCommand(
         documentRange: selection,
+        updateSelection: true,
       ),
     );
 
-    if (newSelectionPosition != null) {
-      executor.executeCommand(
-        ChangeSelectionCommand(
-          DocumentSelection.collapsed(position: newSelectionPosition),
-          SelectionChangeType.deleteContent,
-          SelectionReason.userInteraction,
-        ),
-      );
-    }
+    // if (newSelectionPosition != null &&
+    //     document.getNodeById(newSelectionPosition.nodeId)!.containsPosition(newSelectionPosition.nodePosition)) {
+    //   executor.executeCommand(
+    //     ChangeSelectionCommand(
+    //       DocumentSelection.collapsed(position: newSelectionPosition),
+    //       SelectionChangeType.deleteContent,
+    //       SelectionReason.userInteraction,
+    //     ),
+    //   );
+    // }
 
     // We expect that the selection is now collapsed, and also is probably in a different
     // location. Clear the composing region.

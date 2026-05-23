@@ -82,6 +82,15 @@ class UrlMediaNode extends BlockNode {
   final String altText;
 
   @override
+  bool isPositionCloserToStart(NodePosition position) {
+    if (position is! UpstreamDownstreamNodePosition) {
+      throw Exception('Expected a UpstreamDownstreamNodePosition for position but received a ${position.runtimeType}');
+    }
+
+    return position == const UpstreamDownstreamNodePosition.upstream();
+  }
+
+  @override
   String? copyContent(dynamic selection) {
     if (selection is! UpstreamDownstreamNodeSelection) {
       throw Exception('ImageNode can only copy content from a UpstreamDownstreamNodeSelection.');

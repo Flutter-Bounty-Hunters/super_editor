@@ -168,6 +168,7 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
 
     Rect caretRect =
         documentLayout.getEdgeForPosition(documentSelection.extent)!.translate(-widget.caretStyle.width / 2, 0.0);
+    print("Caret height: ${caretRect.height}, for position: ${documentSelection.extent.nodePosition}");
 
     final overlayBox = context.findRenderObject() as RenderBox?;
     if (overlayBox != null && overlayBox.hasSize && caretRect.left + widget.caretStyle.width >= overlayBox.size.width) {
@@ -201,6 +202,9 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
 
     // Use a RepaintBoundary so that caret flashing doesn't invalidate our
     // ancestor painting.
+    if (caret != null) {
+      print("Building caret height: ${caret.height}, top: ${caret.top}");
+    }
     return IgnorePointer(
       child: RepaintBoundary(
         child: Stack(
@@ -211,18 +215,20 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
                 top: caret.top,
                 left: caret.left,
                 height: caret.height,
-                child: AnimatedBuilder(
-                  animation: _blinkController,
-                  builder: (context, child) {
-                    return Container(
-                      key: DocumentKeys.caret,
-                      width: widget.caretStyle.width,
-                      decoration: BoxDecoration(
-                        color: widget.caretStyle.color.withValues(alpha: _blinkController.opacity),
-                        borderRadius: widget.caretStyle.borderRadius,
-                      ),
-                    );
-                  },
+                child: RepaintBoundary(
+                  child: AnimatedBuilder(
+                    animation: _blinkController,
+                    builder: (context, child) {
+                      return Container(
+                        key: DocumentKeys.caret,
+                        width: widget.caretStyle.width,
+                        decoration: BoxDecoration(
+                          color: widget.caretStyle.color.withValues(alpha: _blinkController.opacity),
+                          borderRadius: widget.caretStyle.borderRadius,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
           ],
