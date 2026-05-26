@@ -5,26 +5,24 @@ import 'package:attributed_text/attributed_text.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:super_editor/src/chat/attachments/attachment_list_node.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/horizontal_rule.dart';
+import 'package:super_editor/src/default_editor/image.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
+import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
-import 'package:super_editor/src/infrastructure/_logging.dart';
-
-import 'package:super_editor/src/default_editor/attributions.dart';
-import 'package:super_editor/src/default_editor/horizontal_rule.dart';
-import 'package:super_editor/src/default_editor/image.dart';
-import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/text_tools.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Performs common, high-level editing and composition tasks
 /// with a simplified API.
@@ -933,15 +931,15 @@ class CommonEditorOperations {
     final extent = composer.selection!.extent;
     final extentNode = document.getNodeById(extent.nodeId);
     if (extentNode is EditableDocumentNode) {
-      if (extent.nodePosition.isEquivalentTo(extentNode.endPosition)) {
-        // The caret is sitting on the downstream edge of a non-text node and
-        // the user is trying to delete downstream. It's not obvious what should
-        // happen in this situation. Super Editor chooses to move the caret to
-        // the next node and to not delete anything.
-        return _moveSelectionToBeginningOfNextNode();
-      }
+      // if (extent.nodePosition.isEquivalentTo(extentNode.endPosition)) {
+      //   // The caret is sitting on the downstream edge of a non-text node and
+      //   // the user is trying to delete downstream. It's not obvious what should
+      //   // happen in this situation. Super Editor chooses to move the caret to
+      //   // the next node and to not delete anything.
+      //   return _moveSelectionToBeginningOfNextNode();
+      // }
 
-      extentNode.deleteDownstream(extent.nodePosition);
+      editor.execute([const DeleteDownstreamRequest()]);
 
       return true;
     }
@@ -1143,13 +1141,13 @@ class CommonEditorOperations {
     final extent = composer.selection!.extent;
     final extentNode = document.getNodeById(extent.nodeId)!;
     if (extentNode is EditableDocumentNode) {
-      if (extent.nodePosition.isEquivalentTo(extentNode.beginningPosition)) {
-        // The caret is sitting on the upstream edge of a non-text node and
-        // the user is trying to delete upstream. It's not obvious what should
-        // happen in this situation. Super Editor chooses to move the caret to
-        // the previous node and to not delete anything.
-        return _moveSelectionToEndOfFirstSelectableUpstreamNode();
-      }
+      // if (extent.nodePosition.isEquivalentTo(extentNode.beginningPosition)) {
+      //   // The caret is sitting on the upstream edge of a non-text node and
+      //   // the user is trying to delete upstream. It's not obvious what should
+      //   // happen in this situation. Super Editor chooses to move the caret to
+      //   // the previous node and to not delete anything.
+      //   return _moveSelectionToEndOfFirstSelectableUpstreamNode();
+      // }
 
       editor.execute([const DeleteUpstreamRequest()]);
 
@@ -1562,7 +1560,7 @@ class CommonEditorOperations {
     } else {
       // Selection is within a single node. The final caret location will be
       // at the upstream edge of the selection.
-      if (baseNode is AttachmentListNode) {
+      if (baseNode is EditableDocumentNode) {
         final upstreamPosition = extentNode.selectUpstreamPosition(
           basePosition.nodePosition,
           extentPosition.nodePosition,
@@ -2805,16 +2803,62 @@ class DeleteUpstreamCommand extends EditCommand {
       throw Exception("Tried to delete upstream on a node that isn't an EditableDocumentNode: $nodeWithCaret");
     }
 
-    final (updatedNode, newCaretPosition) = nodeWithCaret.deleteUpstream(selection.extent.nodePosition);
+    final updatedNodeAndPosition = nodeWithCaret.deleteUpstream(selection.extent.nodePosition);
+    if (updatedNodeAndPosition == null) {
+      // There was no upstream content within the node to delete. Try to merge
+      // this node with the node above it.
+      final nodeBefore = document.getNodeBeforeById(nodeWithCaret.id);
+      if (nodeBefore == null) {
+        // The caret is at the beginning of the document. Nothing we can do.
+        return;
+      }
 
-    document.replaceNodeById(nodeWithCaret.id, updatedNode);
-    executor.logChanges([
-      DocumentEdit(
-        NodeChangeEvent(nodeWithCaret.id),
-      )
-    ]);
+      if (!nodeWithCaret.canMergeWithEndOf(nodeBefore)) {
+        // We can't merge with the node before. As a reasonable middle-ground
+        // action, move the caret to the end of the node above.
+        executor
+          ..executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(nodeId: nodeBefore.id, nodePosition: nodeBefore.endPosition),
+              ),
+              SelectionChangeType.pushCaret,
+              SelectionReason.userInteraction,
+            ),
+          )
+          ..executeCommand(ChangeComposingRegionCommand(null));
+        return;
+      }
+
+      // We can merge with the node above. Do it.
+      final (mergedNode, mergedNodePosition) = nodeWithCaret.mergeWithEndOf(nodeBefore);
+
+      executor
+        ..executeCommand(DeleteNodeCommand(nodeId: nodeWithCaret.id))
+        ..executeCommand(
+          ReplaceNodeCommand(existingNodeId: nodeBefore.id, newNode: mergedNode),
+        )
+        ..executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(nodeId: nodeBefore.id, nodePosition: mergedNodePosition),
+            ),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        )
+        ..executeCommand(ChangeComposingRegionCommand(null));
+
+      return;
+    }
+
+    final updatedNode = updatedNodeAndPosition.$1;
+    final newCaretPosition = updatedNodeAndPosition.$2;
 
     executor
+      ..executeCommand(
+        ReplaceNodeCommand(existingNodeId: nodeWithCaret.id, newNode: updatedNode),
+      )
       ..executeCommand(
         ChangeSelectionCommand(
           DocumentSelection.collapsed(
@@ -2859,7 +2903,56 @@ class DeleteDownstreamCommand extends EditCommand {
       throw Exception("Tried to delete upstream on a node that isn't an EditableDocumentNode: $nodeWithCaret");
     }
 
-    final (updatedNode, newCaretPosition) = nodeWithCaret.deleteDownstream(selection.extent.nodePosition);
+    final updatedNodeAndPosition = nodeWithCaret.deleteDownstream(selection.extent.nodePosition);
+    if (updatedNodeAndPosition == null) {
+      // There was no downstream content within the node to delete. Try to merge
+      // this node with the node below it.
+      final nodeAfter = document.getNodeAfterById(nodeWithCaret.id);
+      if (nodeAfter == null) {
+        // The caret is at the end of the document. Nothing we can do.
+        return;
+      }
+
+      if (!nodeWithCaret.canMergeWithStartOf(nodeAfter)) {
+        // We can't merge with the node after. As a reasonable middle-ground
+        // action, move the caret to the beginning of the node below.
+        executor
+          ..executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(nodeId: nodeAfter.id, nodePosition: nodeAfter.beginningPosition),
+              ),
+              SelectionChangeType.pushCaret,
+              SelectionReason.userInteraction,
+            ),
+          )
+          ..executeCommand(ChangeComposingRegionCommand(null));
+      }
+
+      // We can merge with the node below. Do it.
+      final (mergedNode, mergedNodePosition) = nodeWithCaret.mergeWithStartOf(nodeAfter);
+
+      executor
+        ..executeCommand(DeleteNodeCommand(nodeId: nodeAfter.id))
+        ..executeCommand(
+          ReplaceNodeCommand(existingNodeId: nodeWithCaret.id, newNode: mergedNode),
+        )
+        ..executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(nodeId: nodeWithCaret.id, nodePosition: mergedNodePosition),
+            ),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        )
+        ..executeCommand(ChangeComposingRegionCommand(null));
+
+      return;
+    }
+
+    final updatedNode = updatedNodeAndPosition.$1;
+    final newCaretPosition = updatedNodeAndPosition.$2;
 
     document.replaceNodeById(nodeWithCaret.id, updatedNode);
     executor.logChanges([

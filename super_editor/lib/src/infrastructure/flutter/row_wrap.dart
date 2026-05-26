@@ -65,8 +65,20 @@ class RenderRowWrap extends RenderBox
   final List<double> _rowTops = [];
   final List<double> _rowHeights = [];
 
+  int findNearestRowForY(double y) {
+    for (int i = 0; i < _rowTops.length; i += 1) {
+      if (y <= _rowTops[i] + _rowHeights[i]) {
+        return i;
+      }
+    }
+
+    // Wasn't above, or within, any row. Must be below the bottom row.
+    // Return the bottom row.
+    return _rowTops.length - 1;
+  }
+
   /// Returns the index of the [first] and [last] children in the given [row].
-  (int first, int last) getChildRangeForRow(int row) {
+  (int first, int last) findChildRangeForRow(int row) {
     if (row < 0 || row >= wrapRowCount) {
       throw Exception(
         "Tried to get RowWrap child range for a row that doesn't exist: "
@@ -82,14 +94,14 @@ class RenderRowWrap extends RenderBox
     return (countBeforeRow, countBeforeRow + _runs[row].length - 1);
   }
 
-  int getRowIndexForChildAt(int index) {
+  int findRowIndexForChildAt(int index) {
     if (index < 0 || index >= _childRowIndices.length) {
       return -1;
     }
     return _childRowIndices[index];
   }
 
-  List<Rect> getBoundingBoxesForRange(int start, int end) {
+  List<Rect> findBoundingBoxesForRange(int start, int end) {
     final List<Rect> boxes = [];
     if (childCount == 0 || start < 0 || end >= childCount || start > end) {
       return boxes;
@@ -100,11 +112,10 @@ class RenderRowWrap extends RenderBox
     int lastInRow = -1;
 
     for (int i = start; i <= end; i++) {
-      final int rowIndex = getRowIndexForChildAt(i);
+      final int rowIndex = findRowIndexForChildAt(i);
       if (rowIndex != currentRow) {
         if (currentRow != -1) {
-          boxes.add(
-              _calculateBoxForRowSegment(firstInRow, lastInRow, currentRow));
+          boxes.add(_calculateBoxForRowSegment(firstInRow, lastInRow, currentRow));
         }
         currentRow = rowIndex;
         firstInRow = i;
@@ -119,8 +130,8 @@ class RenderRowWrap extends RenderBox
     return boxes;
   }
 
-  Rect getBoundingBoxForChildAt(int index) {
-    final boxes = getBoundingBoxesForRange(index, index);
+  Rect findBoundingBoxForChildAt(int index) {
+    final boxes = findBoundingBoxesForRange(index, index);
     if (boxes.isEmpty) {
       throw Exception(
         "Tried to get bounding box for non-existent child index: $index",
@@ -130,39 +141,124 @@ class RenderRowWrap extends RenderBox
     return boxes.first;
   }
 
-  Rect getEdgeBefore(int index) {
+  Rect findEdgeBefore(int index) {
     if (index < 0 || index >= childCount) {
       return Rect.zero;
     }
 
-    final int rowIndex = getRowIndexForChildAt(index);
+    final int rowIndex = findRowIndexForChildAt(index);
     final RenderBox child = _orderedChildren[index];
     final RowWrapParentData parentData = child.parentData as RowWrapParentData;
 
     final double left = parentData.offset.dx - (_spacing / 2);
-    final double top = _rowTops[rowIndex] - (_rowSpacing / 2);
-    final double bottom =
-        _rowTops[rowIndex] + _rowHeights[rowIndex] + (_rowSpacing / 2);
 
-    return Rect.fromLTRB(left, top, left, bottom);
+    return Rect.fromLTWH(left, _rowTops[rowIndex], 0, _rowHeights[rowIndex]);
   }
 
-  Rect getEdgeAfter(int index) {
+  Rect findEdgeAfter(int index, {bool expandHeightToMatchRow = true}) {
     if (index < 0 || index >= childCount) {
       return Rect.zero;
     }
 
-    final int rowIndex = getRowIndexForChildAt(index);
+    final int rowIndex = findRowIndexForChildAt(index);
     final RenderBox child = _orderedChildren[index];
     final RowWrapParentData parentData = child.parentData as RowWrapParentData;
 
-    final double right =
-        parentData.offset.dx + child.size.width + (_spacing / 2);
-    final double top = _rowTops[rowIndex] - (_rowSpacing / 2);
-    final double bottom =
-        _rowTops[rowIndex] + _rowHeights[rowIndex] + (_rowSpacing / 2);
+    final double right = parentData.offset.dx + child.size.width + (_spacing / 2);
 
-    return Rect.fromLTRB(right, top, right, bottom);
+    return Rect.fromLTWH(right, _rowTops[rowIndex], 0, _rowHeights[rowIndex]);
+  }
+
+  /// Finds and returns the x-offset at the horizontal center of the gap between
+  /// two attachments, at the given [gapIndex].
+  ///
+  /// If the gap sits before the first child, or after the last child, then the
+  /// x-offset of the relevant edge has half the row spacing added to it and is
+  /// then returned.
+  double findXForGap(int gapIndex, TextAffinity affinity) {
+    if (gapIndex == 0) {
+      // This gap sits on the leading edge of the first child.
+      return findEdgeBefore(0).left - (spacing / 2);
+    }
+    if (gapIndex >= childCount) {
+      // This gap sits on the trailing edge of the last child.
+      return findEdgeAfter(childCount - 1).right + (spacing / 2);
+    }
+    if (isGapAtRowSplit(gapIndex)) {
+      // This gap is at a row split. Based on the affinity, either return
+      // the trailing edge of the row above, or the leading edge of the row
+      // below.
+      return affinity == TextAffinity.downstream
+          ? findEdgeBefore(gapIndex).left - (spacing / 2)
+          : findEdgeAfter(gapIndex - 1).right + (spacing / 2);
+    }
+
+    // This gap sits between two attachments.
+    final leftEdge = findEdgeAfter(gapIndex - 1);
+    final rightEdge = findEdgeBefore(gapIndex);
+    return (leftEdge.right + rightEdge.left) / 2;
+  }
+
+  /// Finds the gap in the given [row], which is nearest to the given [x]-offset.
+  (int, TextAffinity) findNearestGapInRow(int row, {required double x}) {
+    final rowRange = findGapRangeForRow(row);
+    int nearestGapIndex = rowRange.$1;
+    double nearestDistance = double.infinity;
+    TextAffinity nearestAffinity = TextAffinity.downstream;
+
+    for (var i = nearestGapIndex; i <= rowRange.$2; i += 1) {
+      final affinity = i == rowRange.$1 ? TextAffinity.downstream : TextAffinity.upstream;
+      final distance = (findXForGap(i, affinity) - x).abs();
+      if (distance < nearestDistance) {
+        nearestGapIndex = i;
+        nearestDistance = distance;
+        nearestAffinity = affinity;
+      }
+    }
+
+    return (nearestGapIndex, nearestAffinity);
+  }
+
+  bool isGapAtRowStart(int gapIndex, TextAffinity affinity) {
+    if (!isGapAtRowSplit(gapIndex)) {
+      return false;
+    }
+
+    return affinity == TextAffinity.downstream;
+  }
+
+  bool isGapAtRowEnd(int gapIndex, TextAffinity affinity) {
+    if (!isGapAtRowSplit(gapIndex)) {
+      return false;
+    }
+
+    return affinity == TextAffinity.upstream;
+  }
+
+  bool isGapAtRowSplit(int gapIndex) {
+    if (gapIndex == 0) {
+      return false;
+    }
+
+    final rowUpstream = findRowForGap(gapIndex, TextAffinity.upstream);
+    final rowDownstream = findRowForGap(gapIndex, TextAffinity.downstream);
+    return rowUpstream != rowDownstream;
+  }
+
+  int findRowForGap(int gapIndex, TextAffinity affinity) {
+    if (gapIndex >= childCount) {
+      return wrapRowCount - 1;
+    }
+
+    return switch (affinity) {
+      TextAffinity.upstream => findRowIndexForChildAt(gapIndex - 1),
+      TextAffinity.downstream => findRowIndexForChildAt(gapIndex)
+    };
+  }
+
+  (int first, int last) findGapRangeForRow(int row) {
+    final childRange = findChildRangeForRow(row);
+    return (childRange.$1, childRange.$2 + 1); // +1 for gap at end of row.
   }
 
   @override
@@ -194,13 +290,11 @@ class RenderRowWrap extends RenderBox
 
     RenderBox? child = firstChild;
     while (child != null) {
-      final RowWrapParentData childParentData =
-          child.parentData as RowWrapParentData;
+      final RowWrapParentData childParentData = child.parentData as RowWrapParentData;
 
       child.layout(const BoxConstraints(), parentUsesSize: true);
 
-      if (currentRun.isNotEmpty &&
-          currentX + child.size.width + (_spacing / 2) > constraints.maxWidth) {
+      if (currentRun.isNotEmpty && currentX + child.size.width + (_spacing / 2) > constraints.maxWidth) {
         _runs.add(currentRun);
         _rowTops.add(currentY);
         _rowHeights.add(maxRunHeight);
@@ -236,8 +330,7 @@ class RenderRowWrap extends RenderBox
       _rowHeights.add(maxRunHeight);
     }
 
-    final double finalWidth =
-        constraints.hasBoundedWidth ? constraints.maxWidth : maxRowWidth;
+    final double finalWidth = constraints.hasBoundedWidth ? constraints.maxWidth : maxRowWidth;
     final double finalHeight = currentY + maxRunHeight + _rowSpacing;
     size = constraints.constrain(Size(finalWidth, finalHeight));
   }
@@ -252,22 +345,17 @@ class RenderRowWrap extends RenderBox
     defaultPaint(context, offset);
   }
 
-  Rect _calculateBoxForRowSegment(
-      int startChildIndex, int endChildIndex, int rowIndex) {
+  Rect _calculateBoxForRowSegment(int startChildIndex, int endChildIndex, int rowIndex) {
     final RenderBox firstChild = _orderedChildren[startChildIndex];
     final RenderBox lastChild = _orderedChildren[endChildIndex];
 
-    final RowWrapParentData firstParentData =
-        firstChild.parentData as RowWrapParentData;
-    final RowWrapParentData lastParentData =
-        lastChild.parentData as RowWrapParentData;
+    final RowWrapParentData firstParentData = firstChild.parentData as RowWrapParentData;
+    final RowWrapParentData lastParentData = lastChild.parentData as RowWrapParentData;
 
     final double left = firstParentData.offset.dx - (_spacing / 2);
-    final double right =
-        lastParentData.offset.dx + lastChild.size.width + (_spacing / 2);
+    final double right = lastParentData.offset.dx + lastChild.size.width + (_spacing / 2);
     final double top = _rowTops[rowIndex] - (_rowSpacing / 2);
-    final double bottom =
-        _rowTops[rowIndex] + _rowHeights[rowIndex] + (_rowSpacing / 2);
+    final double bottom = _rowTops[rowIndex] + _rowHeights[rowIndex] + (_rowSpacing / 2);
 
     return Rect.fromLTRB(left, top, right, bottom);
   }

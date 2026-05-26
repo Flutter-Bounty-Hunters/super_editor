@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/services.dart';
-import 'package:super_editor/src/chat/attachments/attachment_list_node.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
@@ -86,13 +85,17 @@ class DocumentImeSerializer {
 
       final node = selectedNodes[i];
       // TODO: Generalize this to work for any node type
-      if (node is AttachmentListNode) {
-        for (int i = 0; i < node.attachments.length; i += 1) {
-          buffer.write('~');
-        }
+      if (node is EditableDocumentNode) {
+        final imeValue = node.serializeForIme();
+        buffer.write(imeValue);
+
+        // for (int i = 0; i < node.attachments.length; i += 1) {
+        //   buffer.write('~');
+        // }
 
         final imeStartIndex = characterCount;
-        characterCount += node.attachments.length;
+        characterCount += imeValue.length;
+        // characterCount += node.attachments.length;
 
         final imeRange = TextRange(start: imeStartIndex, end: characterCount);
         imeRangesToDocTextNodes[imeRange] = node.id;
@@ -376,11 +379,9 @@ class DocumentImeSerializer {
 
     final nodePosition = docPosition.nodePosition;
 
-    // TODO: Generalize this mapping behavior to work with any selection type.
-    if (nodePosition is AttachmentListNodePosition) {
-      return nodePosition.affinity == TextAffinity.upstream
-          ? TextPosition(offset: imeRange.start + nodePosition.attachmentIndex)
-          : TextPosition(offset: imeRange.start + nodePosition.attachmentIndex + 1);
+    final node = _doc.getNodeById(docPosition.nodeId);
+    if (node is EditableDocumentNode) {
+      return TextPosition(offset: imeRange.start + node.nodePositionToImePosition(docPosition.nodePosition));
     }
 
     if (nodePosition is UpstreamDownstreamNodePosition) {

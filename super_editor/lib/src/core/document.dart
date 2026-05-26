@@ -490,6 +490,36 @@ abstract class DocumentNode {
 /// to implement editing capabilities for their custom nodes.
 @immutable
 abstract class EditableDocumentNode extends DocumentNode {
+  /// Serializes the content in this node to a `String` that can be combined
+  /// with other node `String`s and be sent to the IME for editing.
+  ///
+  /// For a `TextNode`, this value is typically just the text in the node.
+  /// For nodes with non-text content such as images and horizontal rules, a
+  /// more creative result is needed. Typically, non-text nodes choose to
+  /// represent each piece of their non-text content with a special character.
+  /// For example, the standard Super Editor `ImageNode` serializes itself
+  /// as "~". Similarly, the `AttachmentListNode`, which displays a list of
+  /// attachment thumbnails, serializes itself as a series of special characters,
+  /// e.g., "~~~~". From the IME's perspective, the user is typing and deleting
+  /// plain text. It's the job of each node to understand what it means to delete
+  /// one of these "~" characters.
+  String serializeForIme();
+
+  /// Given the [position] in this node, and assuming this node's IME serialization,
+  /// returns the IME text offset within this node's serialization that corresponds
+  /// to the given [position].
+  ///
+  /// Example:
+  ///  - Text node with content "abcdefg"
+  ///  - Text node position with offset `3`
+  ///  - The returned IME position is also `3`
+  ///
+  /// Example:
+  ///  - Image node
+  ///  - Image node position is on the downstream side
+  ///  - The returned IME position is `1`, pointing to "~|"
+  int nodePositionToImePosition(NodePosition position);
+
   /// Returns `true` if this node can split itself at the given [position].
   ///
   /// It's expected that various nodes can't split at all, e.g., images and
@@ -502,6 +532,14 @@ abstract class EditableDocumentNode extends DocumentNode {
   // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
   (DocumentNode firstPart, DocumentNode secondPart) splitAt(nodePosition, {required String newId});
 
+  bool canMergeWithEndOf(DocumentNode nodeBefore);
+
+  (DocumentNode mergedNode, NodePosition mergedNodePosition) mergeWithEndOf(DocumentNode nodeBefore);
+
+  bool canMergeWithStartOf(DocumentNode nodeAfter);
+
+  (DocumentNode mergedNode, NodePosition mergedNodePosition) mergeWithStartOf(DocumentNode nodeAfter);
+
   // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
   (DocumentNode, NodePosition newPosition) deleteFromStartToPosition(NodePosition position);
 
@@ -511,11 +549,29 @@ abstract class EditableDocumentNode extends DocumentNode {
   // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
   (DocumentNode, NodePosition newPosition) deleteSelection(NodePosition base, NodePosition extent);
 
+  /// Deletes one unit of content in the upstream direction from the given [position], returning
+  /// a copy of this node with the deleted content, and the updated position after the deletion.
+  ///
+  /// If there's no content upstream from [position] in this node, this method returns `null`.
+  ///
+  /// Deleting the upstream content might result in a completely different node. For example,
+  /// deleting the last attachment in a list of attachments will cause the attachment list node
+  /// to be replaced by a paragraph node, and the new position will be a text node position. Callers
+  /// must handle this possibility.
   // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
-  (DocumentNode, NodePosition newPosition) deleteUpstream(NodePosition position);
+  (DocumentNode, NodePosition newPosition)? deleteUpstream(NodePosition position);
 
+  /// Deletes one unit of content in the downstream direction from the given [position], returning
+  /// a copy of this node with the deleted content, and the updated position after the deletion.
+  ///
+  /// If there's no content downstream from [position] in this node, this method returns `null`.
+  ///
+  /// Deleting the downstream content might result in a completely different node. For example,
+  /// deleting the last attachment in a list of attachments will cause the attachment list node
+  /// to be replaced by a paragraph node, and the new position will be a text node position. Callers
+  /// must handle this possibility.
   // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
-  (DocumentNode, NodePosition newPosition) deleteDownstream(NodePosition position);
+  (DocumentNode, NodePosition newPosition)? deleteDownstream(NodePosition position);
 }
 
 extension InspectNodeAffinity on DocumentNode {

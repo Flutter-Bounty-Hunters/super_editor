@@ -11,44 +11,44 @@ void main() {
       testWidgetsOnAllPlatforms("places caret on tap", (tester) async {
         await _pumpWithList(tester);
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(0, TextAffinity.upstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(0));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 0, TextAffinity.upstream),
+          _caretAt("2", 0),
         );
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(1, TextAffinity.upstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(1));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 1, TextAffinity.upstream),
+          _caretAt("2", 1),
         );
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(2, TextAffinity.upstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(2));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 2, TextAffinity.upstream),
+          _caretAt("2", 2),
         );
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(3, TextAffinity.upstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(3));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 3, TextAffinity.upstream),
+          _caretAt("2", 3),
         );
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(3, TextAffinity.downstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(4));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 3, TextAffinity.downstream),
+          _caretAt("2", 4),
         );
       });
 
       testWidgetsOnAllPlatforms("moves caret left/right with arrow keys", (tester) async {
         await _pumpWithList(tester);
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(0, TextAffinity.upstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(0));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 0, TextAffinity.upstream),
+          _caretAt("2", 0),
         );
 
         // Move caret, attachment by attachment, all the way to the right.
@@ -57,7 +57,7 @@ void main() {
 
           expect(
             SuperEditorInspector.findDocumentSelection(),
-            _caretAt("2", i, TextAffinity.upstream),
+            _caretAt("2", i),
           );
         }
 
@@ -67,7 +67,7 @@ void main() {
 
           expect(
             SuperEditorInspector.findDocumentSelection(),
-            _caretAt("2", i, TextAffinity.upstream),
+            _caretAt("2", i),
           );
         }
       });
@@ -77,10 +77,10 @@ void main() {
       testWidgetsOnAllPlatforms("can backspace to delete all attachments", (tester) async {
         await _pumpWithList(tester);
 
-        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(4, TextAffinity.downstream));
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(5));
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 4, TextAffinity.downstream),
+          _caretAt("2", 5),
         );
 
         // Delete each attachment with backspace.
@@ -93,7 +93,7 @@ void main() {
         ]);
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 3, TextAffinity.downstream),
+          _caretAt("2", 4),
         );
 
         await tester.pressBackspace();
@@ -104,7 +104,7 @@ void main() {
         ]);
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 2, TextAffinity.downstream),
+          _caretAt("2", 3),
         );
 
         await tester.pressBackspace();
@@ -114,7 +114,7 @@ void main() {
         ]);
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 1, TextAffinity.downstream),
+          _caretAt("2", 2),
         );
 
         await tester.pressBackspace();
@@ -123,7 +123,7 @@ void main() {
         ]);
         expect(
           SuperEditorInspector.findDocumentSelection(),
-          _caretAt("2", 0, TextAffinity.downstream),
+          _caretAt("2", 1),
         );
 
         // Backspace to delete final attachment, which should convert
@@ -137,6 +137,148 @@ void main() {
           ),
         );
       });
+
+      testWidgetsOnAllPlatforms("inserts paragraph when pressing ENTER at beginning", (tester) async {
+        await _pumpWithList(tester);
+
+        // Place caret at start of list.
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(0));
+
+        // Press enter to insert paragraph before list.
+        await tester.pressEnter();
+
+        // Ensure a paragraph was inserted before the list.
+        final document = SuperEditorInspector.findDocument()!;
+        final paragraph = document.getNodeAt(1)!;
+
+        expect(document.length, 4);
+        expect(paragraph, isA<ParagraphNode>());
+        expect(document.getNodeAt(2), isA<AttachmentListNode>());
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: paragraph.id,
+              nodePosition: const TextNodePosition(offset: 0),
+            ),
+          ),
+        );
+      });
+
+      testWidgetsOnAllPlatforms("inserts paragraph when pressing ENTER at end", (tester) async {
+        await _pumpWithList(tester);
+
+        // Place caret at end of list.
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(5));
+
+        // Press enter to insert paragraph after list.
+        await tester.pressEnter();
+
+        // Ensure a paragraph was inserted after the list.
+        final document = SuperEditorInspector.findDocument()!;
+        final paragraph = document.getNodeAt(2)!;
+
+        expect(document.length, 4);
+        expect(paragraph, isA<ParagraphNode>());
+        expect(document.getNodeAt(1), isA<AttachmentListNode>());
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: paragraph.id,
+              nodePosition: const TextNodePosition(offset: 0),
+            ),
+          ),
+        );
+      });
+
+      testWidgetsOnAllPlatforms("splits attachments into two when pressing ENTER in the middle", (tester) async {
+        await _pumpWithList(tester);
+
+        // Place caret in middle of list.
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(2));
+
+        // Press enter to split the node into two attachment list nodes.
+        await tester.pressEnter();
+
+        // Ensure we split the list into two.
+        final document = SuperEditorInspector.findDocument()!;
+        final firstList = document.getNodeAt(1)!;
+        final secondList = document.getNodeAt(2)!;
+
+        expect(document.length, 4);
+
+        expect(firstList, isA<AttachmentListNode>());
+        expect((firstList as AttachmentListNode).attachments.length, 2);
+
+        expect(secondList, isA<AttachmentListNode>());
+        expect((secondList as AttachmentListNode).attachments.length, 3);
+
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: secondList.id,
+              nodePosition: const AttachmentListNodePosition(0),
+            ),
+          ),
+        );
+      });
+
+      testWidgetsOnAllPlatforms("combines lists together when pressing BACKSPACE at start of second list",
+          (tester) async {
+        await _pumpWithList(tester, document: _twoLists);
+
+        // Place caret at beginning of second list.
+        await tester.placeCaretInComponent("3", const AttachmentListNodePosition(0));
+
+        // Press backspace to merge the two lists into one.
+        await tester.pressBackspace();
+
+        // Ensure the nodes were combined.
+        final document = SuperEditorInspector.findDocument()!;
+        expect(document.length, 3);
+
+        final combinedList = document.getNodeById("2")!;
+        expect(combinedList, isA<AttachmentListNode>());
+        expect((combinedList as AttachmentListNode).attachments.length, 5);
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: "2",
+              nodePosition: AttachmentListNodePosition(2),
+            ),
+          ),
+        );
+      });
+
+      testWidgetsOnAllPlatforms("combines lists together when pressing DELETE at end of first list", (tester) async {
+        await _pumpWithList(tester, document: _twoLists);
+
+        // Place caret at end of first list.
+        await tester.placeCaretInComponent("2", const AttachmentListNodePosition(2));
+
+        // Press delete to merge the two lists into one.
+        await tester.pressDelete();
+
+        // Ensure the nodes were combined.
+        final document = SuperEditorInspector.findDocument()!;
+        expect(document.length, 3);
+
+        final combinedList = document.getNodeById("2")!;
+        expect(combinedList, isA<AttachmentListNode>());
+        expect((combinedList as AttachmentListNode).attachments.length, 5);
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: "2",
+              nodePosition: AttachmentListNodePosition(2, TextAffinity.upstream),
+            ),
+          ),
+        );
+      });
     });
   });
 }
@@ -147,19 +289,24 @@ List<Object> _findAttachments() {
   return List.from(node.attachments);
 }
 
-DocumentSelection _caretAt(String nodeId, int offset, TextAffinity affinity) {
+DocumentSelection _caretAt(String nodeId, int gapIndex) {
   return DocumentSelection.collapsed(
     position: DocumentPosition(
       nodeId: nodeId,
-      nodePosition: AttachmentListNodePosition(offset, affinity),
+      nodePosition: AttachmentListNodePosition(gapIndex),
     ),
   );
 }
 
-Future<void> _pumpWithList(WidgetTester tester) async {
+Future<void> _pumpWithList(
+  WidgetTester tester, {
+  MutableDocument? document,
+}) async {
+  document ??= _mediumList;
+
   await tester
       .createDocument() //
-      .withCustomContent(_mediumList)
+      .withCustomContent(document)
       .withAddedComponents(
     [
       const AttachmentListComponentBuilder(_buildFakeAttachmentThumbnail),
@@ -167,7 +314,7 @@ Future<void> _pumpWithList(WidgetTester tester) async {
   ).pump();
 }
 
-Widget _buildFakeAttachmentThumbnail(BuildContext context, Object attachment) {
+Widget _buildFakeAttachmentThumbnail(BuildContext context, int index, Object attachment) {
   return const SizedBox(
     width: 50,
     height: 50,
@@ -192,10 +339,35 @@ MutableDocument get _mediumList => MutableDocument(
       ],
     );
 
+MutableDocument get _twoLists => MutableDocument(
+      nodes: [
+        ParagraphNode(id: "1", text: AttributedText()),
+        AttachmentListNode(
+          id: "2",
+          attachments: const [
+            _FakeAttachment("1.png"),
+            _FakeAttachment("2.png"),
+          ],
+        ),
+        AttachmentListNode(
+          id: "3",
+          attachments: const [
+            _FakeAttachment("3.png"),
+            _FakeAttachment("4.png"),
+            _FakeAttachment("5.png"),
+          ],
+        ),
+        ParagraphNode(id: "4", text: AttributedText()),
+      ],
+    );
+
 class _FakeAttachment {
   const _FakeAttachment(this.id);
 
   final String id;
+
+  @override
+  String toString() => "_FakeAttachment: $id";
 
   @override
   bool operator ==(Object other) =>
