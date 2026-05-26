@@ -504,4 +504,10 @@ class _InvisibleTextInputClient implements TextInputClient {
   void updateFloatingCursor(RawFloatingCursorPoint point) {
     // TODO: implement updateFloatingCursor
   }
+
+  @override
+  bool onFocusReceived() {
+    // TODO: implement onFocusReceived
+    throw UnimplementedError();
+  }
 }
