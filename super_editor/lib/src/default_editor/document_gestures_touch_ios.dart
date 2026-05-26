@@ -509,7 +509,6 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     // can ensure they're visible.
     final selectionRectInDocumentLayout =
         widget.getDocumentLayout().getRectForSelection(selection.base, selection.extent)!;
-    print("Selection rect: $selectionRectInDocumentLayout");
     final extentOffsetInViewport = widget.document.getAffinityForSelection(selection) == TextAffinity.downstream
         ? _documentOffsetToViewportOffset(selectionRectInDocumentLayout.bottomCenter)
         : _documentOffsetToViewportOffset(selectionRectInDocumentLayout.topCenter);

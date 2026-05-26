@@ -788,7 +788,6 @@ class DeleteContentCommand extends EditCommand {
   @override
   void execute(EditContext context, CommandExecutor executor) {
     _log.log('DeleteSelectionCommand', 'DocumentEditor: deleting selection: $documentRange');
-    print("DeleteContentCommand: $documentRange");
     final document = context.document;
     final selection = context.composer.selection;
     final nodes = document.getNodesInside(documentRange.start, documentRange.end);
@@ -1047,9 +1046,6 @@ class DeleteContentCommand extends EditCommand {
     required DocumentRange normalizedRange,
     required DocumentNode node,
   }) {
-    print("DELETE SELECTION WITHIN SINGLE NODE");
-    print(" - RANGE: $normalizedRange");
-    print("${StackTrace.current}");
     _log.log('_deleteSelectionWithinSingleNode', ' - deleting selection within single node');
     final startPosition = normalizedRange.start.nodePosition;
     final endPosition = normalizedRange.end.nodePosition;
@@ -1060,7 +1056,6 @@ class DeleteContentCommand extends EditCommand {
     }
 
     if (node is EditableDocumentNode) {
-      print("THIS IS AN EDITABLE DOCUMENT NODE - FROM: $startPosition, TO: $endPosition");
       final (updatedNode, caretPosition) = node.deleteSelection(startPosition, endPosition);
 
       document.replaceNodeById(
@@ -1387,8 +1382,6 @@ class DeleteSelectionCommand extends EditCommand {
     if (selection == null) {
       return;
     }
-
-    print("DeleteSelectionCommand: $selection");
 
     if (selection.base.nodeId == selection.extent.nodeId) {
       // The selection is contained within a single node. Prevent the deletion
