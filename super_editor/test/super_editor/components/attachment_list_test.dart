@@ -67,7 +67,7 @@ void main() {
 
           expect(
             SuperEditorInspector.findDocumentSelection(),
-            _caretAt("2", i),
+            _caretAt("2", i, TextAffinity.downstream),
           );
         }
       });
@@ -289,11 +289,11 @@ List<Object> _findAttachments() {
   return List.from(node.attachments);
 }
 
-DocumentSelection _caretAt(String nodeId, int gapIndex) {
+DocumentSelection _caretAt(String nodeId, int gapIndex, [TextAffinity affinity = TextAffinity.upstream]) {
   return DocumentSelection.collapsed(
     position: DocumentPosition(
       nodeId: nodeId,
-      nodePosition: AttachmentListNodePosition(gapIndex),
+      nodePosition: AttachmentListNodePosition(gapIndex, affinity),
     ),
   );
 }

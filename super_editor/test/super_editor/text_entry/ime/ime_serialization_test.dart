@@ -192,7 +192,7 @@ void main() {
                 ),
                 extent: DocumentPosition(
                   nodeId: "1",
-                  nodePosition: AttachmentListNodePosition(2, TextAffinity.downstream),
+                  nodePosition: AttachmentListNodePosition(3, TextAffinity.upstream),
                 ),
               ),
               null,
@@ -250,11 +250,11 @@ void main() {
               const DocumentSelection(
                 base: DocumentPosition(
                   nodeId: "1",
-                  nodePosition: AttachmentListNodePosition(1, TextAffinity.upstream),
+                  nodePosition: AttachmentListNodePosition(1),
                 ),
                 extent: DocumentPosition(
                   nodeId: "3",
-                  nodePosition: AttachmentListNodePosition(1, TextAffinity.downstream),
+                  nodePosition: AttachmentListNodePosition(2),
                 ),
               ),
               null,
@@ -282,11 +282,11 @@ void main() {
               const DocumentSelection(
                 base: DocumentPosition(
                   nodeId: "1",
-                  nodePosition: AttachmentListNodePosition(1, TextAffinity.upstream),
+                  nodePosition: AttachmentListNodePosition(1),
                 ),
                 extent: DocumentPosition(
                   nodeId: "3",
-                  nodePosition: AttachmentListNodePosition(1, TextAffinity.downstream),
+                  nodePosition: AttachmentListNodePosition(2),
                 ),
               ),
               null,

@@ -4,10 +4,9 @@ import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_composer.dart';
-import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/document_selection.dart';
+import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
-import 'package:super_editor/src/default_editor/common_editor_operations.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
@@ -839,8 +838,6 @@ class DeleteContentCommand extends EditCommand {
       return;
     }
 
-    late final DocumentPosition caretPosition;
-
     final startNode = document.getNode(normalizedRange.start);
     if (startNode == null) {
       throw Exception('Could not locate start node for DeleteSelectionCommand: ${normalizedRange.start}');
@@ -894,11 +891,6 @@ class DeleteContentCommand extends EditCommand {
           ),
         );
       }
-
-      caretPosition = DocumentPosition(
-        nodeId: startNode.id,
-        nodePosition: normalizedRange.start.nodePosition,
-      );
     }
 
     if (endNode.isDeletable) {
@@ -969,7 +961,22 @@ class DeleteContentCommand extends EditCommand {
         )
       ]);
 
-      caretPosition = DocumentPosition(nodeId: emptyParagraphId, nodePosition: const TextNodePosition(offset: 0));
+      if (updateSelection) {
+        executor.executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: emptyParagraphId,
+                nodePosition: const TextNodePosition(offset: 0),
+              ),
+            ),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        );
+      }
+
+      return;
     }
 
     // The start/end nodes may have been deleted due to empty content.
@@ -985,18 +992,41 @@ class DeleteContentCommand extends EditCommand {
       // Neither of the end nodes are `TextNode`s, so there's nothing
       // for us to merge. We're done.
       if (updateSelection) {
-        executor.executeCommand(
-          ChangeSelectionCommand(
-            DocumentSelection.collapsed(position: caretPosition),
-            SelectionChangeType.deleteContent,
-            SelectionReason.userInteraction,
-          ),
-        );
+        if (startNodeAfterDeletion == null || !startNodeAfterDeletion.isDeletable) {
+          executor.executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(
+                  nodeId: endNodeAfterDeletion!.id,
+                  nodePosition: endNodeAfterDeletion.beginningPosition,
+                ),
+              ),
+              SelectionChangeType.deleteContent,
+              SelectionReason.userInteraction,
+            ),
+          );
+        } else {
+          executor.executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(
+                  nodeId: startNodeAfterDeletion.id,
+                  nodePosition: startNodeAfterDeletion.endPosition,
+                ),
+              ),
+              SelectionChangeType.deleteContent,
+              SelectionReason.userInteraction,
+            ),
+          );
+        }
       }
 
       return;
     }
 
+    // Now that the content has been deleted, and we know the starting and ending
+    // nodes are both text nodes, add the ending node's text to the starting node.
+    // Then delete the ending node.
     _log.log('DeleteSelectionCommand', ' - combining last node text with first node text');
     executor.logChanges([
       DocumentEdit(
@@ -1023,15 +1053,16 @@ class DeleteContentCommand extends EditCommand {
       )
     ]);
 
-    caretPosition = DocumentPosition(
-      nodeId: startNodeAfterDeletion.id,
-      nodePosition: TextNodePosition(offset: startNodeAfterDeletion.text.length),
-    );
-
+    // (Maybe) update the editor selection after the deletion.
     if (updateSelection) {
       executor.executeCommand(
         ChangeSelectionCommand(
-          DocumentSelection.collapsed(position: caretPosition),
+          DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: startNodeAfterDeletion.id,
+              nodePosition: startNodeAfterDeletion.endPosition,
+            ),
+          ),
           SelectionChangeType.deleteContent,
           SelectionReason.userInteraction,
         ),
@@ -1463,10 +1494,10 @@ class DeleteSelectionCommand extends EditCommand {
       }
     }
 
-    final newSelectionPosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
-      document: document,
-      selection: selection,
-    );
+    // final newSelectionPosition = CommonEditorOperations.getDocumentPositionAfterExpandedDeletion(
+    //   document: document,
+    //   selection: selection,
+    // );
 
     executor.executeCommand(
       DeleteContentCommand(

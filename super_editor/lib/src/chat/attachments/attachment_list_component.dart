@@ -352,11 +352,21 @@ class _AttachmentListComponentState extends State<AttachmentListComponent> with 
       throw ArgumentError(
           'Invalid extent node position type. Expected _AttachmentListNodePosition but got ${extentNodePosition.runtimeType}');
     }
+    if (baseNodePosition.isEquivalentTo(extentNodePosition)) {
+      return Rect.zero;
+    }
 
-    final startGap = min(baseNodePosition.gapIndex, extentNodePosition.gapIndex);
-    final endGap = max(baseNodePosition.gapIndex, extentNodePosition.gapIndex);
-    var boundingRect = _findLocalRectForAttachment(startGap);
-    for (int i = startGap + 1; i < endGap; i += 1) {
+    final startGap = baseNodePosition.gapIndex < extentNodePosition.gapIndex ? baseNodePosition : extentNodePosition;
+    final endGap = baseNodePosition.gapIndex > extentNodePosition.gapIndex ? extentNodePosition : baseNodePosition;
+
+    var boundingRect = _findLocalRectForAttachment(startGap.gapIndex);
+    for (int i = startGap.gapIndex + 1; i <= endGap.gapIndex; i += 1) {
+      if (i >= widget.attachments.length) {
+        // This is probably the gap after the last attachment. It contributes
+        // nothing to the selection bounds. Ignore it.
+        continue;
+      }
+
       final additionalRect = _findLocalRectForAttachment(i);
       boundingRect = boundingRect.expandToInclude(additionalRect);
     }
