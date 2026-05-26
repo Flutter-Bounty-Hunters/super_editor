@@ -1799,7 +1799,7 @@ class CommonEditorOperations {
     }
 
     final extentNodePosition = composer.selection!.extent.nodePosition;
-    if (extentNodePosition is! TextNode) {
+    if (extentNodePosition is! TextNodePosition) {
       editorOpsLog.fine("The selected position is not a text position. Inserting new paragraph first.");
       editor.execute([InsertNewlineAtCaretRequest()]);
     }
