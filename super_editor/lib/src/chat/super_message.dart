@@ -58,7 +58,7 @@ class SuperMessage extends StatefulWidget {
     this.documentUnderlayBuilders = const [],
     this.documentOverlayBuilders = defaultSuperMessageDocumentOverlayBuilders,
     this.selectionLayerLinks,
-    this.contentTapDelegateFactory,
+    this.contentTapDelegateFactories = const [superMessageLaunchLinkTapHandlerFactory],
     this.gestureMode,
     this.overlayController,
     List<DocumentKeyboardAction>? keyboardActions,
@@ -118,12 +118,15 @@ class SuperMessage extends StatefulWidget {
   /// user's selection.
   final SelectionLayerLinks? selectionLayerLinks;
 
-  /// Factory that creates a [ContentTapDelegate], which is given an
+  /// List of factories that create a [ContentTapDelegate], which is given an
   /// opportunity to respond to taps on content before the editor, itself.
   ///
   /// A [ContentTapDelegate] might be used, for example, to launch a URL
   /// when a user taps on a link.
-  final SuperMessageContentTapDelegateFactory? contentTapDelegateFactory;
+  ///
+  /// If a handler returns [TapHandlingInstruction.halt], no subsequent handlers
+  /// nor the default tap behavior will be executed.
+  final List<SuperMessageContentTapDelegateFactory> contentTapDelegateFactories;
 
   /// The gesture mode, e.g., mouse or touch.
   final DocumentGestureMode? gestureMode;
@@ -170,7 +173,7 @@ class _SuperMessageState extends State<SuperMessage> {
   late SingleColumnLayoutCustomComponentStyler _docLayoutPerComponentBlockStyler;
   late SingleColumnLayoutSelectionStyler _docLayoutSelectionStyler;
 
-  ContentTapDelegate? _contentTapDelegate;
+  List<ContentTapDelegate> _contentTapHandlers = [];
 
   // Leader links that connect leader widgets near the user's selection
   // to carets, handles, and other things that want to follow the selection.
@@ -233,7 +236,9 @@ class _SuperMessageState extends State<SuperMessage> {
       _focusNode.dispose();
     }
 
-    _contentTapDelegate?.dispose();
+    for (final handler in _contentTapHandlers) {
+      handler.dispose();
+    }
 
     _iOSControlsController.dispose();
 
@@ -283,8 +288,12 @@ class _SuperMessageState extends State<SuperMessage> {
       getDocumentLayout: () => _documentLayoutKey.currentState as DocumentLayout,
     );
 
-    _contentTapDelegate?.dispose();
-    _contentTapDelegate = widget.contentTapDelegateFactory?.call(_messageContext);
+    // Dispose previous tap handlers and create new handlers for our new context.
+    for (final handler in _contentTapHandlers) {
+      handler.dispose();
+    }
+
+    _contentTapHandlers = widget.contentTapDelegateFactories.map((factory) => factory.call(_messageContext)).toList();
   }
 
   void _onFocusChange() {
@@ -359,7 +368,7 @@ class _SuperMessageState extends State<SuperMessage> {
         return SuperMessageMouseInteractor(
           focusNode: _focusNode,
           messageContext: _messageContext,
-          contentTapHandler: _contentTapDelegate,
+          contentTapHandlers: _contentTapHandlers,
           showDebugPaint: widget.debugPaint.gestures,
           child: child,
         );
@@ -373,6 +382,7 @@ class _SuperMessageState extends State<SuperMessage> {
                 focusNode: _focusNode,
                 editor: widget.editor,
                 getDocumentLayout: () => _messageContext.documentLayout,
+                contentTapHandlers: _contentTapHandlers,
                 showDebugPaint: widget.debugPaint.gestures,
                 child: SuperMessageAndroidControlsOverlayManager(
                   editor: widget.editor,
@@ -401,7 +411,7 @@ class _SuperMessageState extends State<SuperMessage> {
               messageContext: _messageContext,
               documentKey: _documentLayoutKey,
               getDocumentLayout: () => _messageContext.documentLayout,
-              contentTapHandler: _contentTapDelegate,
+              contentTapHandlers: _contentTapHandlers,
               showDebugPaint: widget.debugPaint.gestures,
               child: SuperMessageIosToolbarOverlayManager(
                 tapRegionGroupId: widget.tapRegionGroupId,
@@ -678,7 +688,7 @@ class SuperMessageIosToolbarFocalPointDocumentLayerBuilder implements SuperMessa
 
 typedef SuperMessageContentTapDelegateFactory = ContentTapDelegate Function(DocumentContext messageContext);
 
-ContentTapDelegate superMessageLinkTapHandlerFactory(DocumentContext messageContext) =>
+ContentTapDelegate superMessageLaunchLinkTapHandlerFactory(DocumentContext messageContext) =>
     SuperReaderLaunchLinkTapHandler(messageContext.document);
 
 /// Keyboard actions for the standard [SuperReader].

@@ -185,7 +185,7 @@ class SuperMessageIosTouchInteractor extends StatefulWidget {
     required this.messageContext,
     required this.documentKey,
     required this.getDocumentLayout,
-    this.contentTapHandler,
+    this.contentTapHandlers = const [],
     this.showDebugPaint = false,
     required this.child,
   }) : super(key: key);
@@ -197,9 +197,12 @@ class SuperMessageIosTouchInteractor extends StatefulWidget {
   final GlobalKey documentKey;
   final DocumentLayout Function() getDocumentLayout;
 
-  /// Optional handler that responds to taps on content, e.g., opening
+  /// Optional list of handlers that respond to taps on content, e.g., opening
   /// a link when the user taps on text with a link attribution.
-  final ContentTapDelegate? contentTapHandler;
+  ///
+  /// If a handler returns [TapHandlingInstruction.halt], no subsequent handlers
+  /// nor the default tap behavior will be executed.
+  final List<ContentTapDelegate> contentTapHandlers;
 
   final bool showDebugPaint;
 
@@ -396,8 +399,8 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       return;
     }
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,
@@ -440,8 +443,8 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
       return;
     }
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onDoubleTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onDoubleTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,
@@ -498,8 +501,8 @@ class _SuperMessageIosTouchInteractorState extends State<SuperMessageIosTouchInt
     final docOffset = _globalOffsetToDocumentOffset(details.globalPosition);
     readerGesturesLog.fine(" - document offset: $docOffset");
 
-    if (widget.contentTapHandler != null) {
-      final result = widget.contentTapHandler!.onTripleTap(
+    for (final handler in widget.contentTapHandlers) {
+      final result = handler.onTripleTap(
         DocumentTapDetails(
           documentLayout: _docLayout,
           layoutOffset: docOffset,

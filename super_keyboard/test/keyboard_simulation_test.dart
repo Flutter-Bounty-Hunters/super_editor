@@ -125,7 +125,6 @@ Future<void> _pumpScaffold(
     SizedBox(
       key: screenKey,
       child: SoftwareKeyboardHeightSimulator(
-        tester: tester,
         keyboardHeight: _keyboardHeight,
         animateKeyboard: true,
         child: MaterialApp(

@@ -427,6 +427,7 @@ class AndroidDocumentTouchInteractor extends StatefulWidget {
     required this.document,
     required this.getDocumentLayout,
     required this.selection,
+    required this.isImeConnected,
     this.openKeyboardWhenTappingExistingSelection = true,
     this.openKeyboardOnSelectionChange = true,
     required this.openSoftwareKeyboard,
@@ -445,6 +446,14 @@ class AndroidDocumentTouchInteractor extends StatefulWidget {
   final Document document;
   final DocumentLayout Function() getDocumentLayout;
   final ValueListenable<DocumentSelection?> selection;
+
+  /// A listenable that reports whether the IME is currently connected to this
+  /// editor, which means either a software keyboard or hardware keyboard is
+  /// currently configured to edit the document in this editor.
+  ///
+  /// This signal is used, for example, to decide whether we should show
+  /// the popover toolbar on tap.
+  final ValueListenable<bool> isImeConnected;
 
   /// {@macro openKeyboardWhenTappingExistingSelection}
   final bool openKeyboardWhenTappingExistingSelection;
@@ -991,8 +1000,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
         ..hideMagnifier()
         ..blinkCaret();
 
-      if (didTapOnExistingSelection &&
-          SuperKeyboard.instance.mobileGeometry.value.keyboardState == KeyboardState.open) {
+      if (didTapOnExistingSelection && widget.isImeConnected.value) {
         // Toggle the toolbar display when the user taps on the collapsed caret,
         // or on top of an existing selection.
         //
@@ -1340,6 +1348,7 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
     required this.getDocumentLayout,
     required this.selection,
     required this.setSelection,
+    required this.isImeConnected,
     required this.scrollChangeSignal,
     required this.dragHandleAutoScroller,
     this.defaultToolbarBuilder,
@@ -1354,6 +1363,14 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
   final DocumentLayoutResolver getDocumentLayout;
   final ValueListenable<DocumentSelection?> selection;
   final void Function(DocumentSelection?) setSelection;
+
+  /// A listenable that reports whether the IME is currently connected to this
+  /// editor, which means either a software keyboard or hardware keyboard is
+  /// currently configured to edit the document in this editor.
+  ///
+  /// This signal is used to, for example, to decide whether we should show
+  /// the popover toolbar on tap.
+  final ValueListenable<bool> isImeConnected;
 
   final SignalNotifier scrollChangeSignal;
 
@@ -1530,6 +1547,13 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
   }
 
   void _toggleToolbarOnCollapsedHandleTap() {
+    if (!widget.isImeConnected.value) {
+      // We have a selection with a handle, but no IME connection. This probably
+      // shouldn't happen, but in general, we don't want to support content changes
+      // without a connection to the OS IME.
+      return;
+    }
+
     _controlsController!.toggleToolbar();
   }
 

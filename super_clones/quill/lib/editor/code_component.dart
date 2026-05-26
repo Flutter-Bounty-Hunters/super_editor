@@ -138,6 +138,8 @@ class CodeBlockComponentViewModel extends SingleColumnLayoutComponentViewModel w
       inlineWidgetBuilders: inlineWidgetBuilders,
       textDirection: textDirection,
       textAlignment: textAlignment,
+      maxLines: maxLines,
+      overflow: overflow,
       backgroundColor: backgroundColor,
       borderRadius: borderRadius,
       selection: selection,
@@ -160,6 +162,8 @@ class CodeBlockComponentViewModel extends SingleColumnLayoutComponentViewModel w
           text == other.text &&
           textDirection == other.textDirection &&
           textAlignment == other.textAlignment &&
+          maxLines == other.maxLines &&
+          overflow == other.overflow &&
           backgroundColor == other.backgroundColor &&
           borderRadius == other.borderRadius &&
           selection == other.selection &&
@@ -175,6 +179,8 @@ class CodeBlockComponentViewModel extends SingleColumnLayoutComponentViewModel w
       text.hashCode ^
       textDirection.hashCode ^
       textAlignment.hashCode ^
+      maxLines.hashCode ^
+      overflow.hashCode ^
       backgroundColor.hashCode ^
       borderRadius.hashCode ^
       selection.hashCode ^

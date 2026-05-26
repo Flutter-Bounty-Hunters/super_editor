@@ -355,8 +355,6 @@ class DefaultIOSSuperMessageToolbar extends StatelessWidget {
         SelectionReason.userInteraction,
       ),
     ]);
-
-    messageControlsController.hideToolbar();
   }
 
   Future<void> _saveToClipboard(String text) {

@@ -1,14 +1,18 @@
 import 'dart:async';
 
+import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/default_editor/default_document_editor.dart';
 import 'package:super_editor/src/default_editor/document_ime/shared_ime.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/super_editor.dart';
+import 'package:super_editor/src/test/super_editor_test/supereditor_robot.dart';
 
 void main() {
   group("Super Editor > IME ownership >", () {
-    testWidgets("only claims ownership when it has focus", (tester) async {
+    testWidgets("releases ownership when it loses focus", (tester) async {
       final focusNode = FocusNode(debugLabel: "test-editor");
       final editor1 = createDefaultDocumentEditor();
       await _pumpScaffold(
@@ -23,7 +27,7 @@ void main() {
       expect(SuperIme.instance.isOwned, isFalse);
 
       // Focus the editor. We do this directly with the `FocusNode` instead of tapping
-      // on the editor because there many cases where developers give focus to the editor
+      // on the editor because there are many cases where developers give focus to the editor
       // in this same way.
       focusNode.requestFocus();
       await tester.pump();
@@ -36,6 +40,64 @@ void main() {
 
       expect(SuperIme.instance.isOwned, isFalse);
     });
+
+    testWidgets(
+      "does not clear selection, or unfocus, when IME is claimed by a different SuperEditor with the same role",
+      (tester) async {
+        final focusNode = FocusNode(debugLabel: "test-editor");
+        final editor = createDefaultDocumentEditor(document: _emptyParagraph);
+
+        await _pumpScaffold(
+          tester,
+          SuperEditor(
+            // We use a GlobalKey to force Flutter to throw away the tree and replace it.
+            key: GlobalKey(debugLabel: 'first-editor-tree'),
+            focusNode: focusNode,
+            editor: editor,
+            inputRole: "Chat",
+          ),
+        );
+
+        expect(focusNode.hasPrimaryFocus, isFalse);
+        expect(editor.composer.selection, isNull);
+        expect(SuperIme.instance.isOwned, isFalse);
+
+        // Place the caret, and focus the editor.
+        await tester.tapInParagraph("1", 0);
+
+        // Ensure that the editor now owns the IME.
+        expect(focusNode.hasPrimaryFocus, isTrue);
+        expect(editor.composer.selection, isNotNull);
+        expect(SuperIme.instance.isOwned, isTrue);
+        expect(SuperIme.instance.owner?.role, "Chat");
+        final owner1 = SuperIme.instance.owner;
+
+        // Pump a new widget tree, but still with a SuperEditor playing the same role.
+        await _pumpScaffold(
+          tester,
+          SuperEditor(
+            // We use a GlobalKey to force Flutter to throw away the tree and replace it.
+            key: GlobalKey(debugLabel: 'second-editor-tree'),
+            focusNode: focusNode,
+            editor: editor,
+            inputRole: "Chat",
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Ensure that the editor state hasn't changed: still has selection, still focused,
+        // IME still owned. BUT, the IME owner has changed instance.
+        //
+        // Note: This test was added for issue #2962 (https://github.com/Flutter-Bounty-Hunters/super_editor/issues/2962).
+        // Before that, when replacing one SuperEditor with another, even with the same role, the
+        // SuperEditor being disposed would clear the selection and unfocus, causing the IME to close.
+        expect(focusNode.hasPrimaryFocus, isTrue);
+        expect(editor.composer.selection, isNotNull);
+        expect(SuperIme.instance.isOwned, isTrue);
+        expect(SuperIme.instance.owner?.role, "Chat");
+        expect(SuperIme.instance.owner, isNot(owner1));
+      },
+    );
 
     group("catches duplicate roles in the same build >", () {
       // Note about timing: This group tests when multiple editors `build()` in the same
@@ -154,6 +216,12 @@ Future<void> _pumpScaffold(WidgetTester tester, Widget child) async {
     ),
   );
 }
+
+final _emptyParagraph = MutableDocument(
+  nodes: [
+    ParagraphNode(id: "1", text: AttributedText()),
+  ],
+);
 
 FutureOr<List<FlutterErrorDetails>> _captureFlutterErrors(FutureOr<void> Function() test) async {
   final errors = <FlutterErrorDetails>[];

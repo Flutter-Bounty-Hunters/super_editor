@@ -37,8 +37,13 @@ class DocumentImeSerializer {
   final Document _doc;
   DocumentSelection selection;
   DocumentRange? composingRegion;
+
+  /// Maps sub-strings of the IME value to node IDs.
   final imeRangesToDocTextNodes = <TextRange, String>{};
+
+  /// Maps node IDs to sub-strings of the IME value.
   final docTextNodesToImeRanges = <String, TextRange>{};
+
   final selectedNodes = <DocumentNode>[];
   late String imeText;
   final PrependedCharacterPolicy _prependedCharacterPolicy;
@@ -306,8 +311,11 @@ class DocumentImeSerializer {
       editorImeLog.shout("    ^ node content: '${(_doc.getNodeById(entry.value) as TextNode).text.toPlainText()}'");
     }
     editorImeLog.shout("-----------------------------------------------------------");
-    throw Exception(
-        "Couldn't map an IME position to a document position. \nTextEditingValue: '$imeText'\nIME position: $imePosition");
+    throw FailedToMapImePositionToDocumentPositionException(
+      imeText: imeText,
+      imePosition: imePosition,
+      imeRangesToDocumentRanges: Map.from(imeRangesToDocTextNodes),
+    );
   }
 
   TextSelection documentToImeSelection(DocumentSelection docSelection) {
@@ -371,7 +379,11 @@ class DocumentImeSerializer {
       return TextPosition(offset: imeRange.start + (docPosition.nodePosition as TextNodePosition).offset);
     }
 
-    throw Exception("Super Editor doesn't know how to convert a $nodePosition into an IME-compatible selection");
+    throw FailedToMapDocumentPositionToImePositionException(
+      document: _doc,
+      selection: selection,
+      documentNodesToImeRanges: docTextNodesToImeRanges,
+    );
   }
 
   TextEditingValue toTextEditingValue() {
@@ -394,4 +406,66 @@ enum PrependedCharacterPolicy {
   automatic,
   include,
   exclude,
+}
+
+class FailedToMapImePositionToDocumentPositionException implements Exception {
+  const FailedToMapImePositionToDocumentPositionException({
+    required this.imeText,
+    required this.imePosition,
+    required this.imeRangesToDocumentRanges,
+  });
+
+  final String imeText;
+  final TextPosition imePosition;
+  final Map<TextRange, String> imeRangesToDocumentRanges;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer("Couldn't map an IME position to a document position.\n")
+      ..writeln(" • IME text: '$imeText'")
+      ..writeln(" • IME position: $imePosition");
+
+    buffer.writeln(" • IME to Doc Ranges:");
+    for (final entry in imeRangesToDocumentRanges.entries) {
+      buffer.writeln("    > IME range: ${entry.key} -> Node: '${entry.value}'");
+    }
+
+    return buffer.toString();
+  }
+}
+
+class FailedToMapDocumentPositionToImePositionException implements Exception {
+  const FailedToMapDocumentPositionToImePositionException({
+    required this.document,
+    required this.selection,
+    required this.documentNodesToImeRanges,
+  });
+
+  final Document document;
+  final DocumentSelection selection;
+  final Map<String, TextRange> documentNodesToImeRanges;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer("Couldn't map a document position to an IME position.\n");
+
+    buffer.writeln(" • Document:");
+    for (final node in document) {
+      buffer.writeln("    > node ID: ${node.id}, type: ${node.runtimeType}");
+      if (node is TextNode) {
+        buffer.writeln("      - text in node: '${node.text.toPlainText()}'");
+      }
+    }
+
+    buffer.writeln(" • Document selection:");
+    buffer.writeln("    > base: ${selection.base}");
+    buffer.writeln("    > extent: ${selection.extent}");
+
+    buffer.writeln(" • IME to Doc Ranges:");
+    for (final entry in documentNodesToImeRanges.entries) {
+      buffer.writeln("    > Node: ${entry.key} -> IME range: '${entry.value}'");
+    }
+
+    return buffer.toString();
+  }
 }

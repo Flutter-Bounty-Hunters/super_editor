@@ -118,12 +118,19 @@ typedef HeaderAttributionMapping = Attribution Function(int level);
 /// Converts a [ParagraphNode] to an [UnorderedListItemNode] when the
 /// user types "* " (or similar) at the start of the paragraph.
 class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReaction {
-  static final _unorderedListItemPattern = RegExp(r'^\s*[*-]\s+$');
+  static final _unorderedListItemInEmptyParagraphPattern = RegExp(r'^\s*[*•-]\s+$');
+  static final _unorderedListItemInNonEmptyParagraphPattern = RegExp(r'^\s*[*•-]\s+');
 
-  const UnorderedListItemConversionReaction();
+  const UnorderedListItemConversionReaction({
+    this.allowConversionOfNonEmptyParagraphs = true,
+  });
+
+  final bool allowConversionOfNonEmptyParagraphs;
 
   @override
-  RegExp get pattern => _unorderedListItemPattern;
+  RegExp get pattern => allowConversionOfNonEmptyParagraphs
+      ? _unorderedListItemInNonEmptyParagraphPattern
+      : _unorderedListItemInEmptyParagraphPattern;
 
   @override
   void onPrefixMatched(
@@ -140,7 +147,10 @@ class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReact
         existingNodeId: paragraph.id,
         newNode: ListItemNode.unordered(
           id: paragraph.id,
-          text: AttributedText(),
+          text: paragraph.text.copy().removeRegion(
+                startOffset: 0, //
+                endOffset: match.length,
+              ),
         ),
       ),
       ChangeSelectionRequest(
@@ -161,15 +171,25 @@ class UnorderedListItemConversionReaction extends ParagraphPrefixConversionReact
 /// user types " 1. " (or similar) at the start of the paragraph.
 class OrderedListItemConversionReaction extends ParagraphPrefixConversionReaction {
   /// Matches strings like ` 1. `, ` 2. `, ` 1) `, ` 2) `, etc.
-  static final _orderedListPattern = RegExp(r'^\s*\d+[.)]\s+$');
+  static final _orderedListPatternInEmptyParagraph = RegExp(r'^\s*\d+[.)]\s+$');
+  static final _orderedListPatternInNonEmptyParagraph = RegExp(r'^\s*\d+[.)]\s+');
 
   /// Matches one or more numbers.
   static final _numberRegex = RegExp(r'\d+');
 
-  const OrderedListItemConversionReaction();
+  const OrderedListItemConversionReaction({
+    this.allowConversionOfNonEmptyParagraphs = true,
+    this.continuationStrategy,
+  });
+
+  final bool allowConversionOfNonEmptyParagraphs;
+
+  final OrderedListContinuationStrategy? continuationStrategy;
 
   @override
-  RegExp get pattern => _orderedListPattern;
+  RegExp get pattern => allowConversionOfNonEmptyParagraphs
+      ? _orderedListPatternInNonEmptyParagraph
+      : _orderedListPatternInEmptyParagraph;
 
   @override
   void onPrefixMatched(
@@ -183,37 +203,26 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
     final numberMatch = _numberRegex.firstMatch(match)!;
     final numberTyped = int.parse(match.substring(numberMatch.start, numberMatch.end));
 
-    if (numberTyped > 1) {
-      // Check if the user typed a number that continues the sequence of an upstream
-      // ordered list item. For example, the list has the items 1, 2, 3 and 4,
-      // and the user types " 5. ".
-
-      final document = editContext.document;
-
-      final upstreamNode = document.getNodeBefore(paragraph);
-      if (upstreamNode == null || upstreamNode is! ListItemNode || upstreamNode.type != ListItemType.ordered) {
-        // There isn't an ordered list item immediately before this paragraph. Fizzle.
-        return;
-      }
-
-      // The node immediately before this paragraph is an ordered list item. Compute its ordinal value,
-      // so we can check if the user typed the next number in the sequence.
-      int upstreamListItemOrdinalValue = computeListItemOrdinalValue(upstreamNode, document);
-      if (numberTyped != upstreamListItemOrdinalValue + 1) {
-        // The user typed a number that doesn't continue the sequence of the upstream ordered list item.
-        return;
-      }
+    final nextOrderedListItem = numberTyped == 1
+        ? const NextOrderedListItem()
+        : _maybeContinueList(editContext.document, paragraph, numberTyped);
+    if (nextOrderedListItem == null) {
+      return;
     }
 
     // The user started a paragraph with an ordered list item pattern.
     // Convert the paragraph to an unordered list item.
+    final continuingListItemNode = createNextListItemNode(
+      paragraph,
+      match: match,
+      numberTyped: numberTyped,
+      indent: nextOrderedListItem.indent,
+    );
+
     requestDispatcher.execute([
       ReplaceNodeRequest(
         existingNodeId: paragraph.id,
-        newNode: ListItemNode.ordered(
-          id: paragraph.id,
-          text: AttributedText(),
-        ),
+        newNode: continuingListItemNode,
       ),
       ChangeSelectionRequest(
         DocumentSelection.collapsed(
@@ -227,6 +236,85 @@ class OrderedListItemConversionReaction extends ParagraphPrefixConversionReactio
       ),
     ]);
   }
+
+  /// Checks if the [numberTyped] at the start of the [paragraph] should continue an
+  /// existing list, and returns the configuration of that new ordered list item, or returns
+  /// `null` if no list continuation is desired.
+  NextOrderedListItem? _maybeContinueList(Document document, ParagraphNode paragraph, int numberTyped) {
+    if (continuationStrategy != null) {
+      return continuationStrategy!.call(document, paragraph, numberTyped);
+    }
+
+    // Check if the user typed a number that continues the sequence of an upstream
+    // ordered list item. For example, the list has the items 1, 2, 3 and 4,
+    // and the user types " 5. ".
+    final upstreamNode = document.getNodeBefore(paragraph);
+    if (upstreamNode == null || upstreamNode is! ListItemNode || upstreamNode.type != ListItemType.ordered) {
+      // There isn't an ordered list item immediately before this paragraph. Fizzle.
+      return null;
+    }
+
+    // The node immediately before this paragraph is an ordered list item. Compute its ordinal value,
+    // so we can check if the user typed the next number in the sequence.
+    int upstreamListItemOrdinalValue = computeListItemOrdinalValue(upstreamNode, document);
+    if (numberTyped != upstreamListItemOrdinalValue + 1) {
+      // The user typed a number that doesn't continue the sequence of the upstream ordered list item.
+      return null;
+    }
+
+    return NextOrderedListItem(
+      // In this implementation, we don't care about the ordinal value
+      // because it's auto-computed when laying out the document UI.
+      indent: upstreamNode.indent,
+    );
+  }
+
+  /// Creates the [ListItemNode] that will replace the paragraph with the typed
+  /// prefix.
+  ///
+  /// This method is protected so that client apps can choose their own implementation
+  /// of list items, if needed.
+  @protected
+  ListItemNode createNextListItemNode(
+    ParagraphNode paragraph, {
+    required String match,
+    required int numberTyped,
+    required int indent,
+  }) {
+    return ListItemNode.ordered(
+      id: paragraph.id,
+      text: paragraph.text.copy().removeRegion(
+            startOffset: 0,
+            endOffset: match.length,
+          ),
+      indent: indent,
+    );
+  }
+}
+
+/// Strategy for deciding whether a typed prefix number should continue an existing list,
+/// and if so, what the next number should be.
+///
+/// Contract:
+///  * Returns `null` if no continuation is desired.
+///  * Returns a non-null [NextOrderedListItem.ordinalValue], if the app cares about explicit
+///    ordinal values per list item, or a `null` [NextOrderedListItem.ordinalValue] if the app
+///    auto-increments list items as the document UI is built.
+///  * Returns the desired indent of the new list item in [NextOrderedListItem.indent].
+typedef OrderedListContinuationStrategy = NextOrderedListItem? Function(
+    Document document, ParagraphNode paragraph, int typedOrdinal);
+
+/// Data structure that reports the configuration for a new ordered list item that
+/// should be created due to an automatic prefix conversion, e.g., typing "1. ".
+class NextOrderedListItem {
+  const NextOrderedListItem({
+    this.ordinalValue,
+    this.indent = 0,
+  })  : assert(ordinalValue == null || ordinalValue >= 0),
+        assert(indent >= 0);
+
+  final int? ordinalValue;
+  final int indent;
 }
 
 /// Adjusts a [ParagraphNode] to use a blockquote block attribution when a

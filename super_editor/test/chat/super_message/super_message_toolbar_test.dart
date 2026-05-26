@@ -22,7 +22,7 @@ void main() {
         expect(find.byType(DefaultIOSSuperMessageToolbar), findsNothing);
       });
 
-      testWidgetsOnIos("dismisses after select-all button is pressed", (tester) async {
+      testWidgetsOnIos("does not dismiss after select-all button is pressed", (tester) async {
         await _pumpScaffold(tester);
 
         // Long press to select text and show the toolbar.
@@ -34,7 +34,7 @@ void main() {
         await tester.pump();
 
         // Ensure toolbar is dismissed.
-        expect(find.byType(DefaultIOSSuperMessageToolbar), findsNothing);
+        expect(find.byType(DefaultIOSSuperMessageToolbar), findsOne);
       });
     });
 
@@ -54,7 +54,7 @@ void main() {
         expect(find.byType(DefaultAndroidSuperMessageToolbar), findsNothing);
       });
 
-      testWidgetsOnAndroid("dismisses after select-all button is pressed", (tester) async {
+      testWidgetsOnAndroid("does not dismiss after select-all button is pressed", (tester) async {
         await _pumpScaffold(tester);
 
         // Long press to select text and show the toolbar.
@@ -66,7 +66,7 @@ void main() {
         await tester.pump();
 
         // Ensure toolbar is dismissed.
-        expect(find.byType(DefaultAndroidSuperMessageToolbar), findsNothing);
+        expect(find.byType(DefaultAndroidSuperMessageToolbar), findsOne);
       });
     });
   });
