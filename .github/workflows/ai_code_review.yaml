@@ -13,7 +13,6 @@ jobs:
       pull-requests: write
     
     steps:
-      # Explicitly check out the PR branch (the fork's code) so the diff works
       - name: Checkout PR Code
         uses: actions/checkout@v4
         with:
@@ -26,6 +25,13 @@ jobs:
 
       - name: Install dependencies
         run: npm install @octokit/action @google/generative-ai
+
+      - name: Checkout Latest Script from Main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: |
+            .github/scripts/ai_code_review.mjs
 
       - name: Run AI Review
         env:
