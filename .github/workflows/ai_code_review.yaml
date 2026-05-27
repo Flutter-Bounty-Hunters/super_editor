@@ -31,7 +31,7 @@ jobs:
         with:
           ref: main
           sparse-checkout: |
-            .github/scripts/ai_code_review.mjs
+            .github/scripts
 
       - name: Run AI Review
         env:
