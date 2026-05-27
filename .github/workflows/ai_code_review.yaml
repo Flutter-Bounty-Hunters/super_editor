@@ -24,7 +24,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install @octokit/action @google/generative-ai
+        run: npm install --prefix .github/scripts
 
       - name: Checkout Latest Script from Main
         uses: actions/checkout@v4
@@ -38,4 +38,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          NODE_PATH: .github/scripts/node_modules
         run: node .github/scripts/ai_code_review.mjs
