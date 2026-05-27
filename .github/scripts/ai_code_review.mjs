@@ -1,7 +1,7 @@
-async function run() {
-  const { Octokit } = await import("@octokit/action");
-  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+import { Octokit } from "@octokit/action";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
+async function run() {
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");

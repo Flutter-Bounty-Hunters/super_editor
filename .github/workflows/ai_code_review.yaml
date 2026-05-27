@@ -1,4 +1,4 @@
-name: AI Code Review
+Cname: AI Code Review
 
 on:
   pull_request:
@@ -29,4 +29,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/ai_code_review.js
+        run: node .github/scripts/ai_code_review.mjs
