@@ -23,15 +23,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install --prefix .github/scripts
-
       - name: Checkout Latest Script from Main
         uses: actions/checkout@v4
         with:
           ref: main
           sparse-checkout: |
             .github/scripts
+
+      - name: Install dependencies
+        run: npm install --prefix .github/scripts
 
       - name: Run AI Review
         env:
