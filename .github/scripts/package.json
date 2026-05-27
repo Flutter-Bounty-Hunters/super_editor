@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@octokit/action": "^6.0.0",
+    "@google/generative-ai": "^0.3.0"
+  }
+}
