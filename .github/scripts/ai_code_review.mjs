@@ -14,7 +14,10 @@ async function run() {
 
   const octokit = new Octokit();
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+  
+  // UPDATE: gemini-1.5-pro was deprecated on the v1beta endpoint.
+  // Upgraded to gemini-2.5-pro for strict code review reasoning.
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
   // 1. Get PR diff
   const { data: diff } = await octokit.rest.pulls.get({
