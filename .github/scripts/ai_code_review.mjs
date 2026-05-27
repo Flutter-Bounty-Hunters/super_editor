@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/action";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 async function run() {
+  console.info("Running AI code review...");
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
@@ -11,23 +12,22 @@ async function run() {
     console.error("Missing required environment variables.");
     process.exit(1);
   }
+  console.info("AI code reviewer has all necessary environment variables.");
 
   const octokit = new Octokit();
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  
-  // UPDATE: gemini-1.5-pro was deprecated on the v1beta endpoint.
-  // Upgraded to gemini-2.5-pro for strict code review reasoning.
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+  console.info("Initialized AI model.");
 
-  // 1. Get PR diff
   const { data: diff } = await octokit.rest.pulls.get({
     owner,
     repo,
     pull_number: pr_number,
     mediaType: { format: "diff" },
   });
+  console.info("Downloaded the PR diff");
 
-  // 2. Prepare the prompt
+  
   const prompt = `
 You are a strict Dart and Flutter code reviewer. Review the following PR diff and identify violations of the following strict guidelines:
 
@@ -55,10 +55,11 @@ If no violations are found, return an empty array [].
 Respond ONLY with the JSON array.
 `;
 
-  // 3. Get Gemini's review
+  console.info("Sending the PR review prompt to the LLM...");
   const result = await model.generateContent(prompt);
   const response = await result.response;
   let text = response.text().trim();
+  console.info("Got the LLM response");
 
   // Clean up markdown code blocks if present
   if (text.startsWith("```json")) {
