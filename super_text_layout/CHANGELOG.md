@@ -1,3 +1,7 @@
+## [0.1.21]
+### TBD
+* [FEATURE]: `SuperText` now supports an explicit `strutStyle` and inherited `SuperTextStrutStyle`.
+
 ## [0.1.20]
 ### Feb, 2026
 * [FEATURE]: `SuperText` now supports `maxLines` and `overflow` effects. 
