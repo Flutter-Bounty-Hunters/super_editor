@@ -193,6 +193,7 @@ class TestSuperKeyboard implements SuperKeyboard {
       keyboardAnimationTime: keyboardAnimationTime,
     );
 
+    // ignore: invalid_use_of_visible_for_testing_member
     SuperKeyboard.testInstance = _instance;
   }
 
@@ -204,6 +205,7 @@ class TestSuperKeyboard implements SuperKeyboard {
     _instance!.dispose();
     _instance = null;
 
+    // ignore: invalid_use_of_visible_for_testing_member
     SuperKeyboard.testInstance = null;
   }
 
