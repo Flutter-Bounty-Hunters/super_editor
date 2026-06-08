@@ -68,7 +68,7 @@ dev_dependencies:
   args: ^2.3.1
   flutter_lints: ^2.0.1
   flutter_test_runners: ^0.0.4
-  flutter_test_goldens: ^0.0.7
+  flutter_test_goldens: ^0.0.11
   golden_bricks: ^1.0.0
   golden_runner: ^0.2.0
 

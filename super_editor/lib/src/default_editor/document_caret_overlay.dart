@@ -199,18 +199,18 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
       return const EmptyBox();
     }
 
-    // Use a RepaintBoundary so that caret flashing doesn't invalidate our
-    // ancestor painting.
     return IgnorePointer(
-      child: RepaintBoundary(
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (caret != null)
-              Positioned(
-                top: caret.top,
-                left: caret.left,
-                height: caret.height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (caret != null)
+            Positioned(
+              top: caret.top,
+              left: caret.left,
+              height: caret.height,
+              child: RepaintBoundary(
+                // Use a RepaintBoundary so that caret flashing doesn't invalidate our
+                // ancestor painting.
                 child: AnimatedBuilder(
                   animation: _blinkController,
                   builder: (context, child) {
@@ -225,8 +225,8 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
                   },
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

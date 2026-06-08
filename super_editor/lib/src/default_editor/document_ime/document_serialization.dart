@@ -84,7 +84,20 @@ class DocumentImeSerializer {
       }
 
       final node = selectedNodes[i];
-      if (node is! TextNode) {
+      // TODO: Generalize this to work for any node type
+      if (node is EditableDocumentNode) {
+        final imeValue = node.serializeForIme();
+        buffer.write(imeValue);
+
+        final imeStartIndex = characterCount;
+        characterCount += imeValue.length;
+
+        final imeRange = TextRange(start: imeStartIndex, end: characterCount);
+        imeRangesToDocTextNodes[imeRange] = node.id;
+        docTextNodesToImeRanges[node.id] = imeRange;
+
+        continue;
+      } else if (node is! TextNode) {
         buffer.write('~');
         characterCount += 1;
 
@@ -170,14 +183,16 @@ class DocumentImeSerializer {
     editorImeLog.fine("Calculating the base DocumentPosition for the DocumentSelection");
     final base = _imeToDocumentPosition(
       imeSelection.base,
-      isUpstream: imeSelection.base.affinity == TextAffinity.upstream,
+      expandedSelectionEdge:
+          imeSelection.affinity == TextAffinity.downstream ? TextAffinity.upstream : TextAffinity.downstream,
     );
     editorImeLog.fine("Selection base: $base");
 
     editorImeLog.fine("Calculating the extent DocumentPosition for the DocumentSelection");
     final extent = _imeToDocumentPosition(
       imeSelection.extent,
-      isUpstream: imeSelection.extent.affinity == TextAffinity.upstream,
+      expandedSelectionEdge:
+          imeSelection.affinity == TextAffinity.downstream ? TextAffinity.downstream : TextAffinity.upstream,
     );
     editorImeLog.fine("Selection extent: $extent");
 
@@ -222,11 +237,11 @@ class DocumentImeSerializer {
     return DocumentRange(
       start: _imeToDocumentPosition(
         TextPosition(offset: imeRange.start),
-        isUpstream: false,
+        expandedSelectionEdge: TextAffinity.upstream,
       ),
       end: _imeToDocumentPosition(
         TextPosition(offset: imeRange.end),
-        isUpstream: false,
+        expandedSelectionEdge: TextAffinity.downstream,
       ),
     );
   }
@@ -267,12 +282,51 @@ class DocumentImeSerializer {
         : const TextPosition(offset: 0);
   }
 
-  DocumentPosition _imeToDocumentPosition(TextPosition imePosition, {required bool isUpstream}) {
+  /// Converts a given [imePosition] to a [DocumentPosition].
+  ///
+  /// If this position is on the upstream edge of the expanded selection, [isPositionUpstream]
+  /// should be `true`, otherwise it should be `false`. This property is important because
+  /// some content types need to make their own internal affinity decisions based on whether
+  /// this position sits on the upstream or downstream edge of an expanded selection.
+  ///
+  /// For example, consider a list of attachments across rows. One would expect the following
+  /// caret/handle locations:
+  ///
+  ///   [][]|[][]|
+  ///   [][][]
+  ///
+  /// One would NOT expect the following caret/handle locations:
+  ///
+  ///   [][]|[][]
+  ///   |[][][]
+  ///
+  /// But, if the selection were in the bottom row, one would expect the following caret/handle
+  /// locations:
+  ///
+  ///   [][][][]
+  ///   |[][]|[]
+  ///
+  /// One would NOT expect the following caret/handle locations:
+  ///
+  ///   [][][][]|
+  ///   [][]|[]
+  ///
+  /// Notice that these affinity decisions are based on whether each caret/handle position sits
+  /// on the upstream or downstream edge of the expanded selection.
+  DocumentPosition _imeToDocumentPosition(
+    TextPosition imePosition, {
+    TextAffinity? expandedSelectionEdge,
+  }) {
     for (final range in imeRangesToDocTextNodes.keys) {
       if (range.start <= imePosition.offset && imePosition.offset <= range.end) {
         final node = _doc.getNodeById(imeRangesToDocTextNodes[range]!)!;
 
-        if (node is TextNode) {
+        if (node is EditableDocumentNode) {
+          return DocumentPosition(
+            nodeId: imeRangesToDocTextNodes[range]!,
+            nodePosition: node.imePositionToNodePosition(imePosition.offset - range.start, expandedSelectionEdge),
+          );
+        } else if (node is TextNode) {
           return DocumentPosition(
             nodeId: imeRangesToDocTextNodes[range]!,
             nodePosition: TextNodePosition(offset: imePosition.offset - range.start),
@@ -360,6 +414,11 @@ class DocumentImeSerializer {
     }
 
     final nodePosition = docPosition.nodePosition;
+
+    final node = _doc.getNodeById(docPosition.nodeId);
+    if (node is EditableDocumentNode) {
+      return TextPosition(offset: imeRange.start + node.nodePositionToImePosition(docPosition.nodePosition));
+    }
 
     if (nodePosition is UpstreamDownstreamNodePosition) {
       if (nodePosition.affinity == TextAffinity.upstream) {
