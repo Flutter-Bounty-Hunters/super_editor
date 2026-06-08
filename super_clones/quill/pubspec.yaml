@@ -16,7 +16,7 @@ dependencies:
   super_text_layout: ^0.1.20
   collection: ^1.18.0
   overlord: ^0.4.2
-  material_symbols_icons: ^4.2762.0
+  material_symbols_icons: ^4.2928.1
   dart_quill_delta: ^9.4.6
   follow_the_leader: ^0.5.1
 
