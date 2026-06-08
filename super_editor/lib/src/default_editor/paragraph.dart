@@ -42,6 +42,26 @@ class ParagraphNode extends TextNode {
   /// The indent level of this paragraph - `0` is no indent.
   final int indent;
 
+  bool canSplitAt(NodePosition position) {
+    return position is TextNodePosition && position.offset > 0 && position.offset <= text.length;
+  }
+
+  (DocumentNode firstPart, DocumentNode secondPart) splitAt(nodePosition, {required String newId}) {
+    if (!canSplitAt(nodePosition)) {
+      throw Exception("Can't split paragraph ($id) at $nodePosition");
+    }
+
+    return (
+      copyParagraphWith(
+        text: text.copyText(0, nodePosition.offset),
+      ),
+      copyParagraphWith(
+        id: newId,
+        text: text.copyText(nodePosition.offset),
+      ),
+    );
+  }
+
   ParagraphNode copyParagraphWith({
     String? id,
     AttributedText? text,

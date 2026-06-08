@@ -31,6 +31,15 @@ abstract class BlockNode extends DocumentNode {
   bool containsPosition(Object position) => position is UpstreamDownstreamNodePosition;
 
   @override
+  bool isPositionCloserToStart(NodePosition position) {
+    if (position is! UpstreamDownstreamNodePosition) {
+      throw Exception('Expected a UpstreamDownstreamNodePosition for position but received a ${position.runtimeType}');
+    }
+
+    return position == const UpstreamDownstreamNodePosition.upstream();
+  }
+
+  @override
   UpstreamDownstreamNodePosition selectUpstreamPosition(NodePosition position1, NodePosition position2) {
     if (position1 is! UpstreamDownstreamNodePosition) {
       throw Exception(
@@ -195,6 +204,21 @@ class _BoxComponentState extends State<BoxComponent> with DocumentComponent {
       // Arbitrary, we'll return the position at the center of the right half of
       // the component.
       return Offset(3 * myBox.size.width / 4, myBox.size.height / 2);
+    }
+  }
+
+  @override
+  CaretGeometry getCaretForPosition(NodePosition nodePosition) {
+    if (nodePosition is! UpstreamDownstreamNodePosition) {
+      throw Exception('Expected nodePosition of type UpstreamDownstreamNodePosition but received: $nodePosition');
+    }
+
+    final myBox = context.findRenderObject() as RenderBox;
+
+    if (nodePosition.affinity == TextAffinity.upstream) {
+      return CaretGeometry(x: 0, top: 0, bottom: myBox.size.height);
+    } else {
+      return CaretGeometry(x: myBox.size.width, top: 0, bottom: myBox.size.height);
     }
   }
 
