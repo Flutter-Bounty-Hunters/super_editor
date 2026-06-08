@@ -384,6 +384,14 @@ abstract class DocumentNode {
   /// apply to this [DocumentNode].
   bool containsPosition(Object position);
 
+  /// Returns `true` if the given [position] is closer to the start of this node's
+  /// content than it is to the end.
+  bool isPositionCloserToStart(NodePosition position);
+
+  /// Returns `true` if the given [position] is closer to the end of this node's
+  /// content than it is to the end.
+  bool isPositionCloserToEnd(NodePosition position) => !isPositionCloserToStart(position);
+
   /// Inspects [position1] and [position2] and returns the one that's
   /// positioned further upstream in this [DocumentNode].
   ///
@@ -472,6 +480,145 @@ abstract class DocumentNode {
   int get hashCode => 1;
 }
 
+/// A [DocumentNode] that supports editing.
+///
+/// The concept of "supports editing" refers to the ability to insert and/or delete content
+/// within the node. Typically, all nodes should implement editing, and should extend
+/// [EditableDocumentNode] instead of extending [DocumentNode]. The reason that [DocumentNode]
+/// exists without editing APIs is because some users might use `super_editor` only to
+/// render documents, rather than edit documents. In that case, there's no reason for users
+/// to implement editing capabilities for their custom nodes.
+@immutable
+abstract class EditableDocumentNode extends DocumentNode {
+  /// Serializes the content in this node to a `String` that can be combined
+  /// with other node `String`s and be sent to the IME for editing.
+  ///
+  /// For a `TextNode`, this value is typically just the text in the node.
+  /// For nodes with non-text content such as images and horizontal rules, a
+  /// more creative result is needed. Typically, non-text nodes choose to
+  /// represent each piece of their non-text content with a special character.
+  /// For example, the standard Super Editor `ImageNode` serializes itself
+  /// as "~". Similarly, the `AttachmentListNode`, which displays a list of
+  /// attachment thumbnails, serializes itself as a series of special characters,
+  /// e.g., "~~~~". From the IME's perspective, the user is typing and deleting
+  /// plain text. It's the job of each node to understand what it means to delete
+  /// one of these "~" characters.
+  String serializeForIme();
+
+  /// Given the [position] in this node, and assuming this node's IME serialization,
+  /// returns the IME text offset within this node's serialization that corresponds
+  /// to the given [position].
+  ///
+  /// Example:
+  ///  - Text node with content "abcdefg"
+  ///  - Text node position with offset `3`
+  ///  - The returned IME position is also `3`
+  ///
+  /// Example:
+  ///  - Image node
+  ///  - Image node position is on the downstream side
+  ///  - The returned IME position is `1`, pointing to "~|"
+  int nodePositionToImePosition(NodePosition position);
+
+  /// Converts the given [imePosition] within a serialized IME value into a [NodePosition] within
+  /// this node.
+  ///
+  /// IMEs only understand text, so an IME offset is a text offset within the IME.
+  /// The given [imePosition] is specifically a text offset within the value returned
+  /// by [serializeForIme]. This method is the inverse of [nodePositionToImePosition].
+  ///
+  /// The value of [expandedSelectionEdge] should be as follows:
+  ///  * This position is part of a collapsed selection -> `null`
+  ///  * This position is on the upstream edge of an expanded selection -> [TextAffinity.upstream]
+  ///  * This position is on the downstream edge of an expanded selection -> [TextAffinity.downstream]
+  NodePosition imePositionToNodePosition(int imePosition, [TextAffinity? expandedSelectionEdge]);
+
+  /// Returns `true` if this node can split itself at the given [position].
+  ///
+  /// It's expected that various nodes can't split at all, e.g., images and
+  /// horizontal rules. Those nodes should return `false`.
+  bool canSplitAt(NodePosition position);
+
+  /// Splits this node at the given [position] into two separate nodes.
+  ///
+  /// The [firstPart] retains the existing node's ID and the [secondPart] is given the [newId].
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode firstPart, DocumentNode secondPart) splitAt(nodePosition, {required String newId});
+
+  /// Returns `true` if this node can be combined with the [nodeBefore], by inserting
+  /// this node's content at the end of [nodeBefore].
+  bool canMergeWithEndOf(DocumentNode nodeBefore);
+
+  /// Returns a new [mergedNode] which starts with the content in [nodeBefore] and ends
+  /// with the content in this node, as well as a new [mergedNodePosition] which sits in
+  /// the new [mergedNode] at the location where the two nodes were merged together.
+  (DocumentNode mergedNode, NodePosition mergedNodePosition) mergeWithEndOf(DocumentNode nodeBefore);
+
+  /// Returns `true` if the given [nodeAfter] can be merged with this node, by inserting
+  /// the content in [nodeAfter] at the end of this node.
+  bool canMergeWithStartOf(DocumentNode nodeAfter);
+
+  /// Returns a new [mergedNode] which starts with the content in this node and ends
+  /// with the content in [nodeAfter], as well as a new [mergedNodePosition] which sits in
+  /// the new [mergedNode] at the location where the two nodes were merged together.
+  (DocumentNode mergedNode, NodePosition mergedNodePosition) mergeWithStartOf(DocumentNode nodeAfter);
+
+  /// Deletes content in this node from the start up to the given [position] and returns
+  /// a new node with that content, along with a [newPosition] that's a legal replacement
+  /// for the given [position] after the deletion.
+  ///
+  /// New position examples:
+  ///  * Deleting from the start in "Hello |World" would result in "|World" so
+  ///    the [newPosition] would be a `TextNodePosition` with offset zero.
+  ///  * Deleting the last attachment in an attachment list should convert the
+  ///    attachment list into a paragraph. So, in this case, the incoming position
+  ///    is of type `AttachmentListNodePosition` but the [newPosition] would be
+  ///    of type `TextNodePosition`.
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteFromStartToPosition(NodePosition position);
+
+  /// Deletes content in this node from the given [position] to the end of the node and returns
+  /// a new node with that content, along with a [newPosition] that's a legal replacement
+  /// for the given [position] after the deletion.
+  ///
+  /// New position examples:
+  ///  * Deleting the last attachment in an attachment list should convert the
+  ///    attachment list into a paragraph. So, in this case, the incoming position
+  ///    is of type `AttachmentListNodePosition` but the [newPosition] would be
+  ///    of type `TextNodePosition`.
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteFromPositionToEnd(NodePosition position);
+
+  /// Deletes the content between [base] and [extent] within this node, returning a new
+  /// node with that content, and a collapsed [newPosition] where the selection used to be.
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition) deleteSelection(NodePosition base, NodePosition extent);
+
+  /// Deletes one unit of content in the upstream direction from the given [position], returning
+  /// a copy of this node with the deleted content, and the updated position after the deletion.
+  ///
+  /// If there's no content upstream from [position] in this node, this method returns `null`.
+  ///
+  /// Deleting the upstream content might result in a completely different node. For example,
+  /// deleting the last attachment in a list of attachments will cause the attachment list node
+  /// to be replaced by a paragraph node, and the new position will be a text node position. Callers
+  /// must handle this possibility.
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition)? deleteUpstream(NodePosition position);
+
+  /// Deletes one unit of content in the downstream direction from the given [position], returning
+  /// a copy of this node with the deleted content, and the updated position after the deletion.
+  ///
+  /// If there's no content downstream from [position] in this node, this method returns `null`.
+  ///
+  /// Deleting the downstream content might result in a completely different node. For example,
+  /// deleting the last attachment in a list of attachments will cause the attachment list node
+  /// to be replaced by a paragraph node, and the new position will be a text node position. Callers
+  /// must handle this possibility.
+  // TODO: Change DocumentNode to EditableDocumentNode when TextNode implements this.
+  (DocumentNode, NodePosition newPosition)? deleteDownstream(NodePosition position);
+}
+
 extension InspectNodeAffinity on DocumentNode {
   /// Returns the affinity direction implied by the given [base] and [extent].
   TextAffinity getAffinityBetween({
@@ -482,9 +629,10 @@ extension InspectNodeAffinity on DocumentNode {
   }
 }
 
-/// Marker interface for a selection within a [DocumentNode].
+/// Interface for a selection within a [DocumentNode].
 abstract class NodeSelection {
-  // marker interface
+  NodePosition get base;
+  NodePosition get extent;
 }
 
 /// A logical position within a [DocumentNode], e.g., a [TextNodePosition]

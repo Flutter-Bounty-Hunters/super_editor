@@ -585,11 +585,28 @@ class TextDeltasDocumentEditor {
       // that there's more content before this node. Instruct the editor
       // to run a delete action upstream, which will take the desired
       // "backspace" behavior at the start of this node.
-      editor.execute([
-        DeleteUpstreamAtBeginningOfNodeRequest(
-          document.getNodeById(selection.value!.extent.nodeId)!,
-        ),
-      ]);
+
+      final node = editor.document.getNodeById(selection.value!.extent.nodeId);
+
+      // Before adding `AttachmentListNode` and `EditableDocumentNode` we were
+      // running the explicit "delete upstream at beginning of node" request.
+      // To prevent breaking those, we only run the generic "delete upstream
+      // request" when editing an `EditableDocumentNode`.
+      // TODO: Convert the other nodes to `EditableDocumentNode` and then
+      //       get rid of the need for an explicit "delete upstream at beginning
+      //       of node" request.
+      if (node is EditableDocumentNode) {
+        editor.execute([
+          const DeleteUpstreamRequest(),
+        ]);
+      } else {
+        editor.execute([
+          DeleteUpstreamAtBeginningOfNodeRequest(
+            document.getNodeById(selection.value!.extent.nodeId)!,
+          ),
+        ]);
+      }
+
       return;
     }
 
