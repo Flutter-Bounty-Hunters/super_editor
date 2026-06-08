@@ -266,6 +266,21 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
   }
 
   @override
+  CaretGeometry getCaretForPosition(DocumentPosition position) {
+    final component = getComponentByNodeId(position.nodeId);
+    if (component == null) {
+      throw Exception('Could not find any component for node position: $position');
+    }
+
+    final componentCaret = component.getCaretForPosition(position.nodePosition);
+
+    final componentBox = component.context.findRenderObject() as RenderBox;
+    final componentOffsetInDocument = componentBox.localToGlobal(Offset.zero, ancestor: boxContext.findRenderObject());
+
+    return componentCaret.translate(componentOffsetInDocument);
+  }
+
+  @override
   Rect? getRectForSelection(DocumentPosition base, DocumentPosition extent) {
     final baseComponent = getComponentByNodeId(base.nodeId);
     final extentComponent = getComponentByNodeId(extent.nodeId);

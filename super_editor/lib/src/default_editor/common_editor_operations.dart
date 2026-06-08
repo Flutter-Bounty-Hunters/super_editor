@@ -10,20 +10,19 @@ import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_layout.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/core/editor.dart';
+import 'package:super_editor/src/default_editor/attributions.dart';
 import 'package:super_editor/src/default_editor/box_component.dart';
 import 'package:super_editor/src/default_editor/default_document_editor_reactions.dart';
+import 'package:super_editor/src/default_editor/horizontal_rule.dart';
+import 'package:super_editor/src/default_editor/image.dart';
 import 'package:super_editor/src/default_editor/list_items.dart';
+import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
-import 'package:super_editor/src/infrastructure/_logging.dart';
-
-import 'package:super_editor/src/default_editor/attributions.dart';
-import 'package:super_editor/src/default_editor/horizontal_rule.dart';
-import 'package:super_editor/src/default_editor/image.dart';
-import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/text_tools.dart';
+import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Performs common, high-level editing and composition tasks
 /// with a simplified API.
@@ -929,18 +928,25 @@ class CommonEditorOperations {
       return true;
     }
 
-    if (composer.selection!.extent.nodePosition is UpstreamDownstreamNodePosition) {
+    final extent = composer.selection!.extent;
+    final extentNode = document.getNodeById(extent.nodeId);
+    if (extentNode is EditableDocumentNode) {
+      editor.execute([const DeleteDownstreamRequest()]);
+      return true;
+    }
+
+    if (extent.nodePosition is UpstreamDownstreamNodePosition) {
       final nodePosition = composer.selection!.extent.nodePosition as UpstreamDownstreamNodePosition;
       if (nodePosition.affinity == TextAffinity.upstream) {
         // The caret is sitting on the upstream edge of block-level content.
-        final nodeId = composer.selection!.extent.nodeId;
+        final nodeId = extent.nodeId;
 
         if (!document.getNodeById(nodeId)!.isDeletable) {
           // The node is not deletable. Fizzle.
           return false;
         }
 
-        //Delete the whole block by replacing it with an empty paragraph.
+        // Delete the whole block by replacing it with an empty paragraph.
         replaceBlockNodeWithEmptyParagraphAndCollapsedSelection(nodeId);
 
         return true;
@@ -953,11 +959,11 @@ class CommonEditorOperations {
       }
     }
 
-    if (composer.selection!.extent.nodePosition is TextNodePosition) {
-      final textPosition = composer.selection!.extent.nodePosition as TextNodePosition;
-      final text = (document.getNodeById(composer.selection!.extent.nodeId) as TextNode).text;
+    if (extent.nodePosition is TextNodePosition) {
+      final textPosition = extent.nodePosition as TextNodePosition;
+      final text = (document.getNodeById(extent.nodeId) as TextNode).text;
       if (textPosition.offset == text.length) {
-        final node = document.getNodeById(composer.selection!.extent.nodeId)!;
+        final node = document.getNodeById(extent.nodeId)!;
         final nodeAfter = document.getNodeAfterById(node.id);
 
         if (nodeAfter is TextNode) {
@@ -1123,10 +1129,15 @@ class CommonEditorOperations {
       return true;
     }
 
-    final node = document.getNodeById(composer.selection!.extent.nodeId)!;
+    final extent = composer.selection!.extent;
+    final extentNode = document.getNodeById(extent.nodeId)!;
+    if (extentNode is EditableDocumentNode) {
+      editor.execute([const DeleteUpstreamRequest()]);
+      return true;
+    }
 
     // If the caret is at the beginning of a list item, unindent the list item.
-    if (node is ListItemNode && (composer.selection!.extent.nodePosition as TextNodePosition).offset == 0) {
+    if (extentNode is ListItemNode && (composer.selection!.extent.nodePosition as TextNodePosition).offset == 0) {
       return unindentListItem();
     }
 
@@ -1151,7 +1162,7 @@ class CommonEditorOperations {
         //  * If the node above is an empty paragraph, delete it.
         //  * If the node above is non-selectable, delete it.
         //  * Otherwise, move the caret up to the node above.
-        final nodeBefore = document.getNodeBeforeById(node.id);
+        final nodeBefore = document.getNodeBeforeById(extentNode.id);
         if (nodeBefore == null) {
           return false;
         }
@@ -1178,7 +1189,7 @@ class CommonEditorOperations {
     if (composer.selection!.extent.nodePosition is TextNodePosition) {
       final textPosition = composer.selection!.extent.nodePosition as TextNodePosition;
       if (textPosition.offset == 0) {
-        final nodeBefore = document.getNodeBeforeById(node.id);
+        final nodeBefore = document.getNodeBeforeById(extentNode.id);
         if (nodeBefore == null) {
           return false;
         }
@@ -1195,13 +1206,13 @@ class CommonEditorOperations {
           // The node/component above is not selectable. Delete it.
           deleteNonSelectedNode(nodeBefore);
           return true;
-        } else if ((node as TextNode).text.isEmpty) {
+        } else if ((extentNode as TextNode).text.isEmpty) {
           // The caret is at the beginning of an empty TextNode and the preceding
           // node is not a TextNode. Delete the current TextNode and move the
           // selection up to the preceding node if exist.
           if (moveSelectionToEndOfPrecedingNode()) {
             editor.execute([
-              DeleteNodeRequest(nodeId: node.id),
+              DeleteNodeRequest(nodeId: extentNode.id),
             ]);
           }
           return true;
@@ -1485,7 +1496,8 @@ class CommonEditorOperations {
     DocumentPosition newSelectionPosition;
 
     if (topPosition.nodeId != bottomPosition.nodeId) {
-      if (topNodePosition == topNode.beginningPosition && bottomNodePosition == bottomNode.endPosition) {
+      if (topNodePosition.isEquivalentTo(topNode.beginningPosition) &&
+          bottomNodePosition.isEquivalentTo(bottomNode.endPosition)) {
         // All deletable nodes in the selection will be deleted. Assume that one of the
         // nodes will be retained and converted into a paragraph, if it's not
         // already a paragraph.
@@ -1528,15 +1540,20 @@ class CommonEditorOperations {
         newSelectionPosition = selectionAffinity == TextAffinity.downstream ? selection.base : selection.extent;
       }
     } else {
-      // Selection is within a single node.
-      //
-      // If it's an upstream/downstream selection node, then the whole node
-      // is selected, and it will be replaced by a Paragraph Node.
-      //
-      // Otherwise, it must be a TextNode, in which case we need to figure
-      // out which DocumentPosition contains the earlier TextNodePosition.
-      if (basePosition.nodePosition is UpstreamDownstreamNodePosition) {
-        // Assume that the node was replace with an empty paragraph.
+      // Selection is within a single node. The final caret location will be
+      // at the upstream edge of the selection.
+      if (baseNode is EditableDocumentNode) {
+        final upstreamPosition = extentNode.selectUpstreamPosition(
+          basePosition.nodePosition,
+          extentPosition.nodePosition,
+        );
+
+        newSelectionPosition = DocumentPosition(
+          nodeId: baseNode.id,
+          nodePosition: upstreamPosition,
+        );
+      } else if (basePosition.nodePosition is UpstreamDownstreamNodePosition) {
+        // Assume that the node was replaced with an empty paragraph.
         newSelectionPosition = DocumentPosition(
           nodeId: baseNode.id,
           nodePosition: const TextNodePosition(offset: 0),
@@ -1697,7 +1714,7 @@ class CommonEditorOperations {
       // and then insert the new text.
       editorOpsLog.fine("The selection is expanded. Deleting the selection before inserting text.");
 
-      // As we are replacing text by deleting the selection and then inserting the new text,
+      // We are replacing text by deleting the selection and then inserting the new text,
       // we need to store the current attributions.
       // This is required as deleting text can clear the composer current attributions.
       // Without this, the new text doesn't preserve the attributions of the replaced text.
@@ -1712,8 +1729,8 @@ class CommonEditorOperations {
     }
 
     final extentNodePosition = composer.selection!.extent.nodePosition;
-    if (extentNodePosition is UpstreamDownstreamNodePosition) {
-      editorOpsLog.fine("The selected position is an UpstreamDownstreamPosition. Inserting new paragraph first.");
+    if (extentNodePosition is! TextNode) {
+      editorOpsLog.fine("The selected position is not a text position. Inserting new paragraph first.");
       insertBlockLevelNewline();
     }
 
@@ -1764,8 +1781,8 @@ class CommonEditorOperations {
     }
 
     final extentNodePosition = composer.selection!.extent.nodePosition;
-    if (extentNodePosition is UpstreamDownstreamNodePosition) {
-      editorOpsLog.fine("The selected position is an UpstreamDownstreamPosition. Inserting new paragraph first.");
+    if (extentNodePosition is! TextNodePosition) {
+      editorOpsLog.fine("The selected position is not a text position. Inserting new paragraph first.");
       editor.execute([InsertNewlineAtCaretRequest()]);
     }
 
@@ -2211,7 +2228,7 @@ class CommonEditorOperations {
       return false;
     }
 
-    final newNode = ParagraphNode(id: nodeId, metadata: {'blockType': blockquoteAttribution}, text: text);
+    final newNode = ParagraphNode(id: nodeId, metadata: const {'blockType': blockquoteAttribution}, text: text);
 
     editor.execute([
       ReplaceNodeRequest(existingNodeId: node.id, newNode: newNode),
@@ -2603,6 +2620,228 @@ class PasteEditorCommand extends EditCommand {
         text: pastedLine,
       ),
     );
+  }
+}
+
+class DeleteUpstreamRequest implements EditRequest {
+  const DeleteUpstreamRequest();
+}
+
+class DeleteUpstreamCommand extends EditCommand {
+  const DeleteUpstreamCommand();
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final document = context.document;
+    final composer = context.find<MutableDocumentComposer>(Editor.composerKey);
+    final selection = composer.selection;
+
+    if (selection == null) {
+      throw Exception("Tried to delete upstream character but there's no selection.");
+    }
+    if (!selection.isCollapsed) {
+      throw Exception("Tried to delete upstream character but the selection isn't collapsed.");
+    }
+
+    final nodeWithCaret = document.getNode(selection.extent);
+    // TODO: Remove TextNode special case when TextNode implements EditableDocumentNode.
+    if (nodeWithCaret is TextNode) {
+      const DeleteUpstreamCharacterCommand().execute(context, executor);
+      return;
+    }
+
+    if (nodeWithCaret is! EditableDocumentNode) {
+      throw Exception("Tried to delete upstream on a node that isn't an EditableDocumentNode: $nodeWithCaret");
+    }
+
+    final updatedNodeAndPosition = nodeWithCaret.deleteUpstream(selection.extent.nodePosition);
+    if (updatedNodeAndPosition == null) {
+      // There was no upstream content within the node to delete. Try to merge
+      // this node with the node above it.
+      final nodeBefore = document.getNodeBeforeById(nodeWithCaret.id);
+      if (nodeBefore == null) {
+        // The caret is at the beginning of the document. Nothing we can do.
+        return;
+      }
+
+      if (!nodeWithCaret.canMergeWithEndOf(nodeBefore)) {
+        // We can't merge with the node before.
+
+        // If the node above is an empty paragraph, delete the empty paragraph.
+        if (nodeBefore is ParagraphNode && nodeBefore.text.isEmpty) {
+          executor.executeCommand(DeleteNodeCommand(nodeId: nodeBefore.id));
+          return;
+        }
+
+        // The node above isn't an empty paragraph, so we can't delete it.
+        // As a reasonable middle-ground action, move the caret to the end
+        // of the node above.
+        executor
+          ..executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(nodeId: nodeBefore.id, nodePosition: nodeBefore.endPosition),
+              ),
+              SelectionChangeType.pushCaret,
+              SelectionReason.userInteraction,
+            ),
+          )
+          ..executeCommand(ChangeComposingRegionCommand(null));
+        return;
+      }
+
+      // We can merge with the node above. Do it.
+      final (mergedNode, mergedNodePosition) = nodeWithCaret.mergeWithEndOf(nodeBefore);
+
+      executor
+        ..executeCommand(DeleteNodeCommand(nodeId: nodeWithCaret.id))
+        ..executeCommand(
+          ReplaceNodeCommand(existingNodeId: nodeBefore.id, newNode: mergedNode),
+        )
+        ..executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(nodeId: nodeBefore.id, nodePosition: mergedNodePosition),
+            ),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        )
+        ..executeCommand(ChangeComposingRegionCommand(null));
+
+      return;
+    }
+
+    // There is upstream content to delete. Delete it.
+    final updatedNode = updatedNodeAndPosition.$1;
+    final newCaretPosition = updatedNodeAndPosition.$2;
+
+    executor
+      ..executeCommand(
+        ReplaceNodeCommand(existingNodeId: nodeWithCaret.id, newNode: updatedNode),
+      )
+      ..executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(
+            position: selection.extent.copyWith(nodePosition: newCaretPosition),
+          ),
+          SelectionChangeType.deleteContent,
+          SelectionReason.userInteraction,
+        ),
+      )
+      ..executeCommand(ChangeComposingRegionCommand(null));
+  }
+}
+
+class DeleteDownstreamRequest implements EditRequest {
+  const DeleteDownstreamRequest();
+}
+
+class DeleteDownstreamCommand extends EditCommand {
+  const DeleteDownstreamCommand();
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final document = context.document;
+    final composer = context.find<MutableDocumentComposer>(Editor.composerKey);
+    final selection = composer.selection;
+
+    if (selection == null) {
+      throw Exception("Tried to delete upstream character but there's no selection.");
+    }
+    if (!selection.isCollapsed) {
+      throw Exception("Tried to delete upstream character but the selection isn't collapsed.");
+    }
+
+    final nodeWithCaret = document.getNode(selection.extent);
+    // TODO: Remove TextNode special case when TextNode implements EditableDocumentNode.
+    if (nodeWithCaret is TextNode) {
+      const DeleteDownstreamCharacterCommand().execute(context, executor);
+      return;
+    }
+
+    if (nodeWithCaret is! EditableDocumentNode) {
+      throw Exception("Tried to delete upstream on a node that isn't an EditableDocumentNode: $nodeWithCaret");
+    }
+
+    final updatedNodeAndPosition = nodeWithCaret.deleteDownstream(selection.extent.nodePosition);
+    if (updatedNodeAndPosition == null) {
+      // There was no downstream content within the node to delete.
+      final nodeAfter = document.getNodeAfterById(nodeWithCaret.id);
+      if (nodeAfter == null) {
+        // The caret is at the end of the document. Nothing we can do.
+        return;
+      }
+
+      if (!nodeWithCaret.canMergeWithStartOf(nodeAfter)) {
+        // We can't merge with the node after.
+
+        // If the node after this one is an empty paragraph, delete that node.
+        if (nodeAfter is ParagraphNode && nodeAfter.text.isEmpty) {
+          executor.executeCommand(DeleteNodeCommand(nodeId: nodeAfter.id));
+          return;
+        }
+
+        // We couldn't delete the node after this one. As a reasonable middle-ground
+        // action, move the caret to the beginning of the node below.
+        executor
+          ..executeCommand(
+            ChangeSelectionCommand(
+              DocumentSelection.collapsed(
+                position: DocumentPosition(nodeId: nodeAfter.id, nodePosition: nodeAfter.beginningPosition),
+              ),
+              SelectionChangeType.pushCaret,
+              SelectionReason.userInteraction,
+            ),
+          )
+          ..executeCommand(ChangeComposingRegionCommand(null));
+        return;
+      }
+
+      // We can merge with the node below. Do it.
+      final (mergedNode, mergedNodePosition) = nodeWithCaret.mergeWithStartOf(nodeAfter);
+
+      executor
+        ..executeCommand(DeleteNodeCommand(nodeId: nodeAfter.id))
+        ..executeCommand(
+          ReplaceNodeCommand(existingNodeId: nodeWithCaret.id, newNode: mergedNode),
+        )
+        ..executeCommand(
+          ChangeSelectionCommand(
+            DocumentSelection.collapsed(
+              position: DocumentPosition(nodeId: nodeWithCaret.id, nodePosition: mergedNodePosition),
+            ),
+            SelectionChangeType.deleteContent,
+            SelectionReason.userInteraction,
+          ),
+        )
+        ..executeCommand(ChangeComposingRegionCommand(null));
+
+      return;
+    }
+
+    // There is downstream content to delete. Delete it.
+    final updatedNode = updatedNodeAndPosition.$1;
+    final newCaretPosition = updatedNodeAndPosition.$2;
+
+    document.replaceNodeById(nodeWithCaret.id, updatedNode);
+    executor.logChanges([
+      DocumentEdit(
+        NodeChangeEvent(nodeWithCaret.id),
+      )
+    ]);
+
+    executor
+      ..executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(
+            position: selection.extent.copyWith(nodePosition: newCaretPosition),
+          ),
+          SelectionChangeType.deleteContent,
+          SelectionReason.userInteraction,
+        ),
+      )
+      ..executeCommand(ChangeComposingRegionCommand(null));
   }
 }
 
