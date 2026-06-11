@@ -1,7 +1,5 @@
 import 'dart:math';
-import 'dart:ui';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:text_table/text_table.dart';
@@ -22,7 +20,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               )
             ],
@@ -48,7 +46,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -56,7 +54,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -87,7 +85,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -95,7 +93,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               )
             ],
@@ -132,7 +130,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -140,7 +138,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -148,7 +146,7 @@ void main() {
                 text: AttributedText('header 3'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -158,14 +156,14 @@ void main() {
                 id: '2-2',
                 text: AttributedText('data 2'),
                 metadata: const {
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
                 id: '2-3',
                 text: AttributedText('data 3'),
                 metadata: const {
-                  TextNodeMetadata.textAlign: TextAlign.right,
+                  TextNodeMetadata.textAlign: 'right',
                 },
               ),
             ],
@@ -206,7 +204,7 @@ void main() {
                 ),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               )
             ],
@@ -250,7 +248,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -258,7 +256,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -283,7 +281,7 @@ void main() {
                 text: AttributedText('header|1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -327,7 +325,7 @@ void main() {
                 ),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -353,7 +351,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -361,7 +359,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -390,7 +388,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -398,7 +396,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -427,7 +425,7 @@ void main() {
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -435,7 +433,7 @@ void main() {
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -464,7 +462,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -472,7 +470,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -501,7 +499,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -509,7 +507,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -538,7 +536,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -546,7 +544,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -575,7 +573,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -583,7 +581,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -591,7 +589,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 3'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -622,7 +620,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -630,7 +628,7 @@ data 1 | data 2 ''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],
@@ -662,7 +660,7 @@ paragraph''',
                 text: AttributedText('header 1'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
               TextNode(
@@ -670,7 +668,7 @@ paragraph''',
                 text: AttributedText('header 2'),
                 metadata: const {
                   NodeMetadata.blockType: tableHeaderAttribution,
-                  TextNodeMetadata.textAlign: TextAlign.center,
+                  TextNodeMetadata.textAlign: 'center',
                 },
               ),
             ],

@@ -298,8 +298,9 @@ class TextBlockDeltaSerializer implements DeltaSerializer {
     final blockAttributes = <String, dynamic>{};
 
     // Add all the block-level formats that aren't mutually exclusive.
-    if (textBlock.metadata["textAlign"] != null) {
-      blockAttributes["align"] = textBlock.metadata["textAlign"];
+    final textAlign = textBlock.metadata["textAlign"];
+    if (textAlign != null && textAlign != "left") {
+      blockAttributes["align"] = textAlign;
     }
 
     final blockType = textBlock.metadata["blockType"] as Attribution?;
