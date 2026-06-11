@@ -194,12 +194,10 @@ void main() {
                 ParagraphNode(
                   id: editor.document.getNodeAt(1)!.id,
                   text: AttributedText("Two"),
-                  metadata: {'textAlign': null},
                 ),
                 ParagraphNode(
                   id: editor.document.getNodeAt(2)!.id,
                   text: AttributedText("Three"),
-                  metadata: {'textAlign': null},
                 ),
               ],
             ),
@@ -253,7 +251,6 @@ void main() {
                 ParagraphNode(
                   id: editor.document.getNodeAt(1)!.id,
                   text: AttributedText("Two"),
-                  metadata: {'textAlign': null},
                 ),
                 ParagraphNode(
                   id: editor.document.getNodeAt(2)!.id,
