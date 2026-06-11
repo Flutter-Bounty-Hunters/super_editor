@@ -1689,7 +1689,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('---:');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), "left");
+        expect(paragraph.getMetadataValue('textAlign'), null);
         expect(paragraph.text.toPlainText(), '---:');
       });
 
@@ -1697,7 +1697,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('---:\n - - -');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), "left");
+        expect(paragraph.getMetadataValue('textAlign'), null);
         expect(paragraph.text.toPlainText(), '---:');
 
         // Ensure the horizontal rule is parsed.
@@ -1708,7 +1708,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument(':---\nParagraph1', syntax: MarkdownSyntax.normal);
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), "left");
+        expect(paragraph.getMetadataValue('textAlign'), null);
         expect(paragraph.text.toPlainText(), ':---\nParagraph1');
       });
 

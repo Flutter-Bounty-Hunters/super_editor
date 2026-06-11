@@ -15,8 +15,13 @@ import 'package:super_editor/src/core/edit_context.dart';
 import 'package:super_editor/src/core/editor.dart';
 import 'package:super_editor/src/core/styles.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
+import 'package:super_editor/src/default_editor/layout_single_column/layout_single_column.dart';
+import 'package:super_editor/src/default_editor/multi_node_editing.dart';
+import 'package:super_editor/src/default_editor/paragraph.dart';
+import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/default_editor/text_ai.dart';
+import 'package:super_editor/src/default_editor/text_tools.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 import 'package:super_editor/src/infrastructure/composable_text.dart';
@@ -26,30 +31,13 @@ import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/strings.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
-import 'layout_single_column/layout_single_column.dart';
-import 'multi_node_editing.dart';
-import 'paragraph.dart';
-import 'selection_upstream_downstream.dart';
-import 'text_tools.dart';
-
 @immutable
 class TextNode extends DocumentNode {
   TextNode({
     required this.id,
     required this.text,
     super.metadata,
-  }) {
-    if (metadata['textAlign'] == null) {
-      initAddToMetadata({
-        'textAlign': 'left',
-      });
-    } else {
-      assert(
-        metadata['textAlign'] is String?,
-        'Expected "textAlign" metadata to be of type String, but got: ${metadata['textAlign']}',
-      );
-    }
-  }
+  });
 
   @override
   final String id;
