@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:markdown/markdown.dart' as md;
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/editor.dart';
@@ -55,7 +53,7 @@ extension ElementTableExtension on md.Element {
           ),
           metadata: const {
             NodeMetadata.blockType: tableHeaderAttribution,
-            TextNodeMetadata.textAlign: TextAlign.center,
+            TextNodeMetadata.textAlign: 'center',
           },
         ),
       );
@@ -81,17 +79,17 @@ extension ElementTableExtension on md.Element {
             throw Exception('Table body cells must be <td> elements');
           }
           final textAlign = switch ((headerRow.children![i] as md.Element).attributes['align']) {
-            'left' => TextAlign.left,
-            'center' => TextAlign.center,
-            'right' => TextAlign.right,
-            _ => TextAlign.left,
+            'left' => 'left',
+            'center' => 'center',
+            'right' => 'right',
+            _ => 'left',
           };
 
           row.add(TextNode(
             id: Editor.createNodeId(),
             text: parseInlineMarkdown(cellElement.textContent),
             metadata: {
-              if (textAlign != TextAlign.left) TextNodeMetadata.textAlign: textAlign,
+              if (textAlign != 'left') TextNodeMetadata.textAlign: textAlign,
             },
           ));
         }
