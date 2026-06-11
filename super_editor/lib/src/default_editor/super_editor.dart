@@ -1411,7 +1411,7 @@ class DefaultCaretOverlayBuilder implements SuperEditorLayerBuilder {
     this.platformOverride,
     this.displayOnAllPlatforms = false,
     this.displayCaretWithExpandedSelection = true,
-    this.blinkTimingMode = BlinkTimingMode.ticker,
+    this.blinkTimingMode = BlinkTimingMode.timer,
   });
 
   /// Styles applied to the caret that's painted by this caret overlay.
