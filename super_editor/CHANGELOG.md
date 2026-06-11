@@ -1,3 +1,13 @@
+## [0.3.0-dev.52]
+### June 10, 2026
+* ADJUSTMENT: Upgraded `attributed_text` to `0.4.6`.
+* FEATURE: Add `AttachmentListNode`, designed for chat UX.
+* ADJUSTMENT: Introduce `EditableDocumentNode` as an abstraction for IME comms and content 
+  editing for any node type.
+* FIX: Don't run desktop caret ticker or timer when running on mobile.
+* ADJUSTMENT: Adjust Markdown image parsing to also handle syntax where image caption appears
+  on the line directly above image.
+
 ## [0.3.0-dev.51]
 ### Mar 27, 2026
 * ADJUSTMENT: Upgraded `super_keyboard` dependency to `0.4.0`.
