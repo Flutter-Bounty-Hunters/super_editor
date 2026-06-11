@@ -19,8 +19,8 @@ dependencies:
   super_keyboard: ^0.4.0
 
 #dependency_overrides:
-# super_editor:
-#   path: ../super_editor
+#  super_editor:
+#    path: ../super_editor
 #  super_editor_markdown:
 #    path: ../super_editor_markdown
 #  super_keyboard:
