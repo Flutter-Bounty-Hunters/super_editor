@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_runners/flutter_test_runners.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:super_editor/super_editor_test.dart';
-import 'package:super_text_layout/super_text_layout.dart';
 
 void main() {
   group("SuperEditor", () {
@@ -371,6 +370,36 @@ void main() {
 
       // Ensure that the caret is no longer visible.
       expect(SuperEditorInspector.isCaretVisible(), false);
+    });
+
+    testWidgetsOnMobile("does not try to blink desktop caret on mobile", (tester) async {
+      // Configure BlinkController to animate, otherwise it won't blink.
+      BlinkController.indeterminateAnimationsEnabled = true;
+      addTearDown(() => BlinkController.indeterminateAnimationsEnabled = false);
+
+      await tester //
+          .createDocument()
+          .withSingleEmptyParagraph()
+          .pump();
+
+      // Tap to place the caret at the beginning of the document.
+      // We don't use the robot method here because it calls pumpAndSettle,
+      // which causes a pumpAndSettle timeout, because we are constantly
+      // scheduling frames.
+      await tester.tap(find.byType(SuperEditor));
+      await tester.pump();
+
+      // Ensure mobile caret is visible.
+      expect(SuperEditorInspector.isCaretVisible(), true);
+
+      // Ensure desktop caret is not trying to blink. This check is about the Ticker/Timer,
+      // not the visual caret.
+      final desktopCaretState =
+          (find.byType(CaretDocumentOverlay).evaluate().first as StatefulElement).state as CaretDocumentOverlayState;
+      expect(desktopCaretState.isCaretTicking, isFalse);
+
+      // Settle so that the gesture recognizer from the tap finishes.
+      await tester.pumpAndSettle();
     });
   });
 }
