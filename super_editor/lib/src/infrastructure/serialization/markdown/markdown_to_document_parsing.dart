@@ -108,7 +108,9 @@ MutableDocument deserializeMarkdownToDocument(
   final hangingEmptyLines = markdownLines.reversed.takeWhile((line) => _blankLinePattern.hasMatch(line.content));
   if (hangingEmptyLines.isNotEmpty && documentNodes.lastOrNull is ListItemNode) {
     for (var i = 0; i < hangingEmptyLines.length ~/ 2; i++) {
-      documentNodes.add(ParagraphNode(id: Editor.createNodeId(), text: AttributedText()));
+      documentNodes.add(
+        ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
+      );
     }
   }
 
@@ -346,7 +348,8 @@ class _MarkdownToDocument implements md.NodeVisitor {
         text: _parseInlineText(element.textContent),
         metadata: {
           'blockType': headerAttribution,
-          'textAlign': element.attributes['textAlign'] ?? 'left',
+          if (element.attributes['textAlign'] != null) //
+            'textAlign': element.attributes['textAlign'],
         },
       ),
     );
@@ -358,7 +361,8 @@ class _MarkdownToDocument implements md.NodeVisitor {
         id: Editor.createNodeId(),
         text: attributedText,
         metadata: {
-          'textAlign': attributes['textAlign'] ?? 'left',
+          if (attributes['textAlign'] != null) //
+            'textAlign': attributes['textAlign'],
         },
       ),
     );
