@@ -82,7 +82,7 @@ void main() {
         // Paragraph - left aligned.
         expect(node, isA<ParagraphNode>());
         expect((node as TextNode).text.toPlainText(), "Left aligned");
-        expect(node.metadata["textAlign"], isNull);
+        expect(node.metadata["textAlign"], "left");
 
         nodes.moveNext();
         node = nodes.current;

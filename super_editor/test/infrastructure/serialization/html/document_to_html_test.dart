@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
 
@@ -665,12 +663,12 @@ void main() {
                   TextNode(
                     id: "1.1.1",
                     text: AttributedText("Value 1.1"),
-                    metadata: const {"textAlign": TextAlign.right},
+                    metadata: const {"textAlign": "right"},
                   ),
                   TextNode(
                     id: "1.1.2",
                     text: AttributedText("Value 1.2"),
-                    metadata: const {"textAlign": TextAlign.center},
+                    metadata: const {"textAlign": "center"},
                   ),
                 ],
               ],

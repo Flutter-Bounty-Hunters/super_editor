@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/default_editor/selection_upstream_downstream.dart';
 import 'package:super_editor/src/default_editor/tables/table_block.dart';
@@ -111,15 +110,15 @@ extension TableBlockNodeToHtml on TableBlockNode {
 
   String _getTextAlignStyle(TextNode cell) {
     final textAlign = cell.getMetadataValue('textAlign');
-    if (textAlign == TextAlign.left) {
+    final textAlignString = switch (textAlign) {
+      'center' => 'center',
+      'right' => 'right',
+      _ => 'left',
+    };
+    if (textAlign == 'left') {
       // Default alignment is left, so we don't need to specify it.
       return '';
     }
-    final textAlignString = switch (textAlign) {
-      TextAlign.center => 'center',
-      TextAlign.right => 'right',
-      _ => 'left',
-    };
     return textAlign != null ? ' style="text-align:$textAlignString"' : '';
   }
 }

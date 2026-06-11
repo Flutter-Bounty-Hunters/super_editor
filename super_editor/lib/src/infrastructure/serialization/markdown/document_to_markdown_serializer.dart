@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/foundation.dart';
-import 'package:markdown/markdown.dart' hide Document;
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/document_selection.dart';
 import 'package:super_editor/src/default_editor/attributions.dart';
@@ -14,7 +13,6 @@ import 'package:super_editor/src/default_editor/selection_upstream_downstream.da
 import 'package:super_editor/src/default_editor/tables/table_block.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
-
 import 'package:super_editor/src/infrastructure/serialization/markdown/super_editor_syntax.dart';
 
 /// Serializes the given [doc] to Markdown text.
