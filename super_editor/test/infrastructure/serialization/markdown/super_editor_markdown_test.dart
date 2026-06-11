@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:super_editor/src/test/super_editor_test/supereditor_test_tools.dart';
 import 'package:super_editor/super_editor.dart';
 
 void main() {
@@ -107,7 +108,7 @@ void main() {
             id: '1',
             text: AttributedText('Header1'),
             metadata: const {
-              'textAlign': 'left',
+              'textAlign': "left",
               'blockType': header1Attribution,
             },
           ),
@@ -126,7 +127,7 @@ void main() {
             id: '1',
             text: AttributedText('Header1'),
             metadata: const {
-              'textAlign': 'center',
+              'textAlign': "center",
               'blockType': header1Attribution,
             },
           ),
@@ -140,7 +141,7 @@ void main() {
             id: '1',
             text: AttributedText('Header1'),
             metadata: const {
-              'textAlign': 'right',
+              'textAlign': "right",
               'blockType': header1Attribution,
             },
           ),
@@ -154,7 +155,7 @@ void main() {
             id: '1',
             text: AttributedText('Header1'),
             metadata: const {
-              'textAlign': 'justify',
+              'textAlign': "justify",
               'blockType': header1Attribution,
             },
           ),
@@ -366,7 +367,7 @@ This is some code
             id: '1',
             text: AttributedText('Paragraph1'),
             metadata: const {
-              'textAlign': 'left',
+              'textAlign': "left",
             },
           ),
         ]);
@@ -385,7 +386,7 @@ This is some code
             id: '1',
             text: AttributedText('Paragraph1'),
             metadata: const {
-              'textAlign': 'center',
+              'textAlign': "center",
             },
           ),
         ]);
@@ -399,7 +400,7 @@ This is some code
             id: '1',
             text: AttributedText('Paragraph1'),
             metadata: const {
-              'textAlign': 'right',
+              'textAlign': "right",
             },
           ),
         ]);
@@ -413,7 +414,7 @@ This is some code
             id: '1',
             text: AttributedText('Paragraph1'),
             metadata: const {
-              'textAlign': 'justify',
+              'textAlign': "justify",
             },
           ),
         ]);
@@ -427,7 +428,7 @@ This is some code
             id: '1',
             text: AttributedText('Paragraph1'),
             metadata: const {
-              'textAlign': 'center',
+              'textAlign': "center",
             },
           ),
         ]);
@@ -781,22 +782,22 @@ with multiple lines
           ParagraphNode(
             id: Editor.createNodeId(),
             text: AttributedText('Example Doc With Left Alignment'),
-            metadata: const {'blockType': header1Attribution, 'textAlign': 'left'},
+            metadata: const {'blockType': header1Attribution, 'textAlign': "left"},
           ),
           ParagraphNode(
             id: Editor.createNodeId(),
             text: AttributedText('Example Doc With Center Alignment'),
-            metadata: const {'blockType': header1Attribution, 'textAlign': 'center'},
+            metadata: const {'blockType': header1Attribution, 'textAlign': "center"},
           ),
           ParagraphNode(
             id: Editor.createNodeId(),
             text: AttributedText('Example Doc With Right Alignment'),
-            metadata: const {'blockType': header1Attribution, 'textAlign': 'right'},
+            metadata: const {'blockType': header1Attribution, 'textAlign': "right"},
           ),
           ParagraphNode(
             id: Editor.createNodeId(),
             text: AttributedText('Example Doc With Justify Alignment'),
-            metadata: const {'blockType': header1Attribution, 'textAlign': 'justify'},
+            metadata: const {'blockType': header1Attribution, 'textAlign': "justify"},
           ),
           HorizontalRuleNode(id: Editor.createNodeId()),
           ParagraphNode(
@@ -915,7 +916,7 @@ with multiple lines
         final headerLeftAlignment1 = deserializeMarkdownToDocument(':---\n# Header 1');
         final header = headerLeftAlignment1.first as ParagraphNode;
         expect(header.getMetadataValue('blockType'), header1Attribution);
-        expect(header.getMetadataValue('textAlign'), 'left');
+        expect(header.getMetadataValue('textAlign'), "left");
         expect(header.text.toPlainText(), 'Header 1');
       });
 
@@ -923,7 +924,7 @@ with multiple lines
         final headerLeftAlignment1 = deserializeMarkdownToDocument(':---:\n# Header 1');
         final header = headerLeftAlignment1.first as ParagraphNode;
         expect(header.getMetadataValue('blockType'), header1Attribution);
-        expect(header.getMetadataValue('textAlign'), 'center');
+        expect(header.getMetadataValue('textAlign'), "center");
         expect(header.text.toPlainText(), 'Header 1');
       });
 
@@ -931,7 +932,7 @@ with multiple lines
         final headerLeftAlignment1 = deserializeMarkdownToDocument('---:\n# Header 1');
         final header = headerLeftAlignment1.first as ParagraphNode;
         expect(header.getMetadataValue('blockType'), header1Attribution);
-        expect(header.getMetadataValue('textAlign'), 'right');
+        expect(header.getMetadataValue('textAlign'), "right");
         expect(header.text.toPlainText(), 'Header 1');
       });
 
@@ -939,7 +940,7 @@ with multiple lines
         final headerLeftAlignment1 = deserializeMarkdownToDocument('-::-\n# Header 1');
         final header = headerLeftAlignment1.first as ParagraphNode;
         expect(header.getMetadataValue('blockType'), header1Attribution);
-        expect(header.getMetadataValue('textAlign'), 'justify');
+        expect(header.getMetadataValue('textAlign'), "justify");
         expect(header.text.toPlainText(), 'Header 1');
       });
 
@@ -1033,6 +1034,64 @@ This is some code
         expect(image.altText, 'Image alt text');
         expect(image.expectedBitmapSize?.width, isNull);
         expect(image.expectedBitmapSize?.height, isNull);
+      });
+
+      test('image with caption above', () {
+        final doc = deserializeMarkdownToDocument(
+          '''
+Document with image with caption.
+        
+A caption:
+![Image alt text](https://images.com/some/image.png)
+
+Paragraph after the captioned image.''',
+        );
+
+        expect(
+          doc,
+          documentEquivalentTo(
+            MutableDocument(nodes: [
+              ParagraphNode(id: "1", text: AttributedText("Document with image with caption.")),
+              ParagraphNode(id: "2", text: AttributedText("A caption:")),
+              ImageNode(id: "3", imageUrl: "https://images.com/some/image.png", altText: "Image alt text"),
+              ParagraphNode(id: "4", text: AttributedText("Paragraph after the captioned image.")),
+            ]),
+          ),
+        );
+      });
+
+      test('multiple images with captions above', () {
+        final doc = deserializeMarkdownToDocument(
+          '''
+Document with image with caption.
+        
+A caption:
+![Image 1](https://images.com/some/image1.png)
+
+B caption:
+![Image 2](https://images.com/some/image2.png)
+
+C caption:
+![Image 3](https://images.com/some/image3.png)
+
+Paragraph after the captioned imagea.''',
+        );
+
+        expect(
+          doc,
+          documentEquivalentTo(
+            MutableDocument(nodes: [
+              ParagraphNode(id: "1", text: AttributedText("Document with image with caption.")),
+              ParagraphNode(id: "2", text: AttributedText("A caption:")),
+              ImageNode(id: "3", imageUrl: "https://images.com/some/image1.png", altText: "Image 1"),
+              ParagraphNode(id: "4", text: AttributedText("B caption:")),
+              ImageNode(id: "5", imageUrl: "https://images.com/some/image2.png", altText: "Image 2"),
+              ParagraphNode(id: "6", text: AttributedText("C caption:")),
+              ImageNode(id: "7", imageUrl: "https://images.com/some/image3.png", altText: "Image 3"),
+              ParagraphNode(id: "8", text: AttributedText("Paragraph after the captioned imagea.")),
+            ]),
+          ),
+        );
       });
 
       test('single unstyled paragraph', () {
@@ -1529,19 +1588,19 @@ with multiple lines
 
         expect(document.getNodeAt(21)!, isA<ParagraphNode>());
         expect((document.getNodeAt(21)! as ParagraphNode).getMetadataValue('blockType'), header1Attribution);
-        expect((document.getNodeAt(21)! as ParagraphNode).getMetadataValue('textAlign'), 'left');
+        expect((document.getNodeAt(21)! as ParagraphNode).getMetadataValue('textAlign'), "left");
 
         expect(document.getNodeAt(22)!, isA<ParagraphNode>());
         expect((document.getNodeAt(22)! as ParagraphNode).getMetadataValue('blockType'), header1Attribution);
-        expect((document.getNodeAt(22)! as ParagraphNode).getMetadataValue('textAlign'), 'center');
+        expect((document.getNodeAt(22)! as ParagraphNode).getMetadataValue('textAlign'), "center");
 
         expect(document.getNodeAt(23)!, isA<ParagraphNode>());
         expect((document.getNodeAt(23)! as ParagraphNode).getMetadataValue('blockType'), header1Attribution);
-        expect((document.getNodeAt(23)! as ParagraphNode).getMetadataValue('textAlign'), 'right');
+        expect((document.getNodeAt(23)! as ParagraphNode).getMetadataValue('textAlign'), "right");
 
         expect(document.getNodeAt(24)!, isA<ParagraphNode>());
         expect((document.getNodeAt(24)! as ParagraphNode).getMetadataValue('blockType'), header1Attribution);
-        expect((document.getNodeAt(24)! as ParagraphNode).getMetadataValue('textAlign'), 'justify');
+        expect((document.getNodeAt(24)! as ParagraphNode).getMetadataValue('textAlign'), "justify");
 
         expect(document.getNodeAt(25)!, isA<ParagraphNode>());
       });
@@ -1598,7 +1657,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument(':---\nParagraph1');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), 'left');
+        expect(paragraph.getMetadataValue('textAlign'), "left");
         expect(paragraph.text.toPlainText(), 'Paragraph1');
       });
 
@@ -1606,7 +1665,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument(':---:\nParagraph1');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), 'center');
+        expect(paragraph.getMetadataValue('textAlign'), "center");
         expect(paragraph.text.toPlainText(), 'Paragraph1');
       });
 
@@ -1614,7 +1673,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('---:\nParagraph1');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), 'right');
+        expect(paragraph.getMetadataValue('textAlign'), "right");
         expect(paragraph.text.toPlainText(), 'Paragraph1');
       });
 
@@ -1622,7 +1681,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('-::-\nParagraph1');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), 'justify');
+        expect(paragraph.getMetadataValue('textAlign'), "justify");
         expect(paragraph.text.toPlainText(), 'Paragraph1');
       });
 
@@ -1630,7 +1689,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('---:');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), isNull);
+        expect(paragraph.getMetadataValue('textAlign'), "left");
         expect(paragraph.text.toPlainText(), '---:');
       });
 
@@ -1638,7 +1697,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument('---:\n - - -');
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), isNull);
+        expect(paragraph.getMetadataValue('textAlign'), "left");
         expect(paragraph.text.toPlainText(), '---:');
 
         // Ensure the horizontal rule is parsed.
@@ -1649,7 +1708,7 @@ with multiple lines
         final doc = deserializeMarkdownToDocument(':---\nParagraph1', syntax: MarkdownSyntax.normal);
 
         final paragraph = doc.first as ParagraphNode;
-        expect(paragraph.getMetadataValue('textAlign'), isNull);
+        expect(paragraph.getMetadataValue('textAlign'), "left");
         expect(paragraph.text.toPlainText(), ':---\nParagraph1');
       });
 
