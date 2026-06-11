@@ -49,7 +49,7 @@ class MarkdownTableComponentBuilder implements ComponentBuilder {
                 nodeId: cell.id,
                 createdAt: cell.metadata[NodeMetadata.createdAt],
                 text: cell.text,
-                textAlign: cell.getMetadataValue(TextNodeMetadata.textAlign) ?? TextAlign.left,
+                textAlign: _maybeParseTextAlign(cell.getMetadataValue(TextNodeMetadata.textAlign)) ?? TextAlign.left,
                 textStyleBuilder: noStyleBuilder,
                 padding: const EdgeInsets.all(8.0),
                 //       ^ Default padding, can be overridden through the stylesheet.
@@ -60,6 +60,16 @@ class MarkdownTableComponentBuilder implements ComponentBuilder {
       selectionColor: const Color(0x00000000),
       caretColor: const Color(0x00000000),
     );
+  }
+
+  TextAlign? _maybeParseTextAlign(String? textAlign) {
+    return switch (textAlign) {
+      'left' => TextAlign.left,
+      'center' => TextAlign.center,
+      'right' => TextAlign.right,
+      'justify' => TextAlign.justify,
+      _ => null,
+    };
   }
 
   @override
