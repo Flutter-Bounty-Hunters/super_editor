@@ -1074,7 +1074,7 @@ B caption:
 C caption:
 ![Image 3](https://images.com/some/image3.png)
 
-Paragraph after the captioned imagea.''',
+Paragraph after the captioned image.''',
         );
 
         expect(
@@ -1088,7 +1088,39 @@ Paragraph after the captioned imagea.''',
               ImageNode(id: "5", imageUrl: "https://images.com/some/image2.png", altText: "Image 2"),
               ParagraphNode(id: "6", text: AttributedText("C caption:")),
               ImageNode(id: "7", imageUrl: "https://images.com/some/image3.png", altText: "Image 3"),
-              ParagraphNode(id: "8", text: AttributedText("Paragraph after the captioned imagea.")),
+              ParagraphNode(id: "8", text: AttributedText("Paragraph after the captioned image.")),
+            ]),
+          ),
+        );
+      });
+
+      test('multiple images with captions above without empty lines between', () {
+        final doc = deserializeMarkdownToDocument(
+          '''
+Document with image with caption.
+        
+A caption:
+![Image 1](https://images.com/some/image1.png)
+B caption:
+![Image 2](https://images.com/some/image2.png)
+C caption:
+![Image 3](https://images.com/some/image3.png)
+
+Paragraph after the captioned image.''',
+        );
+
+        expect(
+          doc,
+          documentEquivalentTo(
+            MutableDocument(nodes: [
+              ParagraphNode(id: "1", text: AttributedText("Document with image with caption.")),
+              ParagraphNode(id: "2", text: AttributedText("A caption:")),
+              ImageNode(id: "3", imageUrl: "https://images.com/some/image1.png", altText: "Image 1"),
+              ParagraphNode(id: "4", text: AttributedText("B caption:")),
+              ImageNode(id: "5", imageUrl: "https://images.com/some/image2.png", altText: "Image 2"),
+              ParagraphNode(id: "6", text: AttributedText("C caption:")),
+              ImageNode(id: "7", imageUrl: "https://images.com/some/image3.png", altText: "Image 3"),
+              ParagraphNode(id: "8", text: AttributedText("Paragraph after the captioned image.")),
             ]),
           ),
         );
