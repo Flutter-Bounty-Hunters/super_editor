@@ -1,3 +1,7 @@
+## [0.1.21]
+### June, 2026
+* [FIX]: `BlinkController` correctly preserves and re-uses its `Ticker` after stopping and starting.
+
 ## [0.1.20]
 ### Feb, 2026
 * [FEATURE]: `SuperText` now supports `maxLines` and `overflow` effects. 
