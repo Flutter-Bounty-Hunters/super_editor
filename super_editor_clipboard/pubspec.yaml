@@ -15,7 +15,7 @@ dependencies:
   html2md: ^1.3.2
   logging: ^1.3.0
   super_clipboard: ^0.9.1
-  super_editor: ^0.3.0-dev.48
+  super_editor: ^0.3.0-dev.52
   super_keyboard: ^0.4.0
 
 dependency_overrides:
