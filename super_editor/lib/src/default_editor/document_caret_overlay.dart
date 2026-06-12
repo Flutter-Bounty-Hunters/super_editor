@@ -81,6 +81,17 @@ class CaretDocumentOverlayState extends DocumentLayoutLayerState<CaretDocumentOv
   void didUpdateWidget(CaretDocumentOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (widget.blinkTimingMode != oldWidget.blinkTimingMode) {
+      _blinkController.dispose();
+
+      switch (widget.blinkTimingMode) {
+        case BlinkTimingMode.ticker:
+          _blinkController = BlinkController(tickerProvider: this);
+        case BlinkTimingMode.timer:
+          _blinkController = BlinkController.withTimer();
+      }
+    }
+
     if (widget.composer != oldWidget.composer) {
       oldWidget.composer.selectionNotifier.removeListener(_onSelectionChange);
       widget.composer.selectionNotifier.addListener(_onSelectionChange);
