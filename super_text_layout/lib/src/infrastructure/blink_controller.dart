@@ -37,7 +37,13 @@ class BlinkController with ChangeNotifier {
   Ticker? _ticker;
   Duration _lastBlinkTime = Duration.zero;
 
+  @visibleForTesting
+  bool get isTicking => _ticker?.isTicking ?? false;
+
   Timer? _timer;
+
+  @visibleForTesting
+  bool get isTimerRunning => _timer?.isActive ?? false;
 
   final Duration _flashPeriod;
 
@@ -93,7 +99,6 @@ class BlinkController with ChangeNotifier {
     if (_ticker != null) {
       // We're using a Ticker to blink. Stop it.
       _ticker?.stop();
-      _ticker = null;
     } else {
       // We're using a Timer to blink. Stop it.
       _timer?.cancel();
