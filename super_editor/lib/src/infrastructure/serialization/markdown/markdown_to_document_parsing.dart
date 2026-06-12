@@ -211,29 +211,31 @@ class _MarkdownToDocument implements md.NodeVisitor {
         _addHeader(element, level: 6);
         break;
       case 'p':
-        final blockImage = _maybeParseBlockImage(element.textContent);
-        if (blockImage != null) {
-          _addImage(blockImage);
-        } else {
-          final captionAndImage = _maybeParseImageWithCaption(element.textContent);
-          if (captionAndImage != null) {
-            final captionText = parseInlineMarkdown(
-              captionAndImage.caption,
-              inlineMarkdownSyntaxes: inlineMarkdownSyntaxes,
-              inlineHtmlSyntaxes: inlineHtmlSyntaxes,
-              encodeHtml: encodeHtml,
-            );
-            _addParagraph(captionText, element.attributes);
-            _addImage(captionAndImage.image);
-          } else {
-            final attributedText = parseInlineMarkdown(
-              element.textContent,
-              inlineMarkdownSyntaxes: inlineMarkdownSyntaxes,
-              inlineHtmlSyntaxes: inlineHtmlSyntaxes,
-              encodeHtml: encodeHtml,
-            );
-            _addParagraph(attributedText, element.attributes);
+        final mixedContent = syntax == MarkdownSyntax.superEditor
+            ? _parseMixedParagraphContent(element.textContent)
+            : null;
+        if (mixedContent != null) {
+          for (final segment in mixedContent) {
+            if (segment.image != null) {
+              _addImage(segment.image!);
+            } else {
+              final attributedText = parseInlineMarkdown(
+                segment.text!,
+                inlineMarkdownSyntaxes: inlineMarkdownSyntaxes,
+                inlineHtmlSyntaxes: inlineHtmlSyntaxes,
+                encodeHtml: encodeHtml,
+              );
+              _addParagraph(attributedText, element.attributes);
+            }
           }
+        } else {
+          final attributedText = parseInlineMarkdown(
+            element.textContent,
+            inlineMarkdownSyntaxes: inlineMarkdownSyntaxes,
+            inlineHtmlSyntaxes: inlineHtmlSyntaxes,
+            encodeHtml: encodeHtml,
+          );
+          _addParagraph(attributedText, element.attributes);
         }
 
         break;
@@ -494,23 +496,49 @@ class _MarkdownToDocument implements md.NodeVisitor {
     );
   }
 
-  /// If the last line of [markdown] is a block image and there is at least one
-  /// preceding line (the caption), returns a [_CaptionAndImage] containing the
-  /// caption text and the parsed image. Otherwise returns `null`.
-  _CaptionAndImage? _maybeParseImageWithCaption(String markdown) {
-    final newlineIndex = markdown.lastIndexOf('\n');
-    if (newlineIndex < 0) {
-      return null;
+  /// Splits [markdown] (a multi-line paragraph) into an ordered list of
+  /// paragraph-text segments and block images.
+  ///
+  /// Returns `null` if the content contains no block images, in which case the
+  /// caller should treat the whole text as a single paragraph.
+  ///
+  /// When images are present, consecutive non-image lines are grouped into a
+  /// single paragraph segment. For example:
+  ///
+  /// ```
+  /// A caption:
+  /// ![Image 1](url1)
+  /// B caption:
+  /// ![Image 2](url2)
+  /// ```
+  ///
+  /// produces: paragraph("A caption:"), image(url1), paragraph("B caption:"), image(url2).
+  List<_ParagraphOrImage>? _parseMixedParagraphContent(String markdown) {
+    final lines = markdown.split('\n');
+    final segments = <_ParagraphOrImage>[];
+    final textBuffer = StringBuffer();
+    bool foundImage = false;
+
+    for (final line in lines) {
+      final image = _maybeParseBlockImage(line);
+      if (image != null) {
+        foundImage = true;
+        if (textBuffer.isNotEmpty) {
+          segments.add(_ParagraphOrImage.paragraph(textBuffer.toString()));
+          textBuffer.clear();
+        }
+        segments.add(_ParagraphOrImage.image(image));
+      } else {
+        if (textBuffer.isNotEmpty) textBuffer.write('\n');
+        textBuffer.write(line);
+      }
     }
 
-    final lastLine = markdown.substring(newlineIndex + 1);
-    final image = _maybeParseBlockImage(lastLine);
-    if (image == null) {
-      return null;
+    if (textBuffer.isNotEmpty) {
+      segments.add(_ParagraphOrImage.paragraph(textBuffer.toString()));
     }
 
-    final caption = markdown.substring(0, newlineIndex);
-    return _CaptionAndImage(caption: caption, image: image);
+    return foundImage ? segments : null;
   }
 }
 
@@ -874,11 +902,13 @@ class _HeaderWithAlignmentSyntax extends md.BlockSyntax {
   }
 }
 
-class _CaptionAndImage {
-  const _CaptionAndImage({required this.caption, required this.image});
+/// A segment of a mixed paragraph: either a run of plain text or a block image.
+class _ParagraphOrImage {
+  _ParagraphOrImage.paragraph(String this.text) : image = null;
+  _ParagraphOrImage.image(_MarkdownImage this.image) : text = null;
 
-  final String caption;
-  final _MarkdownImage image;
+  final String? text;
+  final _MarkdownImage? image;
 }
 
 class _MarkdownImage {
