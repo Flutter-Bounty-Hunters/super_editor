@@ -1,0 +1,1 @@
+goldens update --path-to-project-root=..
