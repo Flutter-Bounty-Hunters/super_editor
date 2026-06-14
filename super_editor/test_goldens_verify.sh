@@ -1,1 +1,1 @@
-goldens test --path-to-project-root=..
+goldens test --path-to-project-root=.. test_goldens

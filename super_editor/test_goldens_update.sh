@@ -1,1 +1,1 @@
-goldens update --path-to-project-root=..
+goldens update --path-to-project-root=.. test_goldens
