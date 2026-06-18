@@ -408,6 +408,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
         onPerformAction: (action) => _imeClient.performAction(action),
       ),
       imeConnection: _ownedImeConnection,
+      onImeConnectionClosed: () => SuperIme.instance.releaseOwnership(_myImeId),
       onPerformSelector: _onPerformSelector,
     );
   }

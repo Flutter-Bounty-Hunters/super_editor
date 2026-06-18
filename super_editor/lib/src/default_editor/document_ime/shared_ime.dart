@@ -95,7 +95,7 @@ class SuperIme with ChangeNotifier {
       return;
     }
 
-    if (false == _imeConnection?.attached) {
+    if (_imeConnection != null && _imeConnection!.attached == false) {
       // We have a connection, but its been detached, and we can't re-attach
       // without creating a new connection. Throw it away.
       //
