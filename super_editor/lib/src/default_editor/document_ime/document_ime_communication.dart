@@ -26,6 +26,7 @@ class DocumentImeInputClient extends TextInputConnectionDecorator with TextInput
     required this.textDeltasDocumentEditor,
     required this.imeConnection,
     required this.onPerformSelector,
+    required this.onImeConnectionClosed,
     this.floatingCursorController,
   }) : super(imeConnection.value) {
     // Note: we don't listen to document changes because we expect that any change during IME
@@ -64,6 +65,20 @@ class DocumentImeInputClient extends TextInputConnectionDecorator with TextInput
   ///
   /// For the list of selectors, see [MacOsSelectors].
   final void Function(String selectorName) onPerformSelector;
+
+  /// Callback invoked when Flutter's IME system tells us that our connection
+  /// was closed.
+  ///
+  /// The owner of this client should update any references to reflect that an IME
+  /// connection is no longer available. If the IME connection came from `SuperIme`
+  /// then the owner of this client should release the shared IME. Failure to do this
+  /// can lead to buggy keyboard behavior with the following order of events:
+  ///
+  ///   1. Open an IME connection, show the keyboard
+  ///   2. Something causes the IME connection to close, which also closes the keyboard
+  ///   3. **You don't release the connection**
+  ///   4. You try to open the keyboard (using the existing connection) but nothing happens.
+  final VoidCallback onImeConnectionClosed;
 
   // TODO: get floating cursor out of here. Use a multi-client IME decorator to split responsibilities
   late FloatingCursorController? floatingCursorController;
