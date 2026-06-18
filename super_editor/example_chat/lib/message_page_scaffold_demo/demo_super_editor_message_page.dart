@@ -449,7 +449,7 @@ class _ChatEditorState extends State<_ChatEditor> {
       isImeConnected: _isImeConnected,
       contentBuilder: (BuildContext context, _Panel? openPanel) {
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListenableBuilder(
               listenable: _editorFocusNode,

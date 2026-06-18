@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Example - Chat - Floating Editor (Default)" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="$PROJECT_DIR$/example_chat/lib/main_default_floating_chat_page.dart" />
+    <method v="2" />
+  </configuration>
+</component>
