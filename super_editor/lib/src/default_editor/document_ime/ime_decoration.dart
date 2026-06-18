@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
@@ -49,8 +48,8 @@ abstract class TextInputConnectionDecorator implements TextInputConnection {
           textDirection: textDirection,
           textAlign: textAlign);
 
-  // @override
-  // void updateStyle(TextInputStyle style) => client?.updateStyle(style);
+  @override
+  void updateStyle(TextInputStyle style) => client?.updateStyle(style);
 
   @override
   void requestAutofill() => client?.requestAutofill();
