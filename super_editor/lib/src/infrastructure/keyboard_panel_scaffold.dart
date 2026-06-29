@@ -281,7 +281,6 @@ class _KeyboardPanelScaffoldState<PanelType> extends State<KeyboardPanelScaffold
   }
 
   void _onPanelHeightChange() {
-    print("_onPanelHeightChange() - panel height: ${_panelHeight.value}, keyboard height: $_currentKeyboardHeight");
     _updateSafeArea();
     _currentBottomSpacing.value = max(_panelHeight.value, _currentKeyboardHeight);
   }
@@ -698,7 +697,6 @@ Building keyboard scaffold
               return const SizedBox.shrink();
             }
 
-            print("Building KeyboardPanelScaffold - wants to show panel? $shouldShowKeyboardPanel ($_activePanel)");
             return Positioned(
               bottom: 0,
               left: 0,
@@ -1180,6 +1178,14 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
   KeyboardScaffoldSafeAreaMutator? _ancestorSafeAreaScope;
   _KeyboardScaffoldSafeAreaState? _ancestorSafeArea;
 
+  // The most recent bottom insets that were applied during `build()`.
+  // This is tracked because in rare situations we end up building at a moment
+  // when we can't run `localToGlobal()`, which messes up our ability to calculate
+  // insets. Rather than return `0` when that happens, we return the most recent
+  // bottom insets in the hope that it's a more accurate number, because it was the
+  // correct number one frame earlier.
+  double _mostRecentBottomInsets = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -1247,22 +1253,37 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
       } catch (exception) {
         // It was found in a client app that there can be situations where at
         // this moment some render object in the ancestor chain isn't yet laid
-        // out. This results in an exception. The best we can do is return zero.
+        // out. This results in an exception. The best we can do is return the
+        // most recent correct bottom insets.
         if (isLogActive(keyboardPanelLog)) {
           keyboardPanelLog.warning(
             "KeyboardScaffoldSafeArea (${widget.debugLabel}) - Tried to measure our global bottom offset on the screen but caused an exception, likely due to an ancestor not yet being laid out.\nException: $exception\nStacktrace:\n${StackTrace.current}",
           );
         }
-        return 0;
+
+        // Schedule another build so that we can recover from an attempt to build where
+        // we couldn't look up global positioning.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+
+          setState(() {
+            // Force a rebuild and hopefully coordinate mapping works next frame.
+          });
+        });
+
+        return _mostRecentBottomInsets;
       }
 
       if (myGlobalBottom.isNaN) {
         // We've found in a client app that under some unknown circumstances we get NaN
-        // from localToGlobal(). We're not sure why. In that case, log a warning and return zero.
+        // from localToGlobal(). We're not sure why. In that case, log a warning and return
+        // the most recent previous value for the insets.
         keyboardPanelLog.warning(
           "KeyboardScaffoldSafeArea (${widget.debugLabel}) - Tried to measure our global bottom offset on the screen but received NaN from localToGlobal(). If you're able to consistently reproduce this problem, please report it to Super Editor with the repro steps.",
         );
-        return 0;
+        return _mostRecentBottomInsets;
       }
       if (myGlobalBottom.isNegative) {
         // We haven't seen negative values here, but if we ever did receive one then our
@@ -1279,6 +1300,7 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
         // page animates in/out, such as a bottom sheet. While the content is at all below the
         // bottom of the screen, apply the `bottomInsets` without any adjustment. When the
         // content is fully onscreen, we can adjust it with `spaceBelowMe`.
+        _mostRecentBottomInsets = bottomInsets;
         return bottomInsets;
       }
 
@@ -1312,6 +1334,7 @@ class _KeyboardScaffoldSafeAreaState extends State<KeyboardScaffoldSafeArea> {
       });
     }
 
+    _mostRecentBottomInsets = bottomInsets;
     return bottomInsets;
   }
 }

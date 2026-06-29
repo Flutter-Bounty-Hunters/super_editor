@@ -189,7 +189,6 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   @override
   void initState() {
-    print("Initializing new chat editor...");
     super.initState();
 
     _editorFocusNode = widget.editorFocusNode ?? FocusNode();
@@ -274,12 +273,10 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   @override
   void dispose() {
-    print("Disposing chat editor...");
     SuperKeyboard.instance.mobileGeometry.removeListener(_onKeyboardChange);
 
     _isImeConnected.removeListener(_onImeConnectionChange);
     if (widget.isImeConnected == null) {
-      print("Disposing _isImeConnected");
       _isImeConnected.dispose();
     }
 
@@ -296,13 +293,10 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
     _editorFocusNode.removeListener(_onFocusChange);
     if (widget.editorFocusNode == null) {
-      print("Disposing _editorFocusNode");
       _editorFocusNode.dispose();
     }
 
     super.dispose();
-
-    print("Done with chat editor disposal");
   }
 
   void _onFocusChange() {
@@ -339,14 +333,11 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
   }
 
   void _onImeConnectionChange() {
-    print("_onImeConnectionChange() - is IME connected? ${_isImeConnected.value}");
-    // print("${StackTrace.current}");
     widget.pageController.collapsedMode =
         _isImeConnected.value ? MessagePageSheetCollapsedMode.intrinsic : MessagePageSheetCollapsedMode.preview;
   }
 
   void _onPageControllerChange() {
-    print("_onPageControllerChange() - _scrollController: ${_scrollController.hashCode}");
     // TODO: I added _scrollController.hashClients because we were crashing in the floating chat
     //       demo when pressing the "close keyboard" button on the toolbar. But I don't know why
     //       we lost our scrolling client when we pressed the close button.
@@ -358,7 +349,6 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
 
   @override
   Widget build(BuildContext context) {
-    print("Building SuperChatEditor");
     return SuperEditorFocusOnTap(
       editorFocusNode: _editorFocusNode,
       editor: widget.editor,
@@ -529,11 +519,8 @@ class SuperEditorFocusOnTap extends StatelessWidget {
   }
 
   void _selectEditor() {
-    print("Tap on editor, giving focus - focus node: ${editorFocusNode.hashCode}");
     editorFocusNode.requestFocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      print("Next frame after focus request. Has focus? ${editorFocusNode.hasFocus} (${editorFocusNode.hashCode})");
-    });
+    ;
 
     final endNode = editor.document.last;
     editor.execute([
