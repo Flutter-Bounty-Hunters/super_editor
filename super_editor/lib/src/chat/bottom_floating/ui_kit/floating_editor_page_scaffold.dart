@@ -229,12 +229,14 @@ class FloatingEditorPageController<PanelType> extends MessagePageController {
 
   @override
   void addListener(VoidCallback listener) {
+    super.addListener(listener);
     _controllerListeners.add(listener);
     _delegate?.addListener(listener);
   }
 
   @override
   void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
     _controllerListeners.remove(listener);
     _delegate?.removeListener(listener);
   }
