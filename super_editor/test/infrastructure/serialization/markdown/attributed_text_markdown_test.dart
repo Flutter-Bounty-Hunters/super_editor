@@ -123,6 +123,49 @@ void main() {
       expect(text.toMarkdown(), "**ab**");
     });
 
+    test("strikethrough serializes as GFM double tilde", () {
+      final text = AttributedText("gone");
+      text.addAttribution(strikethroughAttribution, const SpanRange(0, 3));
+
+      expect(text.toMarkdown(), "~~gone~~");
+      expect(
+        parseInlineMarkdown("~~gone~~").getAllAttributionsAt(0).contains(strikethroughAttribution),
+        true,
+      );
+      // Legacy single-tilde input is still parsed...
+      expect(
+        parseInlineMarkdown("~gone~").getAllAttributionsAt(0).contains(strikethroughAttribution),
+        true,
+      );
+      // ...and heals to the GFM form on the next serialization.
+      expect(parseInlineMarkdown("~gone~").toMarkdown(), "~~gone~~");
+    });
+
+    test("underline serializes as <u> tags and parses back", () {
+      final text = AttributedText("underlined");
+      text.addAttribution(underlineAttribution, const SpanRange(0, 9));
+
+      expect(text.toMarkdown(), "<u>underlined</u>");
+
+      final reparsed = parseInlineMarkdown("<u>underlined</u>");
+      expect(reparsed.toPlainText(), "underlined");
+      expect(reparsed.getAllAttributionsAt(0).contains(underlineAttribution), true);
+      expect(reparsed.getAllAttributionsAt(9).contains(underlineAttribution), true);
+    });
+
+    test("legacy ¬ underline heals to <u>", () {
+      expect(parseInlineMarkdown("¬underlined¬").toMarkdown(), "<u>underlined</u>");
+    });
+
+    test("underline containing nested styles round-trips", () {
+      final reparsed = parseInlineMarkdown("<u>**bold** and plain</u>");
+      expect(reparsed.toPlainText(), "bold and plain");
+      expect(reparsed.getAllAttributionsAt(0).contains(underlineAttribution), true);
+      expect(reparsed.getAllAttributionsAt(0).contains(boldAttribution), true);
+      expect(reparsed.getAllAttributionsAt(5).contains(boldAttribution), false);
+      expect(reparsed.getAllAttributionsAt(13).contains(underlineAttribution), true);
+    });
+
     test("backslash escapes survive the round trip", () {
       // Parsing strips the backslash for display ("3*4"), records the escape as
       // an attribution, and serialization re-emits the backslash. Without this,

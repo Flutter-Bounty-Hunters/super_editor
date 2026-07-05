@@ -436,9 +436,8 @@ class AttributedTextMarkdownSerializer {
   /// Inline styles whose markers can't sit against whitespace in CommonMark.
   ///
   /// Spans of these attributions are trimmed to their non-whitespace core before
-  /// serialization. Underline is excluded because its proprietary `¬` marker has no
-  /// whitespace restriction, and links are excluded because link text may
-  /// legitimately start or end with spaces.
+  /// serialization. Underline is excluded because it serializes to HTML tags, and
+  /// links are excluded because link text may legitimately start or end with spaces.
   static const _trimmableAttributions = [
     codeAttribution,
     boldAttribution,
@@ -717,9 +716,9 @@ class AttributedTextMarkdownSerializer {
     } else if (attribution == italicsAttribution) {
       return '*';
     } else if (attribution == strikethroughAttribution) {
-      return '~';
+      return '~~';
     } else if (attribution == underlineAttribution) {
-      return '¬';
+      return '<u>';
     } else {
       return '';
     }
@@ -728,6 +727,8 @@ class AttributedTextMarkdownSerializer {
   static String _closeMarker(Attribution attribution) {
     if (attribution is LinkAttribution) {
       return '](${attribution.plainTextUri})';
+    } else if (attribution == underlineAttribution) {
+      return '</u>';
     } else {
       return _openMarker(attribution);
     }

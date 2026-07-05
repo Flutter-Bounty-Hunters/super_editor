@@ -332,14 +332,36 @@ This is some code
         final doc = MutableDocument(nodes: [
           ParagraphNode(
             id: '1',
+            text: attributedTextFromMarkdown('This is a <u>paragraph</u>.'),
+          ),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), 'This is a <u>paragraph</u>.');
+      });
+
+      test('paragraph with legacy underline marker serializes to <u>', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
             text: attributedTextFromMarkdown('This is a ¬paragraph¬.'),
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), 'This is a ¬paragraph¬.');
+        expect(serializeDocumentToMarkdown(doc), 'This is a <u>paragraph</u>.');
       });
 
       test('paragraph with strikethrough', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
+            text: attributedTextFromMarkdown('This is a ~~paragraph~~.'),
+          ),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), 'This is a ~~paragraph~~.');
+      });
+
+      test('paragraph with legacy single-tilde strikethrough serializes to ~~', () {
         final doc = MutableDocument(nodes: [
           ParagraphNode(
             id: '1',
@@ -347,7 +369,7 @@ This is some code
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), 'This is a ~paragraph~.');
+        expect(serializeDocumentToMarkdown(doc), 'This is a ~~paragraph~~.');
       });
 
       test('paragraph with consecutive links', () {

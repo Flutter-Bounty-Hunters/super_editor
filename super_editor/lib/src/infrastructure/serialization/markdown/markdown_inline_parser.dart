@@ -40,6 +40,7 @@ final defaultSuperEditorInlineSyntaxes = [
   SingleStrikethroughSyntax(), // this needs to be before md.StrikethroughSyntax to be recognized
   md.StrikethroughSyntax(),
   UnderlineSyntax(),
+  HtmlUnderlineSyntax(),
   SuperEditorImageSyntax(),
 ];
 
@@ -48,6 +49,7 @@ final defaultNonSuperEditorInlineSyntaxes = [
   SingleStrikethroughSyntax(), // this needs to be before md.StrikethroughSyntax to be recognized
   md.StrikethroughSyntax(),
   UnderlineSyntax(),
+  HtmlUnderlineSyntax(),
 ];
 
 /// Attribution applied to characters that were backslash-escaped in the Markdown
@@ -72,6 +74,28 @@ class PreservedEscapeSyntax extends md.InlineSyntax {
   @override
   bool onMatch(md.InlineParser parser, Match match) {
     parser.addNode(md.Element.text('mdEscape', match[1]!));
+    return true;
+  }
+}
+
+/// Matches underline spans written as inline HTML, e.g., "this is <u>underline</u> text".
+///
+/// `<u>text</u>` is the only widely supported way to express underlines in Markdown,
+/// and it's what Super Editor serializes underlines to. The legacy `¬` marker
+/// ([UnderlineSyntax]) is still parsed for backwards compatibility.
+class HtmlUnderlineSyntax extends md.InlineSyntax {
+  HtmlUnderlineSyntax()
+      : super(
+          r'<u>([\s\S]*?)</u>',
+          startCharacter: 0x3C, // '<'
+        );
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    // Parse the inner content so that styles nested within the underline,
+    // e.g., "<u>**bold**</u>", are preserved.
+    final children = md.InlineParser(match[1]!, parser.document).parse();
+    parser.addNode(md.Element('u', children));
     return true;
   }
 }
