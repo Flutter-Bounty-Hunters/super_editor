@@ -389,8 +389,7 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
     } else if (blockType == header6Attribution) {
       buffer.write('###### $inlineMarkdown');
     } else if (blockType == blockquoteAttribution) {
-      // TODO: handle multiline
-      buffer.write('> $inlineMarkdown');
+      buffer.write(_serializeBlockquote(inlineMarkdown));
     } else if (blockType == codeAttribution) {
       final language = node.getMetadataValue('codeLanguage') as String? ?? '';
       // A code fence holds literal text: serialize the plain text, not the
@@ -428,6 +427,19 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
     }
 
     return buffer.toString();
+  }
+
+  /// Serializes blockquote text, prefixing every line with `> ` (a bare `>`
+  /// for empty lines) so multi-line quotes keep their marker on every line.
+  /// Without the marker, the second line loses the quote on the next parse and
+  /// splits into a separate paragraph. Hard-break trailing spaces are dropped —
+  /// the `>` markers alone keep the lines in one quote.
+  static String _serializeBlockquote(String inlineMarkdown) {
+    return inlineMarkdown
+        .split('\n')
+        .map((line) => line.trimRight())
+        .map((line) => line.isEmpty ? '>' : '> $line')
+        .join('\n');
   }
 }
 

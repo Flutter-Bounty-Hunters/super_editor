@@ -199,6 +199,30 @@ void main() {
         expect(serializeDocumentToMarkdown(doc), '> This is a **blockquote**');
       });
 
+      test('multi-line blockquote marks every line', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
+            text: AttributedText('First line\nSecond line'),
+            metadata: const {'blockType': blockquoteAttribution},
+          ),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), '> First line\n> Second line');
+      });
+
+      test('blockquote with a blank line emits a bare > marker', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
+            text: AttributedText('First paragraph\n\nSecond paragraph'),
+            metadata: const {'blockType': blockquoteAttribution},
+          ),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), '> First paragraph\n>\n> Second paragraph');
+      });
+
       test('code', () {
         final doc = MutableDocument(nodes: [
           ParagraphNode(
@@ -1046,6 +1070,24 @@ with multiple lines
         final blockquote = blockquoteDoc.first as ParagraphNode;
         expect(blockquote.getMetadataValue('blockType'), blockquoteAttribution);
         expect(blockquote.text.toPlainText(), 'This is a blockquote');
+      });
+
+      test('multi-line blockquote parses into a single node', () {
+        final blockquoteDoc = deserializeMarkdownToDocument('> First line\n> Second line');
+
+        expect(blockquoteDoc.nodeCount, 1);
+        final blockquote = blockquoteDoc.first as ParagraphNode;
+        expect(blockquote.getMetadataValue('blockType'), blockquoteAttribution);
+        expect(blockquote.text.toPlainText(), 'First line\nSecond line');
+      });
+
+      test('blockquote with a > blank line keeps its paragraphs separated', () {
+        final blockquoteDoc = deserializeMarkdownToDocument('> First paragraph\n>\n> Second paragraph');
+
+        expect(blockquoteDoc.nodeCount, 1);
+        final blockquote = blockquoteDoc.first as ParagraphNode;
+        expect(blockquote.getMetadataValue('blockType'), blockquoteAttribution);
+        expect(blockquote.text.toPlainText(), 'First paragraph\n\nSecond paragraph');
       });
 
       test('code block', () {

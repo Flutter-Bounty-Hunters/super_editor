@@ -371,10 +371,20 @@ class _MarkdownToDocument implements md.NodeVisitor {
   }
 
   void _addBlockquote(md.Element element) {
+    // A blockquote's children are the blocks within the quote, e.g., two
+    // paragraphs separated by a `>` line. `element.textContent` concatenates
+    // the children without any separator, which would fuse those paragraphs
+    // into one run of text. Join them with a blank line instead, so the
+    // quote's internal structure survives (and re-serializes as a `>` line).
+    final children = element.children;
+    final text = children == null || children.length <= 1
+        ? element.textContent
+        : children.map((child) => child.textContent).join('\n\n');
+
     _content.add(
       ParagraphNode(
         id: Editor.createNodeId(),
-        text: _parseInlineText(element.textContent),
+        text: _parseInlineText(text),
         metadata: const {
           'blockType': blockquoteAttribution,
         },
