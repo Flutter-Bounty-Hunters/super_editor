@@ -254,20 +254,91 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
 
     final buffer = StringBuffer();
 
-    final indent = List.generate(node.indent + 1, (index) => '  ').join('');
-    final symbol = node.type == ListItemType.unordered ? '*' : '1.';
+    final indent = _indentPrefix(document, node);
+    final symbol = node.type == ListItemType.unordered ? '-' : '${_ordinal(document, node)}.';
 
     buffer.write('$indent$symbol ${textToConvert.toMarkdown()}');
 
     final nodeIndex = document.getNodeIndexById(node.id);
     final nodeBelow = nodeIndex < document.nodeCount - 1 ? document.getNodeAt(nodeIndex + 1) : null;
-    if (nodeBelow != null && (nodeBelow is! ListItemNode || nodeBelow.type != node.type)) {
+    if (nodeBelow != null && nodeBelow is! ListItemNode) {
       // This list item is the last item in the list. Add an extra
       // blank line after it.
       buffer.writeln('');
     }
 
     return buffer.toString();
+  }
+
+  /// The leading spaces for [node], computed from the marker widths of its
+  /// ancestor list items so that a nested item sits at the content column of
+  /// its parent — the column markdown requires for a nested list.
+  ///
+  /// A top-level item has no leading spaces. An item nested under `- ` is
+  /// indented 2 spaces, under `1. ` 3 spaces, under `10. ` 4 spaces, etc. A
+  /// fixed 2-space indent wouldn't be enough under an ordered parent, and the
+  /// nesting would silently flatten on the next parse.
+  String _indentPrefix(Document document, ListItemNode node) {
+    if (node.indent == 0) {
+      return '';
+    }
+
+    // Walk the contiguous run of list items above this node, recording the
+    // marker width of the most recent item at each indent level — those are
+    // this node's ancestors.
+    final nodeIndex = document.getNodeIndexById(node.id);
+    var runStart = nodeIndex;
+    while (runStart > 0 && document.getNodeAt(runStart - 1) is ListItemNode) {
+      runStart -= 1;
+    }
+
+    final markerWidthByLevel = <int, int>{};
+    for (var i = runStart; i < nodeIndex; i += 1) {
+      final item = document.getNodeAt(i) as ListItemNode;
+      markerWidthByLevel[item.indent] = _markerWidth(document, item);
+    }
+
+    var width = 0;
+    for (var level = 0; level < node.indent; level += 1) {
+      // A level with no preceding item can only come from malformed indentation.
+      // Fall back to the unordered marker width.
+      width += markerWidthByLevel[level] ?? 2;
+    }
+    return ' ' * width;
+  }
+
+  /// The width of the marker [node] serializes with, including the trailing
+  /// space: `- ` is 2, `1. ` is 3, `10. ` is 4.
+  int _markerWidth(Document document, ListItemNode node) {
+    if (node.type == ListItemType.unordered) {
+      return 2;
+    }
+    return '${_ordinal(document, node)}. '.length;
+  }
+
+  /// The ordinal for an ordered list item — its 1-based position among the
+  /// consecutive ordered siblings at the same indent level.
+  int _ordinal(Document document, ListItemNode node) {
+    var ordinal = 1;
+    var index = document.getNodeIndexById(node.id) - 1;
+    while (index >= 0) {
+      final previous = document.getNodeAt(index);
+      if (previous is! ListItemNode || previous.indent < node.indent) {
+        // We've reached the start of the list, or left this item's nesting scope.
+        break;
+      }
+      if (previous.indent == node.indent) {
+        if (previous.type != ListItemType.ordered) {
+          // An unordered sibling at the same level means this item started a
+          // new ordered list.
+          break;
+        }
+        ordinal += 1;
+      }
+      // Items with a deeper indent belong to an earlier sibling; keep scanning.
+      index -= 1;
+    }
+    return ordinal;
   }
 }
 

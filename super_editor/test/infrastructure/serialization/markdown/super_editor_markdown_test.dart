@@ -706,11 +706,11 @@ Paragraph3""");
         expect(
           serializeDocumentToMarkdown(doc),
           '''
-  * Unordered 1
-  * Unordered 2
-    * Unordered 2.1
-    * Unordered 2.2
-  * Unordered 3''',
+- Unordered 1
+- Unordered 2
+  - Unordered 2.1
+  - Unordered 2.2
+- Unordered 3''',
         );
       });
 
@@ -723,7 +723,7 @@ Paragraph3""");
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), '  * **Unordered** 1');
+        expect(serializeDocumentToMarkdown(doc), '- **Unordered** 1');
       });
 
       test('ordered list items', () {
@@ -760,11 +760,46 @@ Paragraph3""");
         expect(
           serializeDocumentToMarkdown(doc),
           '''
-  1. Ordered 1
-  1. Ordered 2
-    1. Ordered 2.1
-    1. Ordered 2.2
-  1. Ordered 3''',
+1. Ordered 1
+2. Ordered 2
+   1. Ordered 2.1
+   2. Ordered 2.2
+3. Ordered 3''',
+        );
+      });
+
+      test('ordered list items round-trip with their nesting intact', () {
+        final doc = MutableDocument(nodes: [
+          ListItemNode(id: '1', itemType: ListItemType.ordered, text: AttributedText('Ordered 1')),
+          ListItemNode(id: '2', itemType: ListItemType.ordered, indent: 1, text: AttributedText('Ordered 1.1')),
+          ListItemNode(id: '3', itemType: ListItemType.ordered, indent: 1, text: AttributedText('Ordered 1.2')),
+          ListItemNode(id: '4', itemType: ListItemType.ordered, text: AttributedText('Ordered 2')),
+        ]);
+
+        final markdown = serializeDocumentToMarkdown(doc);
+        final reparsed = deserializeMarkdownToDocument(markdown);
+
+        // A 2-space indent would silently flatten the nested items on the next
+        // parse; the serializer must indent to the parent marker's width.
+        expect(reparsed.nodeCount, 4);
+        expect((reparsed.getNodeAt(1)! as ListItemNode).indent, 1);
+        expect((reparsed.getNodeAt(2)! as ListItemNode).indent, 1);
+        expect((reparsed.getNodeAt(3)! as ListItemNode).indent, 0);
+      });
+
+      test('mixed-type nested list items', () {
+        final doc = MutableDocument(nodes: [
+          ListItemNode(id: '1', itemType: ListItemType.ordered, text: AttributedText('Ordered 1')),
+          ListItemNode(id: '2', itemType: ListItemType.unordered, indent: 1, text: AttributedText('Bullet 1.1')),
+          ListItemNode(id: '3', itemType: ListItemType.ordered, text: AttributedText('Ordered 2')),
+        ]);
+
+        expect(
+          serializeDocumentToMarkdown(doc),
+          '''
+1. Ordered 1
+   - Bullet 1.1
+2. Ordered 2''',
         );
       });
 
@@ -777,7 +812,7 @@ Paragraph3""");
           ),
         ]);
 
-        expect(serializeDocumentToMarkdown(doc), '  1. **Ordered** 1');
+        expect(serializeDocumentToMarkdown(doc), '1. **Ordered** 1');
       });
 
       test('tasks', () {
