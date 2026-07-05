@@ -637,8 +637,7 @@ First Paragraph
 
 Second Paragraph
 
----
-""")
+---""")
           .withAddedComponents([const _UnselectableHrComponentBuilder()])
           .withCustomWidgetTreeBuilder(
             (superEditor) => MaterialApp(
@@ -1235,8 +1234,7 @@ First Paragraph
 
 ---
 
-Second Paragraph
-""")
+Second Paragraph""")
       .withComponentBuilders([
         const _UnselectableHrComponentBuilder(),
         ...defaultComponentBuilders,

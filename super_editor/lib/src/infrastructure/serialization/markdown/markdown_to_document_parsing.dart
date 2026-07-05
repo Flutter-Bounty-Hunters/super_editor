@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:attributed_text/attributed_text.dart';
-import 'package:collection/collection.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:super_editor/src/core/document.dart';
 import 'package:super_editor/src/core/editor.dart';
@@ -58,7 +57,32 @@ MutableDocument deserializeMarkdownToDocument(
   Iterable<InlineHtmlSyntax>? inlineHtmlSyntaxes,
   bool encodeHtml = false,
 }) {
-  final markdownLines = const LineSplitter().convert(markdown).map<md.Line>(
+  final allLines = const LineSplitter().convert(markdown);
+
+  if (allLines.every((line) => _blankLinePattern.hasMatch(line))) {
+    // The document has no blocks — it is nothing but newlines. Each newline is
+    // one empty paragraph, plus one for the paragraph the editor requires even
+    // when the document is empty: "" is one empty paragraph, "\n" two, "\n\n"
+    // three. The serializer inverts this by joining n empty paragraphs with
+    // n-1 newlines.
+    return MutableDocument(
+      nodes: [
+        for (var i = 0; i <= _newlineCount(markdown); i += 1) //
+          ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
+      ],
+    );
+  }
+
+  // Blank lines at the start of the document have no preceding block to
+  // separate, so every one of them is an empty paragraph. Strip them before
+  // block parsing (so _EmptyParagraphRunSyntax only ever sees runs that follow
+  // a block) and prepend the corresponding paragraphs afterwards.
+  var leadingBlankLines = 0;
+  while (_blankLinePattern.hasMatch(allLines[leadingBlankLines])) {
+    leadingBlankLines += 1;
+  }
+
+  final markdownLines = allLines.sublist(leadingBlankLines).map<md.Line>(
     (String l) {
       return md.Line(l);
     },
@@ -73,7 +97,9 @@ MutableDocument deserializeMarkdownToDocument(
         _HeaderWithAlignmentSyntax(),
         const _ParagraphWithAlignmentSyntax(),
       ],
-      const _EmptyLinePreservingParagraphSyntax(),
+      const _TightHeaderSyntax(),
+      const _EmptyParagraphRunSyntax(),
+      const _SoftBreakParagraphSyntax(),
       const md.UnorderedListWithCheckboxSyntax(),
       const md.TableSyntax(),
     ],
@@ -95,26 +121,57 @@ MutableDocument deserializeMarkdownToDocument(
 
   final documentNodes = nodeVisitor.content;
 
-  if (documentNodes.isEmpty) {
-    // An empty markdown was parsed.
-    // For the user to be able to interact with the editor, at least one
-    // node is required, so we add an empty paragraph.
+  // Trailing whitespace: block syntaxes disagree about who owns blank lines at
+  // the end of the document (list syntaxes consume them, paragraphs don't), so
+  // instead of trusting whatever empty paragraphs fell out of block parsing,
+  // rebuild the document's tail from the raw string: one empty paragraph per
+  // trailing newline. "A" has none, "A\n" one, "A\n\n" two. The serializer
+  // inverts this — a document ends with "\n" iff it ends with empty paragraphs.
+  while (documentNodes.isNotEmpty && _isPlainEmptyParagraph(documentNodes.last)) {
+    documentNodes.removeLast();
+  }
+  for (var i = 0; i < _trailingNewlineCount(markdown); i += 1) {
     documentNodes.add(
       ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
     );
   }
 
-  // Add 1 hanging line for every 2 blank lines at the end, need this to preserve behavior pre markdown 7.2.1
-  final hangingEmptyLines = markdownLines.reversed.takeWhile((line) => _blankLinePattern.hasMatch(line.content));
-  if (hangingEmptyLines.isNotEmpty && documentNodes.lastOrNull is ListItemNode) {
-    for (var i = 0; i < hangingEmptyLines.length ~/ 2; i++) {
-      documentNodes.add(
-        ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
-      );
-    }
+  for (var i = 0; i < leadingBlankLines; i += 1) {
+    documentNodes.insert(
+      0,
+      ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
+    );
+  }
+
+  if (documentNodes.isEmpty) {
+    // The markdown had content lines but none of them produced a document node
+    // (e.g., an HTML comment). For the user to be able to interact with the
+    // editor, at least one node is required, so we add an empty paragraph.
+    documentNodes.add(
+      ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
+    );
   }
 
   return MutableDocument(nodes: documentNodes);
+}
+
+/// The number of newlines in [text].
+int _newlineCount(String text) => '\n'.allMatches(text).length;
+
+/// The number of newlines at the very end of [text] (a `\r\n` counts as one).
+int _trailingNewlineCount(String text) {
+  final match = RegExp(r'(?:\r?\n)+$').firstMatch(text);
+  return match == null ? 0 : _newlineCount(match.group(0)!);
+}
+
+/// Whether [node] is an empty paragraph with no special block type — the kind
+/// of node a blank line parses to.
+bool _isPlainEmptyParagraph(DocumentNode node) {
+  if (node is! ParagraphNode || node.text.isNotEmpty) {
+    return false;
+  }
+  final blockType = node.getMetadataValue('blockType');
+  return blockType == null || blockType == paragraphAttribution;
 }
 
 /// Converts structured markdown to a list of [DocumentNode]s.
@@ -292,6 +349,16 @@ class _MarkdownToDocument implements md.NodeVisitor {
       case 'hr':
         _addHorizontalRule();
         break;
+      case 'emptyLines':
+        // A run of blank lines beyond the block separator — one empty
+        // paragraph per reported line.
+        final count = int.parse(element.attributes['count']!);
+        for (var i = 0; i < count; i += 1) {
+          _content.add(
+            ParagraphNode(id: Editor.createNodeId(), text: AttributedText()),
+          );
+        }
+        return false;
       case 'table':
         _addTable(element);
 
@@ -352,6 +419,8 @@ class _MarkdownToDocument implements md.NodeVisitor {
           'blockType': headerAttribution,
           if (element.attributes['textAlign'] != null) //
             'textAlign': element.attributes['textAlign'],
+          if (element.attributes['tight'] == 'true') //
+            'tight': true,
         },
       ),
     );
@@ -551,7 +620,10 @@ class _MarkdownToDocument implements md.NodeVisitor {
         segments.add(_ParagraphOrImage.image(image));
       } else {
         if (textBuffer.isNotEmpty) textBuffer.write('\n');
-        textBuffer.write(line);
+        // Leading whitespace on a paragraph continuation line is insignificant
+        // in markdown; dropping it keeps a paragraph split off an inline image
+        // ("before ![img](url) after") from starting with a stray space.
+        textBuffer.write(line.trimLeft());
       }
     }
 
@@ -622,7 +694,7 @@ class SingleStrikethroughSyntax extends md.DelimiterSyntax {
 }
 
 /// Parses a paragraph preceded by an alignment token.
-class _ParagraphWithAlignmentSyntax extends _EmptyLinePreservingParagraphSyntax {
+class _ParagraphWithAlignmentSyntax extends _SoftBreakParagraphSyntax {
   /// This pattern matches the text aligment notation.
   ///
   /// Possible values are `:---`, `:---:`, `---:` and `-::-`.
@@ -695,11 +767,52 @@ class _ParagraphWithAlignmentSyntax extends _EmptyLinePreservingParagraphSyntax 
   }
 }
 
-/// A [BlockSyntax] that parses paragraphs.
+/// A [BlockSyntax] that consumes a run of consecutive blank lines, reporting
+/// every blank line beyond the first as one empty paragraph.
 ///
-/// Allows empty paragraphs and paragraphs containing blank lines.
-class _EmptyLinePreservingParagraphSyntax extends md.BlockSyntax {
-  const _EmptyLinePreservingParagraphSyntax();
+/// The first blank line of a run is the separator between the surrounding
+/// blocks and produces nothing. Blank lines at the start of the document never
+/// reach this syntax — [deserializeMarkdownToDocument] strips them (each one is
+/// an empty paragraph, since there is no preceding block to separate), and it
+/// also rebuilds the document's tail from the raw string, so what this syntax
+/// reports for a trailing run is discarded there.
+class _EmptyParagraphRunSyntax extends md.BlockSyntax {
+  const _EmptyParagraphRunSyntax();
+
+  @override
+  RegExp get pattern => RegExp('');
+
+  @override
+  bool canEndBlock(md.BlockParser parser) => true;
+
+  @override
+  bool canParse(md.BlockParser parser) => _blankLinePattern.hasMatch(parser.current.content);
+
+  @override
+  md.Node? parse(md.BlockParser parser) {
+    var blankLineCount = 0;
+    while (!parser.isDone && _blankLinePattern.hasMatch(parser.current.content)) {
+      blankLineCount += 1;
+      parser.advance();
+    }
+
+    if (blankLineCount < 2) {
+      // A single blank line is nothing but the separator between two blocks.
+      return null;
+    }
+
+    return md.Element.empty('emptyLines')..attributes['count'] = '${blankLineCount - 1}';
+  }
+}
+
+/// A [BlockSyntax] that parses paragraphs, keeping single line breaks (soft
+/// wraps) inside one paragraph.
+///
+/// A paragraph runs until a blank line or another block element. Trailing
+/// whitespace is stripped from every line, so a legacy two-space hard-break
+/// marker degrades to the same "\n" a soft wrap produces.
+class _SoftBreakParagraphSyntax extends md.BlockSyntax {
+  const _SoftBreakParagraphSyntax();
 
   @override
   RegExp get pattern => RegExp('');
@@ -709,19 +822,20 @@ class _EmptyLinePreservingParagraphSyntax extends md.BlockSyntax {
 
   @override
   bool canParse(md.BlockParser parser) {
+    if (_blankLinePattern.hasMatch(parser.current.content)) {
+      // Blank lines belong to _EmptyParagraphRunSyntax.
+      return false;
+    }
+
     if (_standardNonParagraphBlockSyntaxes.any((e) => e.canParse(parser))) {
       // A standard non-paragraph parser wants to parse this input. Let the other parser run.
       return false;
     }
 
-    if (parser.current.content.isEmpty) {
-      // We consider this input to be a separator between blocks because
-      // it started with an empty line. We want to parse this input.
-      return true;
-    }
-
-    if (_isAtParagraphEnd(parser, ignoreEmptyBlocks: _endsWithHardLineBreak(parser.current.content))) {
-      // Another parser wants to parse this input. Let the other parser run.
+    if (_isAtParagraphEnd(parser)) {
+      // Another block-ending parser (e.g., a table) wants to parse this input.
+      // Let the other parser run — and if it fails without consuming the line,
+      // the standard paragraph syntax picks it up.
       return false;
     }
 
@@ -732,53 +846,10 @@ class _EmptyLinePreservingParagraphSyntax extends md.BlockSyntax {
   @override
   md.Node? parse(md.BlockParser parser) {
     final childLines = <String>[];
-    final startsWithEmptyLine = parser.current.content.isEmpty;
 
-    // A hard line break causes the next line to be treated
-    // as part of the same paragraph, except if the next line is
-    // the beginning of another block element.
-    bool hasHardLineBreak = _endsWithHardLineBreak(parser.current.content);
-
-    if (startsWithEmptyLine) {
-      // The parser started at an empty line.
-      // Consume the line as a separator between blocks.
-      parser.advance();
-
-      if (parser.isDone) {
-        // The document ended with a single empty line, so we just ignore it.
-        // To be considered as a paragraph starting with an empty line
-        // we need at least two empty lines:
-        // one to separate the paragraph from the previous block
-        // and another one to be the content of the paragraph.
-        return null;
-      }
-
-      if (!_blankLinePattern.hasMatch(parser.current.content)) {
-        // We found an empty line, but the following line isn't blank.
-        // As there is no hard line break, the first line is consumed
-        // as a separator between blocks.
-        // Therefore, we aren't looking at a paragraph with blank lines.
-        return null;
-      }
-
-      // We found a paragraph, and the first line of that paragraph is empty. Add a
-      // corresponding empty line to the parsed version of the paragraph.
-      childLines.add('');
-
-      // Check for a hard line break, so we consume the next line if we found one.
-      hasHardLineBreak = _endsWithHardLineBreak(parser.current.content);
-      parser.advance();
-    }
-
-    // Consume everything until another block element is found.
-    // A line break will cause the parser to stop, unless the preceding line
-    // ends with a hard line break.
-    while (!_isAtParagraphEnd(parser, ignoreEmptyBlocks: hasHardLineBreak)) {
-      final currentLine = parser.current;
-      childLines.add(currentLine.content);
-
-      hasHardLineBreak = _endsWithHardLineBreak(currentLine.content);
-
+    // Consume everything until a blank line or another block element is found.
+    while (!_isAtParagraphEnd(parser)) {
+      childLines.add(parser.current.content);
       parser.advance();
     }
 
@@ -796,17 +867,12 @@ class _EmptyLinePreservingParagraphSyntax extends md.BlockSyntax {
 
   /// Checks if the current line ends a paragraph by verifying if another
   /// block syntax can parse the current input.
-  ///
-  /// An empty line ends the paragraph, unless [ignoreEmptyBlocks] is `true`.
-  bool _isAtParagraphEnd(md.BlockParser parser, {required bool ignoreEmptyBlocks}) {
+  bool _isAtParagraphEnd(md.BlockParser parser) {
     if (parser.isDone) {
       return true;
     }
     for (final syntax in parser.blockSyntaxes) {
-      if (syntax != this &&
-          !(syntax is md.EmptyBlockSyntax && ignoreEmptyBlocks) &&
-          syntax.canParse(parser) &&
-          syntax.canEndBlock(parser)) {
+      if (syntax != this && syntax.canParse(parser) && syntax.canEndBlock(parser)) {
         return true;
       }
     }
@@ -818,16 +884,23 @@ class _EmptyLinePreservingParagraphSyntax extends md.BlockSyntax {
     final pattern = RegExp(r'[\t ]+$');
     return text.replaceAll(pattern, '');
   }
+}
 
-  /// Returns `true` if [line] ends with a hard line break.
-  ///
-  /// As per the Markdown spec, a line ending with two or more spaces
-  /// represents a hard line break.
-  ///
-  /// A hard line break causes the next line to be part of the
-  /// same paragraph, except if it's the beginning of another block element.
-  bool _endsWithHardLineBreak(String line) {
-    return line.endsWith('  ');
+/// Parses ATX headings like the standard [md.HeaderSyntax], additionally
+/// recording whether the heading is "tight" — followed directly by another
+/// block with no blank line in between (`# Title\nBody`) — as a `tight`
+/// attribute, kept in the resulting node's metadata so serialization can write
+/// the heading back without inserting a blank line.
+class _TightHeaderSyntax extends md.HeaderSyntax {
+  const _TightHeaderSyntax();
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final heading = super.parse(parser);
+    if (heading is md.Element && !parser.isDone && !_blankLinePattern.hasMatch(parser.current.content)) {
+      heading.attributes['tight'] = 'true';
+    }
+    return heading;
   }
 }
 

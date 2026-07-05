@@ -530,8 +530,9 @@ a *b* c
           ]),
         );
 
+        // The empty paragraph contributes exactly one newline on top of the
+        // blank-line block separator.
         expect(serialized, """Paragraph1
-
 
 
 Paragraph3""");
@@ -569,9 +570,8 @@ Paragraph3""");
         );
 
         // Ensure the attributions were ignored for the empty paragraphs.
+        // Each trailing empty paragraph is one trailing newline.
         expect(serialized, """Paragraph1
-
-
 
 """);
       });
@@ -603,7 +603,20 @@ Paragraph3""");
         expect(serialized, 'First Paragraph\n\n---');
       });
 
-      test('preserves linebreaks at the end of a paragraph', () {
+      test('writes a soft line break without hard-break spaces', () {
+        final serialized = serializeDocumentToMarkdown(
+          MutableDocument(nodes: [
+            ParagraphNode(id: '1', text: AttributedText('Line1\nLine2')),
+          ]),
+        );
+
+        // No two-space hard-break markers: consecutive non-blank lines
+        // re-parse into the same paragraph, and the markers accumulated one
+        // "  " per line per save (upstream issue #3006).
+        expect(serialized, 'Line1\nLine2');
+      });
+
+      test('writes embedded newlines at the end of a paragraph verbatim', () {
         final serialized = serializeDocumentToMarkdown(
           MutableDocument(nodes: [
             ParagraphNode(id: '1', text: AttributedText('Paragraph1\n\n')),
@@ -611,20 +624,23 @@ Paragraph3""");
           ]),
         );
 
-        expect(serialized, 'Paragraph1  \n  \n\n\nParagraph2');
+        // Embedded blank lines aren't representable in markdown paragraphs;
+        // they re-parse as an empty paragraph (a one-pass, byte-stable
+        // normalization under the whitespace policy).
+        expect(serialized, 'Paragraph1\n\n\n\nParagraph2');
       });
 
-      test('preserves linebreaks within a paragraph', () {
+      test('writes embedded newlines within a paragraph verbatim', () {
         final serialized = serializeDocumentToMarkdown(
           MutableDocument(nodes: [
             ParagraphNode(id: '1', text: AttributedText('Line1\n\nLine2')),
           ]),
         );
 
-        expect(serialized, 'Line1  \n  \nLine2');
+        expect(serialized, 'Line1\n\nLine2');
       });
 
-      test('preserves linebreaks at the beginning of a paragraph', () {
+      test('writes embedded newlines at the beginning of a paragraph verbatim', () {
         final serialized = serializeDocumentToMarkdown(
           MutableDocument(nodes: [
             ParagraphNode(id: '1', text: AttributedText('\n\nParagraph1')),
@@ -632,7 +648,7 @@ Paragraph3""");
           ]),
         );
 
-        expect(serialized, '  \n  \nParagraph1\n\nParagraph2');
+        expect(serialized, '\n\nParagraph1\n\nParagraph2');
       });
 
       test('image', () {
@@ -694,6 +710,16 @@ Paragraph3""");
         ]);
 
         expect(serializeDocumentToMarkdown(doc), '---');
+      });
+
+      test('horizontal rule is separated from the next block by a blank line', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(id: '1', text: AttributedText('above')),
+          HorizontalRuleNode(id: '2'),
+          ParagraphNode(id: '3', text: AttributedText('below')),
+        ]);
+
+        expect(serializeDocumentToMarkdown(doc), 'above\n\n---\n\nbelow');
       });
 
       test('unordered list items', () {
@@ -869,7 +895,7 @@ Paragraph3""");
           serializeDocumentToMarkdown(doc),
           '''
 - [x] Task 1
-- [ ] Task 2  
+- [ ] Task 2
 with multiple lines
 - [ ] Task 3
 - [x] Task 4''',
@@ -1551,7 +1577,9 @@ Paragraph after the captioned image.''',
 
         final document = deserializeMarkdownToDocument(markdown);
 
-        expect(document.nodeCount, 7);
+        // 7 list/task nodes, plus one empty paragraph for the fixture's
+        // trailing newline.
+        expect(document.nodeCount, 8);
         expect(document.getNodeAt(0)!, isA<ListItemNode>());
         expect(document.getNodeAt(1)!, isA<TaskNode>());
         expect((document.getNodeAt(1) as TaskNode).text.toPlainText(), 'task node');
@@ -1648,7 +1676,9 @@ Paragraph after the captioned image.''',
 ''';
         final document = deserializeMarkdownToDocument(markdown);
 
-        expect(document.nodeCount, 13);
+        // 13 list items, plus one empty paragraph for the fixture's trailing
+        // newline.
+        expect(document.nodeCount, 14);
 
         expect((document.getNodeAt(0)! as ListItemNode).indent, 0);
         expect((document.getNodeAt(0)! as ListItemNode).type, ListItemType.unordered);
@@ -1736,7 +1766,9 @@ with multiple lines
       test('example doc 1', () {
         final document = deserializeMarkdownToDocument(exampleMarkdownDoc1);
 
-        expect(document.nodeCount, 26);
+        // 26 content nodes, plus one empty paragraph for the fixture's
+        // trailing newline.
+        expect(document.nodeCount, 27);
 
         expect(document.getNodeAt(0)!, isA<ParagraphNode>());
         expect((document.getNodeAt(0)! as ParagraphNode).getMetadataValue('blockType'), header1Attribution);
@@ -1786,6 +1818,10 @@ with multiple lines
         expect((document.getNodeAt(24)! as ParagraphNode).getMetadataValue('textAlign'), "justify");
 
         expect(document.getNodeAt(25)!, isA<ParagraphNode>());
+
+        // The fixture ends with "The end!\n" — the trailing newline is an
+        // empty paragraph.
+        expect((document.getNodeAt(26)! as ParagraphNode).text.toPlainText(), '');
       });
 
       test('paragraph with single strikethrough', () {
@@ -1907,8 +1943,9 @@ Paragraph2""";
       });
 
       test('empty paragraph between paragraphs', () {
+        // One blank line separates the blocks; each additional blank line is
+        // one empty paragraph.
         const input = """Paragraph1
-
 
 
 Paragraph3""";
@@ -1920,31 +1957,29 @@ Paragraph3""";
         expect((doc.getNodeAt(2)! as ParagraphNode).text.toPlainText(), 'Paragraph3');
       });
 
-      test('every 2 newlines after a list are a paragraph', () {
+      test('every trailing newline after a list is an empty paragraph', () {
         const input = '''
 1. First item
 2. Second item
 3. Third item
 
 
-
-
 ''';
         final doc = deserializeMarkdownToDocument(input);
 
-        expect(doc.nodeCount, 5);
+        // The input ends with "Third item\n\n\n" — three trailing newlines,
+        // so three empty paragraphs.
+        expect(doc.nodeCount, 6);
         expect((doc.getNodeAt(0)! as ListItemNode).text.toPlainText(), 'First item');
         expect((doc.getNodeAt(1)! as ListItemNode).text.toPlainText(), 'Second item');
         expect((doc.getNodeAt(2)! as ListItemNode).text.toPlainText(), 'Third item');
-        // super_editor tests expect empty newlines after a list to be retained
         expect((doc.getNodeAt(3)! as ParagraphNode).text.toPlainText(), '');
         expect((doc.getNodeAt(4)! as ParagraphNode).text.toPlainText(), '');
+        expect((doc.getNodeAt(5)! as ParagraphNode).text.toPlainText(), '');
       });
 
-      test('multiple empty paragraph between paragraphs', () {
+      test('multiple empty paragraphs between paragraphs', () {
         const input = """Paragraph1
-
-
 
 
 
@@ -1958,68 +1993,104 @@ Paragraph4""";
         expect((doc.getNodeAt(3)! as ParagraphNode).text.toPlainText(), 'Paragraph4');
       });
 
-      test('paragraph ending with one blank line', () {
+      test('hard-break spaces do not pull blank lines into a paragraph', () {
+        // Previously, the trailing "  " made the blank line part of the
+        // first paragraph, embedding a "\n" in its text. Blank lines now
+        // always end the paragraph; the extra blank line is an empty
+        // paragraph of its own.
         final doc = deserializeMarkdownToDocument('First Paragraph.  \n\n\nSecond Paragraph');
-        expect(doc.nodeCount, 2);
+        expect(doc.nodeCount, 3);
 
         expect(doc.first, isA<ParagraphNode>());
-        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.\n');
+        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
+
+        expect((doc.getNodeAt(1)! as ParagraphNode).text.toPlainText(), '');
 
         expect(doc.last, isA<ParagraphNode>());
         expect((doc.last as ParagraphNode).text.toPlainText(), 'Second Paragraph');
       });
 
-      test('paragraph ending with multiple blank lines', () {
+      test('whitespace-only lines count as blank lines', () {
+        // "First Paragraph.  \n  \n  \n\n\nSecond Paragraph" is a paragraph,
+        // four blank lines (two of them whitespace-only), and a paragraph:
+        // one separator plus three empty paragraphs.
         final doc = deserializeMarkdownToDocument('First Paragraph.  \n  \n  \n\n\nSecond Paragraph');
 
-        expect(doc.nodeCount, 2);
+        expect(doc.nodeCount, 5);
 
         expect(doc.first, isA<ParagraphNode>());
-        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.\n\n\n');
+        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
+
+        for (var i = 1; i <= 3; i += 1) {
+          expect((doc.getNodeAt(i)! as ParagraphNode).text.toPlainText(), '');
+        }
 
         expect(doc.last, isA<ParagraphNode>());
         expect((doc.last as ParagraphNode).text.toPlainText(), 'Second Paragraph');
       });
 
-      test('paragraph with multiple blank lines at the middle', () {
+      test('blank lines in the middle split the paragraph', () {
         final doc =
             deserializeMarkdownToDocument('First Paragraph.  \n  \n  \nStill First Paragraph\n\nSecond Paragraph');
 
-        expect(doc.nodeCount, 2);
+        expect(doc.nodeCount, 4);
 
         expect(doc.first, isA<ParagraphNode>());
-        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.\n\n\nStill First Paragraph');
+        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
+
+        expect((doc.getNodeAt(1)! as ParagraphNode).text.toPlainText(), '');
+
+        expect((doc.getNodeAt(2)! as ParagraphNode).text.toPlainText(), 'Still First Paragraph');
 
         expect(doc.last, isA<ParagraphNode>());
         expect((doc.last as ParagraphNode).text.toPlainText(), 'Second Paragraph');
       });
 
-      test('paragraph beginning with multiple blank lines', () {
+      test('blank lines at the document start are empty paragraphs', () {
         final doc = deserializeMarkdownToDocument('  \n  \nFirst Paragraph.\n\nSecond Paragraph');
 
-        expect(doc.nodeCount, 2);
+        expect(doc.nodeCount, 4);
 
-        expect(doc.first, isA<ParagraphNode>());
-        expect((doc.first as ParagraphNode).text.toPlainText(), '\n\nFirst Paragraph.');
+        expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(), '');
+        expect((doc.getNodeAt(1)! as ParagraphNode).text.toPlainText(), '');
+
+        expect((doc.getNodeAt(2)! as ParagraphNode).text.toPlainText(), 'First Paragraph.');
 
         expect(doc.last, isA<ParagraphNode>());
         expect((doc.last as ParagraphNode).text.toPlainText(), 'Second Paragraph');
       });
 
-      test('document ending with an empty paragraph', () {
+      test('document ending with empty paragraphs', () {
+        // "First Paragraph.\n\n\n" — one empty paragraph per trailing newline.
         final doc = deserializeMarkdownToDocument("""
 First Paragraph.
 
 
 """);
 
-        expect(doc.nodeCount, 2);
+        expect(doc.nodeCount, 4);
 
         expect(doc.first, isA<ParagraphNode>());
         expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
 
-        expect(doc.last, isA<ParagraphNode>());
+        for (var i = 1; i <= 3; i += 1) {
+          expect((doc.getNodeAt(i)! as ParagraphNode).text.toPlainText(), '');
+        }
+      });
+
+      test('document ending with a single trailing newline gains one empty paragraph', () {
+        final doc = deserializeMarkdownToDocument('First Paragraph.\n');
+
+        expect(doc.nodeCount, 2);
+        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
         expect((doc.last as ParagraphNode).text.toPlainText(), '');
+      });
+
+      test('document without a trailing newline gains nothing', () {
+        final doc = deserializeMarkdownToDocument('First Paragraph.');
+
+        expect(doc.nodeCount, 1);
+        expect((doc.first as ParagraphNode).text.toPlainText(), 'First Paragraph.');
       });
 
       test('empty markdown produces an empty paragraph', () {
@@ -2029,6 +2100,84 @@ First Paragraph.
 
         expect(doc.first, isA<ParagraphNode>());
         expect((doc.first as ParagraphNode).text.toPlainText(), '');
+      });
+    });
+
+    group('whitespace policy', () {
+      String roundTrip(String markdown) => serializeDocumentToMarkdown(deserializeMarkdownToDocument(markdown));
+
+      test('external two-blank-line input parses to [paragraph, empty, paragraph]', () {
+        final doc = deserializeMarkdownToDocument('A\n\n\nB');
+
+        expect(doc.nodeCount, 3);
+        expect((doc.getNodeAt(0)! as ParagraphNode).text.toPlainText(), 'A');
+        expect((doc.getNodeAt(1)! as ParagraphNode).text.toPlainText(), '');
+        expect((doc.getNodeAt(2)! as ParagraphNode).text.toPlainText(), 'B');
+      });
+
+      test('tight heading records tight metadata', () {
+        final doc = deserializeMarkdownToDocument('# Title\nBody');
+
+        expect(doc.nodeCount, 2);
+        expect((doc.getNodeAt(0)! as ParagraphNode).getMetadataValue('tight'), true);
+
+        final loose = deserializeMarkdownToDocument('# Title\n\nBody');
+        expect(loose.nodeCount, 2);
+        expect((loose.getNodeAt(0)! as ParagraphNode).getMetadataValue('tight'), isNot(true));
+      });
+
+      test('round-trips byte-identically', () {
+        const cases = <String>[
+          'A\n\nB', // separated paragraphs
+          'A\n\n\nB', // one empty paragraph between blocks
+          'A\n\n\n\nB', // two empty paragraphs between blocks
+          'Line one\nLine two', // soft line break, no hard-break spaces
+          '# Title\nBody', // tight heading
+          '# Title\n\nBody', // heading with blank line
+          'ends with newline\n', // single trailing newline
+          'no trailing newline',
+          'A\n\n', // trailing empty paragraph
+          '\nA', // leading empty paragraph
+          '\n\nA', // two leading empty paragraphs
+          '', // empty document
+          '\n', // newline-only document
+          '- a\n- b', // tight list
+          '- a\n', // list with trailing newline
+          '- [ ] todo\n- [x] done', // task list
+        ];
+
+        for (final markdown in cases) {
+          expect(roundTrip(markdown), markdown, reason: 'round trip of ${markdown.replaceAll('\n', r'\n')}');
+        }
+      });
+
+      test('round-trip is idempotent for content the serializer rewrites', () {
+        const cases = <String>[
+          'First Paragraph.  \nSecond line', // legacy hard-break spaces are dropped
+          'A  \n\nB', // legacy hard break before a blank line
+          'para\n\n\n\npara', // legacy 2N+2 empty-paragraph encoding
+        ];
+
+        for (final markdown in cases) {
+          final once = roundTrip(markdown);
+          expect(roundTrip(once), once, reason: 'idempotency of ${markdown.replaceAll('\n', r'\n')}');
+        }
+      });
+
+      test('legacy hard-break soft wrap heals to a plain soft wrap', () {
+        // The old serializer wrote soft wraps as "  \n". Those notes
+        // heal in one pass, with no text loss.
+        expect(roundTrip('Line one  \nLine two'), 'Line one\nLine two');
+      });
+
+      test('notes saved under the old empty-paragraph scheme keep their bytes', () {
+        // The old scheme wrote one empty paragraph as four newlines. That form
+        // now parses as two empty paragraphs and serializes right back to the
+        // same four newlines — stable bytes, no content loss.
+        const oldForm = 'para\n\n\n\npara';
+        final doc = deserializeMarkdownToDocument(oldForm);
+        expect(doc.nodeCount, 4);
+        expect(roundTrip(oldForm), oldForm);
       });
     });
   });

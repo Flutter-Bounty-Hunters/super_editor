@@ -69,6 +69,7 @@ class UpsellElementToNodeConverter implements ElementToNodeConverter {
 class UpsellSerializer extends NodeTypedDocumentNodeMarkdownSerializer<UpsellNode> {
   @override
   String doSerialization(Document document, UpsellNode node, {NodeSelection? selection}) {
-    return "@@@ upsell\n";
+    // No trailing newline: the document serializer owns block separators.
+    return "@@@ upsell";
   }
 }

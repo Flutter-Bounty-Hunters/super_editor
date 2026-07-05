@@ -14,8 +14,7 @@ Paragraph 1
 
 ---
 
-Paragraph 2
-''')
+Paragraph 2''')
           .withInputSource(TextInputSource.ime)
           .pump();
 
@@ -53,8 +52,7 @@ Paragraph 1
 
 ---
 
-Paragraph 2
-''')
+Paragraph 2''')
           .withInputSource(TextInputSource.ime)
           .pump();
 

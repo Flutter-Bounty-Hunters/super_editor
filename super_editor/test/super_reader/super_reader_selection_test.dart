@@ -479,8 +479,7 @@ First Paragraph
 
 ---
 
-Second Paragraph
-""")
+Second Paragraph""")
       .withComponentBuilders([
         const _UnselectableHrComponentBuilder(),
         ...defaultComponentBuilders,

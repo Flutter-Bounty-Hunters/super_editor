@@ -27,6 +27,45 @@ import 'package:super_editor/src/infrastructure/serialization/markdown/super_edi
 ///
 /// To serialize [DocumentNode]s that aren't part of Super Editor's standard serialization,
 /// provide [customNodeSerializers] to serialize those custom nodes.
+///
+/// ## Whitespace policy
+///
+/// This serializer and [deserializeMarkdownToDocument] are exact inverses for
+/// every structure the parser produces. Newlines are owned entirely by this
+/// function — node serializers emit their block's text with NO trailing
+/// newline, and the separator written between two nodes is:
+///
+///  * `"\n\n"` between two non-empty blocks — the standard markdown blank-line
+///    block separator;
+///  * `"\n"` between two consecutive list-family nodes ([ListItemNode],
+///    [TaskNode]), which markdown requires on adjacent lines to form one list;
+///  * `"\n"` after a heading whose `tight` metadata is `true` (parsed from
+///    `# Title\nBody` with no blank line — both the tight and the
+///    blank-line-separated form round-trip byte-identically);
+///  * around empty paragraphs: an empty paragraph serializes as an empty
+///    string, and every empty paragraph contributes exactly one `"\n"` to the
+///    document. Concretely: `"\n"` before an empty paragraph, `"\n"` between
+///    two empty paragraphs, and — closing a run — `"\n\n"` before the next
+///    non-empty block (or `"\n"` when no non-empty block precedes the run,
+///    i.e. at the start of the document).
+///
+/// The result, in raw-newline terms, with `[A]`/`[B]` non-empty blocks and
+/// `[e]` an empty paragraph:
+///
+///  * `[A][B]` → `A\n\nB`; `[A][e][B]` → `A\n\n\nB`; `[A][e][e][B]` → `A\n\n\n\nB`
+///  * `[e][A]` → `\nA`; `[A][e]` → `A\n` — a document ends with a newline iff
+///    it ends with empty paragraphs;
+///  * an all-empty document with n empty paragraphs → n-1 newlines (`[e]` → `""`).
+///
+/// The parser's inverse rules: k blank lines between two blocks → k-1 empty
+/// paragraphs (one blank line is just the separator); k blank lines at the
+/// document start → k empty paragraphs; m trailing newlines → m empty
+/// paragraphs; a document of nothing but m newlines → m+1 empty paragraphs.
+///
+/// Single `"\n"` characters inside a paragraph's text (soft wraps) serialize
+/// verbatim — no two-space hard-break markers are appended (they compounded on
+/// every save; see upstream issue #3006). Text that would be re-interpreted as
+/// block syntax at a line start is backslash-escaped instead.
 String serializeDocumentToMarkdown(
   Document doc, {
   DocumentSelection? selection,
@@ -48,6 +87,12 @@ String serializeDocumentToMarkdown(
   ];
 
   StringBuffer buffer = StringBuffer();
+
+  // The last node that produced a serialization, and whether any node so far
+  // serialized as a non-empty block — the inputs to the separator written
+  // between blocks (see the whitespace policy above).
+  DocumentNode? previousNode;
+  bool hasNonEmptyBlockBefore = false;
 
   late final DocumentRange? selectedRange;
   late final List<DocumentNode> selectedNodes;
@@ -91,18 +136,72 @@ String serializeDocumentToMarkdown(
     for (final serializer in nodeSerializers) {
       final serialization = serializer.serialize(doc, node, selection: nodeSelection);
       if (serialization != null) {
-        if (i > 0) {
-          // Add a new line before every node, except the first node.
-          buffer.writeln("");
+        if (previousNode != null) {
+          buffer.write(_nodeSeparator(previousNode, node, hasNonEmptyBlockBefore: hasNonEmptyBlockBefore));
         }
 
         buffer.write(serialization);
+        previousNode = node;
+        hasNonEmptyBlockBefore = hasNonEmptyBlockBefore || !_isEmptyParagraph(node);
         break;
       }
     }
   }
 
   return buffer.toString();
+}
+
+/// The newlines to write between [previous] and [current], per the whitespace
+/// policy documented on [serializeDocumentToMarkdown].
+///
+/// [hasNonEmptyBlockBefore] reports whether any node before [current] —
+/// [previous] included — serialized as a non-empty block. It distinguishes an
+/// empty-paragraph run at the start of the document (each empty paragraph is
+/// one newline, nothing more) from a run between two blocks (where the
+/// surrounding blocks also need their blank-line separator).
+String _nodeSeparator(DocumentNode previous, DocumentNode current, {required bool hasNonEmptyBlockBefore}) {
+  if (_isEmptyParagraph(previous)) {
+    return _isEmptyParagraph(current) || !hasNonEmptyBlockBefore ? '\n' : '\n\n';
+  }
+  if (_isEmptyParagraph(current)) {
+    return '\n';
+  }
+  if (_isListItemLike(previous) && _isListItemLike(current)) {
+    // Adjacent lines, so the items form a single markdown list.
+    return '\n';
+  }
+  if (_isTightHeading(previous)) {
+    return '\n';
+  }
+  return '\n\n';
+}
+
+/// Whether [node] is an empty paragraph with no special block type — a node
+/// that serializes to an empty string and stands for one newline.
+bool _isEmptyParagraph(DocumentNode node) {
+  if (node is! ParagraphNode || node.text.isNotEmpty) {
+    return false;
+  }
+  final blockType = node.getMetadataValue('blockType');
+  return blockType == null || blockType == paragraphAttribution;
+}
+
+/// Whether [node] serializes as a markdown list item (`- `, `1. `, `- [ ] `).
+bool _isListItemLike(DocumentNode node) => node is ListItemNode || node is TaskNode;
+
+/// Whether [node] is a heading that was parsed with no blank line between it
+/// and the following block, and should be written back the same way.
+bool _isTightHeading(DocumentNode node) {
+  if (node is! ParagraphNode || node.getMetadataValue('tight') != true) {
+    return false;
+  }
+  final blockType = node.getMetadataValue('blockType');
+  return blockType == header1Attribution ||
+      blockType == header2Attribution ||
+      blockType == header3Attribution ||
+      blockType == header4Attribution ||
+      blockType == header5Attribution ||
+      blockType == header6Attribution;
 }
 
 /// Serializes a given [DocumentNode] to a Markdown `String`.
@@ -259,14 +358,6 @@ class ListItemNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Lis
 
     buffer.write('$indent$symbol ${textToConvert.toMarkdown()}');
 
-    final nodeIndex = document.getNodeIndexById(node.id);
-    final nodeBelow = nodeIndex < document.nodeCount - 1 ? document.getNodeAt(nodeIndex + 1) : null;
-    if (nodeBelow != null && nodeBelow is! ListItemNode) {
-      // This list item is the last item in the list. Add an extra
-      // blank line after it.
-      buffer.writeln('');
-    }
-
     return buffer.toString();
   }
 
@@ -416,14 +507,6 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
       // with "#", "- ", "1. ", etc., would change block type on the next parse.
       // Serialize with those trigger characters escaped.
       buffer.write(textToConvert.toMarkdown(escapeLineStartTriggers: true));
-    }
-
-    // We're not at the end of the document yet. Add a blank line after the
-    // paragraph so that we can tell the difference between separate
-    // paragraphs vs. newlines within a single paragraph.
-    final nodeIndex = document.getNodeIndexById(node.id);
-    if (nodeIndex != document.nodeCount - 1) {
-      buffer.writeln();
     }
 
     return buffer.toString();
@@ -878,18 +961,14 @@ class _MarkdownTextWriter {
   /// Writes the given [text], escaping any characters whose code units appear in
   /// [escapeCharacters] with a leading backslash.
   ///
-  /// Separates multiple lines in a single paragraph using two spaces before each
-  /// line break. A line ending with two or more spaces represents a hard line
-  /// break, as defined in the Markdown spec.
+  /// A "\n" within [text] is written verbatim: consecutive non-blank lines
+  /// re-parse into the same paragraph, so a soft wrap needs no hard-break
+  /// marker. Two-space hard breaks are never emitted — they accumulated one
+  /// invisible "  " per line per save (upstream issue #3006).
   void writeText(String text, {Set<int>? escapeCharacters}) {
     final lines = text.split('\n');
     for (int i = 0; i < lines.length; i++) {
       if (i > 0) {
-        // Adds two spaces before line breaks.
-        // The Markdown spec defines that a line ending with two or more spaces
-        // represents a hard line break, which causes the next line to be part of
-        // the previous paragraph during deserialization.
-        _buffer.write('  ');
         _buffer.write('\n');
         _isAtLineStart = true;
       }
@@ -1026,14 +1105,6 @@ class HeaderNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Parag
       buffer.write('##### ${textToConvert.toMarkdown()}');
     } else if (blockType == header6Attribution) {
       buffer.write('###### ${textToConvert.toMarkdown()}');
-    }
-
-    // We're not at the end of the document yet. Add a blank line after the
-    // paragraph so that we can tell the difference between separate
-    // paragraphs vs. newlines within a single paragraph.
-    final nodeIndex = document.getNodeIndexById(node.id);
-    if (nodeIndex != document.nodeCount - 1) {
-      buffer.writeln();
     }
 
     return buffer.toString();

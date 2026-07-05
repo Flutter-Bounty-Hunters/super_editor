@@ -737,8 +737,7 @@ void main() {
     1. list item 2.1
     2. list item 2.2
  3. list item 3
-    1. list item 3.1
-""") //
+    1. list item 3.1""") //
             .pump();
 
         expect(context.document.nodeCount, 6);

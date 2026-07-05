@@ -103,6 +103,7 @@ This is the document that exists before Markdown is pasted.
         '''# A Markdown snippet
 
 ---
+
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus sed sagittis urna. Aenean mattis ante justo, quis sollicitudin metus interdum id. Aenean ornare urna ac enim consequat mollis. In aliquet convallis efficitur. Phasellus convallis purus in fringilla scelerisque. Ut ac orci a turpis egestas lobortis. Morbi aliquam dapibus sem, vitae sodales arcu ultrices eu. Duis vulputate mauris quam, eleifend pulvinar quam blandit eget.
 
 # Primary document
@@ -252,6 +253,7 @@ Aenean mattis ante justo, quis sollicitudin metus interdum id.< here and continu
         '''This is a paragraph that will split here >
 
 ![A Fake Test Image](https://flutter.dev/logo.png)
+
 < and show an image between paragraphs.''',
       );
     });
@@ -297,6 +299,7 @@ This is the document that exists before Markdown is pasted.
 # A Markdown snippet
 
 ---
+
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus sed sagittis urna. Aenean mattis ante justo, quis sollicitudin metus interdum id. Aenean ornare urna ac enim consequat mollis. In aliquet convallis efficitur. Phasellus convallis purus in fringilla scelerisque. Ut ac orci a turpis egestas lobortis. Morbi aliquam dapibus sem, vitae sodales arcu ultrices eu. Duis vulputate mauris quam, eleifend pulvinar quam blandit eget.''',
       );
     });
@@ -430,6 +433,7 @@ const _fullDocumentMarkdown = '''
 # Example Document
 
 ---
+
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus sed sagittis urna. Aenean mattis ante justo, quis sollicitudin metus interdum id. Aenean ornare urna ac enim consequat mollis. In aliquet convallis efficitur. Phasellus convallis purus in fringilla scelerisque. Ut ac orci a turpis egestas lobortis. Morbi aliquam dapibus sem, vitae sodales arcu ultrices eu. Duis vulputate mauris quam, eleifend pulvinar quam blandit eget.
 
 - This is an unordered list item
