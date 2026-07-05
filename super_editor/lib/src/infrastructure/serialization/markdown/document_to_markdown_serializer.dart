@@ -321,9 +321,17 @@ class ParagraphNodeSerializer extends NodeTypedDocumentNodeMarkdownSerializer<Pa
       // TODO: handle multiline
       buffer.write('> $inlineMarkdown');
     } else if (blockType == codeAttribution) {
+      final language = node.getMetadataValue('codeLanguage') as String? ?? '';
+      // A code fence holds literal text: serialize the plain text, not the
+      // inline markdown, so code isn't backslash-escaped or given hard-break
+      // trailing spaces.
+      final code = textToConvert.toPlainText();
+      // The markdown parser stores fenced code with a trailing newline; strip a
+      // single one so the fence doesn't grow a blank line on every round trip.
+      final trimmedCode = code.endsWith('\n') ? code.substring(0, code.length - 1) : code;
       buffer //
-        ..writeln('```') //
-        ..writeln(inlineMarkdown) //
+        ..writeln('```$language') //
+        ..writeln(trimmedCode) //
         ..write('```');
     } else {
       final String? textAlign = node.getMetadataValue('textAlign');

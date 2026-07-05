@@ -217,6 +217,45 @@ This is some code
         );
       });
 
+      test('code with language', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
+            text: AttributedText('void main() {}\n'),
+            metadata: const {
+              'blockType': codeAttribution,
+              'codeLanguage': 'dart',
+            },
+          ),
+        ]);
+
+        expect(
+          serializeDocumentToMarkdown(doc),
+          '''
+```dart
+void main() {}
+```''',
+        );
+      });
+
+      test('code is serialized literally, without markdown escapes', () {
+        final doc = MutableDocument(nodes: [
+          ParagraphNode(
+            id: '1',
+            text: AttributedText('a *b* c'),
+            metadata: const {'blockType': codeAttribution},
+          ),
+        ]);
+
+        expect(
+          serializeDocumentToMarkdown(doc),
+          '''
+```
+a *b* c
+```''',
+        );
+      });
+
       test('paragraph', () {
         final doc = MutableDocument(nodes: [
           ParagraphNode(
@@ -983,6 +1022,19 @@ This is some code
         final code = codeBlockDoc.first as ParagraphNode;
         expect(code.getMetadataValue('blockType'), codeAttribution);
         expect(code.text.toPlainText(), 'This is some code\n');
+        expect(code.getMetadataValue('codeLanguage'), isNull);
+      });
+
+      test('code block with language', () {
+        final codeBlockDoc = deserializeMarkdownToDocument('''
+```dart
+void main() {}
+```''');
+
+        final code = codeBlockDoc.first as ParagraphNode;
+        expect(code.getMetadataValue('blockType'), codeAttribution);
+        expect(code.text.toPlainText(), 'void main() {}\n');
+        expect(code.getMetadataValue('codeLanguage'), 'dart');
       });
 
       test('image', () {

@@ -391,14 +391,25 @@ class _MarkdownToDocument implements md.NodeVisitor {
     //       .trim(),
     // ),
 
+    // A fenced code block arrives as `<pre><code class="language-dart">`,
+    // where the class attribute carries the fence's info string. Keep the
+    // language in the node's metadata so serialization can re-emit it.
+    const languageClassPrefix = 'language-';
+    final languageClass = element.attributes['class'];
+    final language = languageClass != null && languageClass.startsWith(languageClassPrefix)
+        ? languageClass.substring(languageClassPrefix.length)
+        : null;
+
     _content.add(
       ParagraphNode(
         id: Editor.createNodeId(),
         text: AttributedText(
           element.textContent,
         ),
-        metadata: const {
+        metadata: {
           'blockType': codeAttribution,
+          if (language != null && language.isNotEmpty) //
+            'codeLanguage': language,
         },
       ),
     );
