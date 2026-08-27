@@ -495,6 +495,29 @@ class SpellingAndGrammarReaction implements EditReaction {
 
     _styler.clearErrorsForNode(change.nodeId);
     _styler.addErrors(change.nodeId, updatedErrors);
+
+    // Update bounds on spelling correction suggestion bounds, which are separate from the
+    // error bounds.
+    final previousSuggestions = _suggestions.getSuggestionsForNode(change.nodeId);
+    if (previousSuggestions.isNotEmpty) {
+      final updatedSuggestions = <TextRange, SpellingError>{};
+      for (final entry in previousSuggestions.entries) {
+        final range = entry.key;
+        if (range.start < textPushbackStart) {
+          // This suggestion wasn't impacted by the text insertion.
+          updatedSuggestions[range] = entry.value;
+          continue;
+        }
+
+        // Push this suggestion back by the insertion amount.
+        final shifted = TextRange(
+          start: range.start + pushbackAmount,
+          end: range.end + pushbackAmount,
+        );
+        updatedSuggestions[shifted] = entry.value.copyWith(range: shifted);
+      }
+      _suggestions.putSuggestions(change.nodeId, updatedSuggestions);
+    }
   }
 
   void _updateExistingErrorsAfterTextDeletion(TextDeletedEvent change) {
@@ -530,6 +553,35 @@ class SpellingAndGrammarReaction implements EditReaction {
 
     _styler.clearErrorsForNode(change.nodeId);
     _styler.addErrors(change.nodeId, updatedErrors);
+
+    // Update bounds on spelling correction suggestion bounds, which are separate from the
+    // error bounds.
+    final previousSuggestions = _suggestions.getSuggestionsForNode(change.nodeId);
+    if (previousSuggestions.isNotEmpty) {
+      // The deleted text spans [change.offset, textPushUpStart).
+      final updatedSuggestions = <TextRange, SpellingError>{};
+      for (final entry in previousSuggestions.entries) {
+        final range = entry.key;
+        if ((range.start >= change.offset && range.start <= textPushUpStart) ||
+            (range.end >= change.offset && range.end <= textPushUpStart)) {
+          // The word was partially or entirely deleted. Drop the suggestion.
+          continue;
+        }
+        if (range.start < textPushUpStart) {
+          // This suggestion wasn't impacted by the text deletion.
+          updatedSuggestions[range] = entry.value;
+          continue;
+        }
+
+        // Push this suggestion up by the deletion amount.
+        final shifted = TextRange(
+          start: range.start - pushUpAmount,
+          end: range.end - pushUpAmount,
+        );
+        updatedSuggestions[shifted] = entry.value.copyWith(range: shifted);
+      }
+      _suggestions.putSuggestions(change.nodeId, updatedSuggestions);
+    }
   }
 
   /// Clears any pre-existing error for any word that was partially or entirely deleted by the given

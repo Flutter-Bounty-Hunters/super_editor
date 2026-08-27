@@ -75,6 +75,18 @@ class SpellingErrorSuggestions with ChangeNotifier implements Editable {
     notifyListeners();
   }
 
+  /// Returns all spelling suggestions for the node with the given [nodeId],
+  /// keyed by the text range of each mis-spelled word (empty if there are none).
+  ///
+  /// The returned map is a copy; mutate the cache with [putSuggestions].
+  Map<TextRange, SpellingError> getSuggestionsForNode(String nodeId) {
+    final nodeSuggestions = _suggestions[nodeId];
+    if (nodeSuggestions == null) {
+      return const {};
+    }
+    return Map<TextRange, SpellingError>.of(nodeSuggestions);
+  }
+
   /// Clears all spelling suggestions for all text in the document.
   void clear() {
     if (_suggestions.isEmpty) {
@@ -117,6 +129,19 @@ class SpellingError {
           nodePosition: TextNodePosition(offset: range.end - 1),
           // -1 because range is exclusive and doc positions are inclusive
         ),
+      );
+
+  SpellingError copyWith({
+    String? word,
+    String? nodeId,
+    TextRange? range,
+    List<String>? suggestions,
+  }) =>
+      SpellingError(
+        word: word ?? this.word,
+        nodeId: nodeId ?? this.nodeId,
+        range: range ?? this.range,
+        suggestions: suggestions ?? this.suggestions,
       );
 
   @override
