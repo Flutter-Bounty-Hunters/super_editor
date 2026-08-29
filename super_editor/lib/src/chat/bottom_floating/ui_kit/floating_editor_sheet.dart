@@ -289,14 +289,17 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
 
       final bannerOffset = offset + (banner.parentData as BoxParentData).offset;
 
-      // Reverting back to a raw canvas clip for the banner.
-      // This paints directly into the context's PictureLayer, ensuring the framework
-      // doesn't orphan the banner when `layer = clipLayer` is assigned below.
+      // Paint the banner, clipping it to the superellipse path.
+      //
+      // We paint with `context.paintChild()` instead of a direct `banner.paint()`
+      // because `context.paintChild()` lets the `banner` invalidate its parent,
+      // causing a repaint. This is important, for example, when a `banner`
+      // loads an icon. It needs to repaint when the icon finishes loading.
       context.canvas
         ..save()
         ..clipPath(shadowSheetBoundaryPath);
 
-      banner.paint(context, bannerOffset);
+      context.paintChild(banner, bannerOffset);
 
       context.canvas.restore();
     }
