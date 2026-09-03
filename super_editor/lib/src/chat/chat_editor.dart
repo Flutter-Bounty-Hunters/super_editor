@@ -46,6 +46,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     this.documentLayoutKey,
     this.hint = "Send a message...",
     Stylesheet? stylesheet,
+    SelectionStyles? selectionStyle,
     required this.pageController,
     this.scrollController,
     this.softwareKeyboardController,
@@ -59,6 +60,7 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
     this.previewModeComponentAdjusters = ChatPreviewModePlugin.defaultPreviewAdjusters,
     this.plugins = const {},
   })  : stylesheet = stylesheet ?? _chatStylesheet,
+        selectionStyles = selectionStyle ?? defaultSelectionStyle,
         componentBuilders = [
           for (final plugin in plugins) ...plugin.componentBuilders,
           if (componentBuilders != null)
@@ -107,6 +109,10 @@ class SuperChatEditor<PanelType> extends StatefulWidget {
 
   /// Style rules applied through the document presentation.
   final Stylesheet stylesheet;
+
+  /// Styles applied to selected content, e.g., the color of the selection rectangles
+  /// painted behind selected text.
+  final SelectionStyles selectionStyles;
 
   /// Policies that determine how selection is modified by other factors, such as
   /// gaining or losing focus.
@@ -368,6 +374,7 @@ class _SuperChatEditorState<PanelType> extends State<SuperChatEditor<PanelType>>
           isImeConnected: _isImeConnected,
           shrinkWrap: false,
           stylesheet: widget.stylesheet,
+          selectionStyle: widget.selectionStyles,
           documentUnderlayBuilders: widget.documentUnderlayBuilders,
           documentOverlayBuilders: widget.documentOverlayBuilders,
           componentBuilders: widget.componentBuilders,
