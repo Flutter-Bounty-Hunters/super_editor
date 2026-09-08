@@ -59,6 +59,39 @@ void main() {
       expect(_calculateKeyboardHeight(screenKey, contentKey), 0.0);
     });
 
+    testWidgets("resets correctly and does not report 150 without animation", (tester) async {
+      final screenKey = GlobalKey();
+      final contentKey = GlobalKey();
+      await _pumpScaffold(
+        tester,
+        screenKey: screenKey,
+        contentKey: contentKey,
+        animateKeyboard: false,
+      );
+
+      // Initially closed with height 0.
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardState, KeyboardState.closed);
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardHeight, 0.0);
+
+      // Focus the text field to open the keyboard.
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+
+      // Keyboard should be immediately open with full height.
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardState, KeyboardState.open);
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardHeight, _keyboardHeight);
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardHeight, isNot(150.0));
+
+      // Tap outside to unfocus and close keyboard.
+      await tester.tapAt(const Offset(200, 100));
+      await tester.pump();
+
+      // Keyboard should reset cleanly to closed with height 0.
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardState, KeyboardState.closed);
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardHeight, 0.0);
+      expect(SuperKeyboard.instance.mobileGeometry.value.keyboardHeight, isNot(150.0));
+    });
+
     testWidgetsOnMobile("enabled by default on mobile", (tester) async {
       final screenKey = GlobalKey();
       final contentKey = GlobalKey();
@@ -109,6 +142,7 @@ Future<void> _pumpScaffold(
   WidgetTester tester, {
   GlobalKey? screenKey,
   GlobalKey? contentKey,
+  bool animateKeyboard = true,
 }) async {
   switch (defaultTargetPlatform) {
     case TargetPlatform.iOS:
@@ -126,7 +160,7 @@ Future<void> _pumpScaffold(
       key: screenKey,
       child: SoftwareKeyboardHeightSimulator(
         keyboardHeight: _keyboardHeight,
-        animateKeyboard: true,
+        animateKeyboard: animateKeyboard,
         child: MaterialApp(
           home: Scaffold(
             body: Center(

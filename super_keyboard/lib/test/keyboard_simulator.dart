@@ -96,7 +96,9 @@ class _SoftwareKeyboardHeightSimulatorState extends State<SoftwareKeyboardHeight
   void didUpdateWidget(covariant SoftwareKeyboardHeightSimulator oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.animateKeyboard != oldWidget.animateKeyboard || widget.keyboardHeight != oldWidget.keyboardHeight) {
+    if (widget.initialKeyboardState != oldWidget.initialKeyboardState ||
+        widget.animateKeyboard != oldWidget.animateKeyboard ||
+        widget.keyboardHeight != oldWidget.keyboardHeight) {
       TestSuperKeyboard.install(
         id: _testKeyboardId,
         vsync: this,
@@ -225,15 +227,18 @@ class TestSuperKeyboard implements SuperKeyboard {
     KeyboardState initialKeyboardState = KeyboardState.closed,
     this.fakeKeyboardHeight = 400.0,
     Duration keyboardAnimationTime = const Duration(milliseconds: 600),
-  }) {
+  }) : _keyboardAnimationTime = keyboardAnimationTime {
     _interceptPlatformChannel();
 
+    final isInitiallyOpen = initialKeyboardState == KeyboardState.open;
     _geometry.value = MobileWindowGeometry(
       keyboardState: initialKeyboardState,
-      keyboardHeight: initialKeyboardState == KeyboardState.open ? fakeKeyboardHeight : null,
+      keyboardHeight: isInitiallyOpen ? fakeKeyboardHeight : 0.0,
+      bottomPadding: 48,
     );
 
     _keyboardHeightController = AnimationController(
+      value: isInitiallyOpen ? 1.0 : 0.0,
       duration: keyboardAnimationTime,
       vsync: vsync,
     )
@@ -283,6 +288,11 @@ class TestSuperKeyboard implements SuperKeyboard {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler(SystemChannels.textInput.name, null);
     _keyboardHeightController.dispose();
+    _geometry.value = const MobileWindowGeometry(
+      keyboardState: KeyboardState.closed,
+      keyboardHeight: 0,
+      bottomPadding: 48,
+    );
   }
 
   @override
@@ -296,6 +306,7 @@ class TestSuperKeyboard implements SuperKeyboard {
   final String id;
 
   final double fakeKeyboardHeight;
+  final Duration _keyboardAnimationTime;
 
   late final AnimationController _keyboardHeightController;
 
@@ -304,10 +315,28 @@ class TestSuperKeyboard implements SuperKeyboard {
   final _geometry = ValueNotifier(const MobileWindowGeometry());
 
   void _simulatePlatformOpeningKeyboard() {
+    if (_keyboardAnimationTime == Duration.zero) {
+      _keyboardHeightController.value = 1.0;
+      _geometry.value = MobileWindowGeometry(
+        keyboardState: KeyboardState.open,
+        keyboardHeight: fakeKeyboardHeight,
+        bottomPadding: 48,
+      );
+      return;
+    }
     _keyboardHeightController.forward();
   }
 
   void _simulatePlatformClosingKeyboard() {
+    if (_keyboardAnimationTime == Duration.zero) {
+      _keyboardHeightController.value = 0.0;
+      _geometry.value = const MobileWindowGeometry(
+        keyboardState: KeyboardState.closed,
+        keyboardHeight: 0,
+        bottomPadding: 48,
+      );
+      return;
+    }
     _keyboardHeightController.reverse();
   }
 
@@ -316,7 +345,7 @@ class TestSuperKeyboard implements SuperKeyboard {
       case AnimationStatus.forward:
         _geometry.value = MobileWindowGeometry(
           keyboardState: KeyboardState.opening,
-          keyboardHeight: fakeKeyboardHeight / 2,
+          keyboardHeight: _keyboardHeightController.value * fakeKeyboardHeight,
           bottomPadding: 48,
         );
       case AnimationStatus.completed:
@@ -328,7 +357,7 @@ class TestSuperKeyboard implements SuperKeyboard {
       case AnimationStatus.reverse:
         _geometry.value = MobileWindowGeometry(
           keyboardState: KeyboardState.closing,
-          keyboardHeight: fakeKeyboardHeight / 2,
+          keyboardHeight: _keyboardHeightController.value * fakeKeyboardHeight,
           bottomPadding: 48,
         );
       case AnimationStatus.dismissed:
