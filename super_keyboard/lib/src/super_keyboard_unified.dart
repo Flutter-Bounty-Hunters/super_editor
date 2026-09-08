@@ -105,4 +105,13 @@ class SuperKeyboard {
   void _onAndroidWindowGeometryChange() {
     _mobileGeometry.value = SuperKeyboardAndroid.instance.geometry.value;
   }
+
+  /// Returns the ID of the currently active software keyboard (IME) on Android,
+  /// or `null` if on another platform or if it cannot be determined.
+  Future<String?> getActiveIme() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return await SuperKeyboardAndroid.instance.getActiveIme();
+    }
+    return null;
+  }
 }

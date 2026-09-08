@@ -89,6 +89,14 @@ class SuperKeyboardAndroid {
     await _methodChannel.invokeMethod("stopLogging");
   }
 
+  /// Returns the ID of the currently active software keyboard (IME) on Android,
+  /// e.g. "com.sec.android.inputmethod/.SamsungKeypad" or
+  /// "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+  /// or `null` if it cannot be determined.
+  Future<String?> getActiveIme() async {
+    return await _methodChannel.invokeMethod<String>('getActiveIme');
+  }
+
   ValueListenable<MobileWindowGeometry> get geometry => _geometry;
   final _geometry = ValueNotifier<MobileWindowGeometry>(const MobileWindowGeometry());
 

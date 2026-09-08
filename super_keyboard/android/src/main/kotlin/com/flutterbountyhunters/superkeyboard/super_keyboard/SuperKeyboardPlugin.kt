@@ -3,6 +3,7 @@ package com.flutterbountyhunters.superkeyboard.super_keyboard
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -32,6 +33,7 @@ import kotlin.math.roundToInt
 class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserver, OnApplyWindowInsetsListener {
   private lateinit var channel : MethodChannel
 
+  private var flutterPluginBinding: FlutterPlugin.FlutterPluginBinding? = null
   private var binding: ActivityPluginBinding? = null
 
   // The Activity's lifecycle, which reports things like when the Android
@@ -58,10 +60,19 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     SuperKeyboardLog.d("super_keyboard", "Attached to Flutter engine")
+    this.flutterPluginBinding = flutterPluginBinding
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "super_keyboard_android")
 
     channel.setMethodCallHandler { call, result ->
       when (call.method) {
+        "getActiveIme" -> {
+          val context = binding?.activity ?: flutterPluginBinding.applicationContext
+          val activeImeId = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.DEFAULT_INPUT_METHOD
+          )
+          result.success(activeImeId)
+        }
         "startLogging" -> {
           val forwardToDart = call.argument<Boolean?>("sendPlatformLogsToDart") ?: false
           SuperKeyboardLog.enable(if (forwardToDart) channel else null)
@@ -134,6 +145,8 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     SuperKeyboardLog.d("super_keyboard", "Detached from Flutter engine")
     SuperKeyboardLog.disable()
+    channel.setMethodCallHandler(null)
+    this.flutterPluginBinding = null
     this.binding = null
   }
 
