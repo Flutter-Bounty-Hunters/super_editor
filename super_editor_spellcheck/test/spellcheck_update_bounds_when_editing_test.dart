@@ -332,6 +332,32 @@ Future<(Editor, SpellingAndGrammarPlugin)> _pumpSpellingEditor(
   testClock.pauseAutomaticFramePumping();
   await tester.typeImeText(text);
 
+  // Move the selection to trigger the spellcheck heuristic on the initial text.
+  editor.execute([
+    const ChangeSelectionRequest(
+      DocumentSelection.collapsed(
+        position: DocumentPosition(
+          nodeId: '1',
+          nodePosition: TextNodePosition(offset: 0),
+        ),
+      ),
+      SelectionChangeType.placeCaret,
+      SelectionReason.userInteraction,
+    ),
+  ]);
+  editor.execute([
+    ChangeSelectionRequest(
+      DocumentSelection.collapsed(
+        position: DocumentPosition(
+          nodeId: '1',
+          nodePosition: TextNodePosition(offset: text.length),
+        ),
+      ),
+      SelectionChangeType.placeCaret,
+      SelectionReason.userInteraction,
+    ),
+  ]);
+
   await tester.pump(const Duration(seconds: 10));
   await tester.pump();
   await tester.pump();

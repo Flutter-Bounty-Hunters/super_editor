@@ -257,11 +257,11 @@ void main() {
           await tester.placeCaretInParagraph("1", 0);
 
           // Trigger a regular spell check.
-          await tester.typeImeText("H");
+          await tester.typeImeText("H ");
 
           // Ensure one spell check was run.
           expect(spellCheckerService.queriedTexts, [
-            'H',
+            'H ',
           ]);
 
           // Convert paragraph to blockquote.
@@ -271,11 +271,11 @@ void main() {
           await tester.pump();
 
           // Type more text.
-          await tester.typeImeText("l");
+          await tester.typeImeText("l ");
 
           // Ensure no additional spell checks were run.
           expect(spellCheckerService.queriedTexts, [
-            'H',
+            'H ',
           ]);
 
           // Convert back to a paragraph.
@@ -285,16 +285,16 @@ void main() {
           await tester.pump();
 
           // Type more text.
-          await tester.typeImeText("l");
+          await tester.typeImeText("l ");
 
           // Ensure spell check was run after conversion, and after typing new text.
           expect(spellCheckerService.queriedTexts, [
             // In original paragraph.
-            'H',
+            'H ',
             // After converting from blockquote back to paragraph.
-            'Hl',
-            // After inserting 'l' in paragraph that was converted from blockquote.
-            'Hll',
+            'H l ',
+            // After inserting 'l ' in paragraph that was converted from blockquote.
+            'H l l ',
           ]);
 
           // Convert paragraph to a code block
@@ -304,16 +304,16 @@ void main() {
           await tester.pump();
 
           // Type more text.
-          await tester.typeImeText("o");
+          await tester.typeImeText("o ");
 
           // Ensure no further spell checks were run upon conversion or new text typed.
           expect(spellCheckerService.queriedTexts, [
             // In original paragraph.
-            'H',
+            'H ',
             // After converting from blockquote back to paragraph.
-            'Hl',
-            // After inserting 'l' in paragraph that was converted from blockquote.
-            'Hll',
+            'H l ',
+            // After inserting 'l ' in paragraph that was converted from blockquote.
+            'H l l ',
           ]);
         },
       );
@@ -352,7 +352,7 @@ void main() {
           // timer goes off, and then we can't verify whether the check happened immediately, or
           // after the intended delay.
           testClock.pauseAutomaticFramePumping();
-          await tester.typeImeText("H");
+          await tester.typeImeText("H ");
 
           // Ensure spell check doesn't run immediately.
           expect(spellCheckerService.queriedTexts, [
@@ -364,7 +364,7 @@ void main() {
 
           // Ensure spell check was run after delay.
           expect(spellCheckerService.queriedTexts, [
-            "H",
+            "H ",
           ]);
         },
       );

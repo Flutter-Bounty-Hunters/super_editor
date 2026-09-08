@@ -331,6 +331,9 @@ class SpellingAndGrammarReaction implements EditReaction {
 
   late final SpellcheckClock _clock;
 
+  /// Matches whitespace and punctuation characters that indicate a word boundary.
+  static final _spaceOrPunctuation = RegExp(r'[\s\p{P}]', unicode: true);
+
   final SpellingErrorSuggestions _suggestions;
 
   final SpellingAndGrammarStyler _styler;
@@ -443,6 +446,8 @@ class SpellingAndGrammarReaction implements EditReaction {
       textChanges.add(change);
     }
 
+    final nodesToCheck = <TextNode>{};
+
     for (final change in textChanges) {
       final textNode = document.getNodeById(change.nodeId);
       if (textNode == null) {
@@ -458,10 +463,43 @@ class SpellingAndGrammarReaction implements EditReaction {
 
       if (change is TextInsertionEvent) {
         _updateExistingErrorsAfterTextInsertion(change);
+        // Only trigger a spellcheck if the inserted text contains a space or punctuation.
+        if (_spaceOrPunctuation.hasMatch(change.text.toPlainText())) {
+          nodesToCheck.add(textNode);
+        }
       } else if (change is TextDeletedEvent) {
         _updateExistingErrorsAfterTextDeletion(change);
+      } else {
+        nodesToCheck.add(textNode);
       }
+    }
 
+    // Check if the selection changed independent of inserting or deleting unpunctuated text.
+    final selectionChangeEvent =
+        changeList.firstWhereOrNull((event) => event is SelectionChangeEvent) as SelectionChangeEvent?;
+    if (selectionChangeEvent != null) {
+      final oldSelection = selectionChangeEvent.oldSelection;
+      final newSelection = selectionChangeEvent.newSelection;
+
+      if (oldSelection != newSelection &&
+          selectionChangeEvent.changeType != SelectionChangeType.insertContent &&
+          selectionChangeEvent.changeType != SelectionChangeType.deleteContent) {
+        if (oldSelection != null) {
+          final oldNode = document.getNodeById(oldSelection.extent.nodeId);
+          if (oldNode is TextNode) {
+            nodesToCheck.add(oldNode);
+          }
+        }
+        if (newSelection != null) {
+          final newNode = document.getNodeById(newSelection.extent.nodeId);
+          if (newNode is TextNode) {
+            nodesToCheck.add(newNode);
+          }
+        }
+      }
+    }
+
+    for (final textNode in nodesToCheck) {
       _scheduleSpellingAndGrammarCheck(textNode);
     }
   }
@@ -622,7 +660,7 @@ class SpellingAndGrammarReaction implements EditReaction {
     final waitingNodes = _delayedChecks.keys.toList(growable: false);
     final nodesToCheck = <TextNode>{};
     for (final nodeId in waitingNodes) {
-      if (now.isAfter(_delayedChecks[nodeId]!.$1)) {
+      if (!now.isBefore(_delayedChecks[nodeId]!.$1)) {
         nodesToCheck.add(_delayedChecks[nodeId]!.$2);
       }
     }
