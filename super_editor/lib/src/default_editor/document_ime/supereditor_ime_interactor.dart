@@ -160,7 +160,9 @@ class SuperEditorImeInteractor extends StatefulWidget {
 }
 
 @visibleForTesting
-class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> implements ImeInputOwner {
+class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor>
+    with WidgetsBindingObserver
+    implements ImeInputOwner {
   static bool _willCheckUniqueInputsNextFrame = false;
 
   static final _registeredInputsThisFrame = <(SuperImeInputId inputId, StackTrace stacktrace)>[];
@@ -256,6 +258,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
   // way to handle that scenario, then get rid of this property.
   final _documentImeConnection = ValueNotifier<TextInputConnection?>(null);
 
+  ScrollPosition? _scrollPosition;
+
   @override
   void initState() {
     super.initState();
@@ -268,6 +272,10 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     _imeClient = DeltaTextInputClientDecorator();
     _configureImeClientDecorators();
+
+    WidgetsBinding.instance.addObserver(this);
+    widget.editContext.composer.selectionNotifier.addListener(_scheduleReportVisualInformationToIme);
+    widget.editContext.document.addListener(_scheduleReportVisualInformationToIme);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Synchronize the IME connection notifier with our IME connection state. We run
@@ -287,6 +295,18 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
         widget.floatingCursorController ?? _controlsController?.floatingCursorController;
     _textInputConfiguration = widget.imeConfiguration //
         .toTextInputConfiguration(viewId: View.of(context).viewId);
+
+    final newScrollPosition = Scrollable.maybeOf(context)?.position;
+    if (newScrollPosition != _scrollPosition) {
+      _scrollPosition?.removeListener(_scheduleReportVisualInformationToIme);
+      _scrollPosition = newScrollPosition;
+      _scrollPosition?.addListener(_scheduleReportVisualInformationToIme);
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _scheduleReportVisualInformationToIme();
   }
 
   @override
@@ -324,10 +344,17 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     if (widget.editContext != oldWidget.editContext) {
+      oldWidget.editContext.composer.selectionNotifier.removeListener(_scheduleReportVisualInformationToIme);
+      oldWidget.editContext.document.removeListener(_scheduleReportVisualInformationToIme);
+
+      widget.editContext.composer.selectionNotifier.addListener(_scheduleReportVisualInformationToIme);
+      widget.editContext.document.addListener(_scheduleReportVisualInformationToIme);
+
       _setupDocumentImeInputClient();
       _onSharedImeChange();
       _documentImeClient.floatingCursorController =
           widget.floatingCursorController ?? _controlsController?.floatingCursorController;
+      _scheduleReportVisualInformationToIme();
     }
 
     if (widget.imeConfiguration != oldWidget.imeConfiguration) {
@@ -351,6 +378,11 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollPosition?.removeListener(_scheduleReportVisualInformationToIme);
+    widget.editContext.composer.selectionNotifier.removeListener(_scheduleReportVisualInformationToIme);
+    widget.editContext.document.removeListener(_scheduleReportVisualInformationToIme);
+
     SuperIme.instance.removeListener(_onSharedImeChange);
     if (SuperIme.instance.isOwner(_myImeId)) {
       // We are the current owner of the IME. Close the IME as we dispose ourselves.
@@ -425,6 +457,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
         widget.imeOverrides?.client = null;
       }
       widget.isImeConnected?.value = false;
+      _clearReportedVisualCache();
       return;
     }
 
@@ -433,6 +466,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       _documentImeConnection.value = null;
       widget.imeOverrides?.client = null;
       widget.isImeConnected?.value = false;
+      _clearReportedVisualCache();
       return;
     }
 
@@ -463,7 +497,7 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       );
     }
 
-    _reportVisualInformationToIme();
+    _scheduleReportVisualInformationToIme();
 
     widget.isImeConnected?.value = true;
   }
@@ -477,11 +511,39 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     _imeClient.client = widget.imeOverrides ?? _documentImeClient;
   }
 
+  bool _isVisualReportScheduled = false;
+
+  Size? _lastReportedSize;
+  Matrix4? _lastReportedTransform;
+  Rect? _lastReportedCaretRect;
+  TextStyle? _lastReportedStyle;
+  TextDirection? _lastReportedTextDirection;
+  TextAlign? _lastReportedTextAlign;
+
+  void _clearReportedVisualCache() {
+    _lastReportedSize = null;
+    _lastReportedTransform = null;
+    _lastReportedCaretRect = null;
+    _lastReportedStyle = null;
+    _lastReportedTextDirection = null;
+    _lastReportedTextAlign = null;
+  }
+
+  void _scheduleReportVisualInformationToIme() {
+    if (!isAttachedToIme || _isVisualReportScheduled) {
+      return;
+    }
+
+    _isVisualReportScheduled = true;
+    onNextFrame((_) {
+      _isVisualReportScheduled = false;
+      _reportVisualInformationToIme();
+    });
+  }
+
   /// Report the global size and transform of the editor and the caret rect to the IME.
   ///
   /// This is needed to display the OS emoji & symbols panel at the editor selected position.
-  ///
-  /// This methods is re-scheduled to run at the end of every frame while we are attached to the IME.
   void _reportVisualInformationToIme() {
     if (!isAttachedToIme) {
       return;
@@ -493,13 +555,6 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       _reportCaretRectToIme();
       _reportTextStyleToIme();
     }
-
-    // There are some operations that might affect our transform, size and the caret rect,
-    // but we can't react to them.
-    // For example, the editor might be resized or moved around the screen.
-    // Because of this, we update our size, transform and caret rect at every frame.
-    // FIXME: This call seems to be scheduling frames. When the caret is in Timer mode, we see this method running continuously even though the only change should be the caret blinking every half a second
-    onNextFrame((_) => _reportVisualInformationToIme());
   }
 
   /// Report the global size and transform of the editor to the IME.
@@ -527,6 +582,12 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
       transform = renderSliver.getTransformTo(null);
     }
 
+    if (size == _lastReportedSize && transform == _lastReportedTransform) {
+      return;
+    }
+
+    _lastReportedSize = size;
+    _lastReportedTransform = transform;
     SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setEditableSizeAndTransform(size, transform);
   }
 
@@ -539,7 +600,8 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     final caretRect = _computeCaretRectInViewportSpace();
-    if (caretRect != null) {
+    if (caretRect != null && caretRect != _lastReportedCaretRect) {
+      _lastReportedCaretRect = caretRect;
       SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setCaretRect(caretRect);
     }
   }
@@ -590,12 +652,25 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     }
 
     final style = selectedComponent.getTextStyleAt(nodePosition.offset);
+    final textDirection = selectedComponent.textDirection ?? TextDirection.ltr;
+    final textAlign = selectedComponent.textAlign ?? TextAlign.left;
+
+    if (style == _lastReportedStyle &&
+        textDirection == _lastReportedTextDirection &&
+        textAlign == _lastReportedTextAlign) {
+      return;
+    }
+
+    _lastReportedStyle = style;
+    _lastReportedTextDirection = textDirection;
+    _lastReportedTextAlign = textAlign;
+
     SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setStyle(
           fontFamily: style.fontFamily,
           fontSize: style.fontSize,
           fontWeight: style.fontWeight,
-          textDirection: selectedComponent.textDirection ?? TextDirection.ltr,
-          textAlign: selectedComponent.textAlign ?? TextAlign.left,
+          textDirection: textDirection,
+          textAlign: textAlign,
         );
   }
 
