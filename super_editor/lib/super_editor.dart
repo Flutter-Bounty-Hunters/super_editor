@@ -87,6 +87,7 @@ export 'src/default_editor/text_tokenizing/pattern_tags.dart';
 export 'src/default_editor/text_tokenizing/stable_tags.dart';
 export 'src/default_editor/text_tokenizing/tags.dart';
 export 'src/default_editor/text_tools.dart';
+export 'src/default_editor/url_parsing.dart';
 export 'src/default_editor/unknown_component.dart';
 // Document operations used by SuperEditor and/or SuperReader,
 // also made available for public use.

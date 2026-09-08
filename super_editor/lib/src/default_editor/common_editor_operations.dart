@@ -22,6 +22,7 @@ import 'package:super_editor/src/default_editor/selection_upstream_downstream.da
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/default_editor/text_tools.dart';
+import 'package:super_editor/src/default_editor/url_parsing.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 
 /// Performs common, high-level editing and composition tasks
@@ -2581,36 +2582,8 @@ class PasteEditorCommand extends EditCommand {
 
   /// Finds all URLs in the [pastedText] and returns an [AttributedSpans], which
   /// contains [LinkAttribution]s that span each URL.
-  AttributedSpans _findUrlSpansInText({required String pastedText}) {
-    final AttributedSpans linkAttributionSpans = AttributedSpans();
-
-    final wordBoundaries = pastedText.calculateAllWordBoundaries();
-
-    for (final wordBoundary in wordBoundaries) {
-      final word = wordBoundary.textInside(pastedText);
-
-      // The word is a single URL. Linkify it.
-      final uri = tryToParseUrl(word);
-      if (uri == null) {
-        // This word isn't a URI.
-        continue;
-      }
-
-      final startOffset = wordBoundary.start;
-      // -1 because TextPosition's offset indexes the character after the
-      // selection, not the final character in the selection.
-      final endOffset = wordBoundary.end - 1;
-
-      // Add link attribution.
-      linkAttributionSpans.addAttribution(
-        newAttribution: LinkAttribution.fromUri(uri),
-        start: startOffset,
-        end: endOffset,
-      );
-    }
-
-    return linkAttributionSpans;
-  }
+  AttributedSpans _findUrlSpansInText({required String pastedText}) =>
+      UrlParser.findUrlSpansInText(pastedText);
 
   Iterable<ParagraphNode> _convertLinesToParagraphs(Iterable<AttributedText> attributedLines) {
     return attributedLines.map(

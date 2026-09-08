@@ -17,6 +17,7 @@ import 'package:super_editor/src/default_editor/list_items.dart';
 import 'package:super_editor/src/default_editor/paragraph.dart';
 import 'package:super_editor/src/default_editor/tasks.dart';
 import 'package:super_editor/src/default_editor/text.dart';
+import 'package:super_editor/src/default_editor/url_parsing.dart';
 import 'package:super_editor/src/infrastructure/_logging.dart';
 import 'package:super_editor/src/infrastructure/strings.dart';
 
@@ -750,8 +751,8 @@ class LinkifyReaction extends EditReaction {
       return;
     }
 
-    // Try to linkify.
-    final uri = tryToParseUrl(word);
+    // Try to linkify using centralized URL parsing.
+    final uri = UrlParser.tryToParseUrl(word);
     if (uri == null) {
       // No link in the word. Fizzle.
       return;
@@ -993,71 +994,9 @@ class LinkifyReaction extends EditReaction {
   }
 }
 
-/// Parses the [text] as [Uri], prepending "https://" if it doesn't start
+/// Parses the [word] as [Uri], prepending "https://" if it doesn't start
 /// with "http://" or "https://".
-// TODO: Make this private again. It was private, but we have some split linkification between the reaction
-//       and the paste behavior in common_editor_operations. Once we create a way for reactions to identify
-//       paste behaviors, move the paste linkification into the linkify reaction and make this private again.
-Uri? tryToParseUrl(String word) {
-  // First, try extracting emails.
-  final extractedEmails = linkify(
-    word,
-    options: const LinkifyOptions(
-      humanize: false,
-      looseUrl: true,
-    ),
-    linkifiers: [
-      const EmailLinkifier(),
-    ],
-  );
-  final int emailCount = extractedEmails.fold(0, (value, element) => element is EmailElement ? value + 1 : value);
-  if (emailCount == 1) {
-    // Found exactly one email. Create and return a link attribution.
-    final emailElement = extractedEmails.first as EmailElement;
-    return Uri(
-      scheme: "mailto",
-      path: emailElement.emailAddress,
-    );
-  }
-
-  // Second, try extracting HTTP URLs.
-  final extractedLinks = linkify(
-    word,
-    options: const LinkifyOptions(
-      humanize: false,
-      looseUrl: true,
-    ),
-    linkifiers: [
-      const UrlLinkifier(),
-    ],
-  );
-  final int linkCount = extractedLinks.fold(0, (value, element) => element is UrlElement ? value + 1 : value);
-  if (linkCount == 1) {
-    // Found exactly 1 URL. Create and return an attribution.
-    try {
-      // Try to parse the word as a link.
-      final uri = Uri.parse(word);
-      if (uri.hasScheme) {
-        // URL is fully specified. Return it.
-        return uri;
-      }
-
-      // The URL is missing a scheme. Add "https:" and re-parse.
-      return Uri.parse("https://$word");
-    } catch (exception) {
-      // Something went wrong parsing the link. Fizzle.
-      return null;
-    }
-  }
-
-  // Third, try directly parsing a non-http URL.
-  if (word.contains("://")) {
-    return Uri.tryParse(word);
-  }
-
-  // Didn't find a URL in the given text.
-  return null;
-}
+Uri? tryToParseUrl(String word) => UrlParser.tryToParseUrl(word);
 
 /// Configuration for the action that should happen when a text containing
 /// a link attribution is modified, e.g., "google.com" becomes "gogle.com".
