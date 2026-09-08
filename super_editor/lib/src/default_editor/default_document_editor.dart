@@ -96,6 +96,11 @@ final defaultRequestHandlers = List.unmodifiable(<EditRequestHandler>[
           createdAt: request.createdAt,
         )
       : null,
+  (editor, request) => request is TypeTextRequest //
+      ? TypeTextCommand(
+          textToInsert: request.textToInsert,
+        )
+      : null,
   (editor, request) => request is InsertSoftNewlineAtCaretRequest //
       ? const InsertSoftNewlineCommand()
       : null,

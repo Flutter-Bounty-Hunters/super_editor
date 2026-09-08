@@ -338,6 +338,102 @@ Future<void> main() async {
       });
     });
 
+    group('TypeTextCommand', () {
+      test('types text at collapsed selection', () {
+        final document = MutableDocument(
+          nodes: [
+            ParagraphNode(
+              id: 'paragraph',
+              text: AttributedText('Hello world'),
+            )
+          ],
+        );
+        final composer = MutableDocumentComposer(
+          initialSelection: const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: 'paragraph',
+              nodePosition: TextNodePosition(offset: 5),
+            ),
+          ),
+        );
+        final editor = createDefaultDocumentEditor(document: document, composer: composer);
+
+        editor.execute([
+          TypeTextRequest(AttributedText(' beautiful')),
+        ]);
+
+        expect((document.first as ParagraphNode).text.toPlainText(), 'Hello beautiful world');
+        expect(
+          composer.selection,
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: 'paragraph',
+              nodePosition: TextNodePosition(offset: 15),
+            ),
+          ),
+        );
+      });
+
+      test('deletes expanded selection and types text', () {
+        final document = MutableDocument(
+          nodes: [
+            ParagraphNode(
+              id: 'paragraph',
+              text: AttributedText('Hello world'),
+            )
+          ],
+        );
+        final composer = MutableDocumentComposer(
+          initialSelection: const DocumentSelection(
+            base: DocumentPosition(
+              nodeId: 'paragraph',
+              nodePosition: TextNodePosition(offset: 6),
+            ),
+            extent: DocumentPosition(
+              nodeId: 'paragraph',
+              nodePosition: TextNodePosition(offset: 11),
+            ),
+          ),
+        );
+        final editor = createDefaultDocumentEditor(document: document, composer: composer);
+
+        editor.execute([
+          TypeTextRequest(AttributedText('there!')),
+        ]);
+
+        expect((document.first as ParagraphNode).text.toPlainText(), 'Hello there!');
+        expect(
+          composer.selection,
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: 'paragraph',
+              nodePosition: TextNodePosition(offset: 12),
+            ),
+          ),
+        );
+      });
+
+      test('fizzles when there is no selection', () {
+        final document = MutableDocument(
+          nodes: [
+            ParagraphNode(
+              id: 'paragraph',
+              text: AttributedText('Hello world'),
+            )
+          ],
+        );
+        final composer = MutableDocumentComposer();
+        final editor = createDefaultDocumentEditor(document: document, composer: composer);
+
+        editor.execute([
+          TypeTextRequest(AttributedText('test')),
+        ]);
+
+        expect((document.first as ParagraphNode).text.toPlainText(), 'Hello world');
+        expect(composer.selection, isNull);
+      });
+    });
+
     group('TextNode', () {
       group('computeSelection', () {
         test('throws if passed other types of NodePosition', () {

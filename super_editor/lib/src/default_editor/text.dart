@@ -2906,6 +2906,80 @@ class InsertStyledTextAtCaretCommand extends EditCommand {
   }
 }
 
+/// An [EditRequest] to type the given [textToInsert] at the current selection.
+///
+/// If the selection is expanded, the selected content is deleted before inserting
+/// the text.
+///
+/// After the text is inserted, the selection is moved to the end of the newly
+/// inserted text.
+class TypeTextRequest implements EditRequest {
+  const TypeTextRequest(
+    this.textToInsert,
+  );
+
+  final AttributedText textToInsert;
+}
+
+/// An [EditCommand] that types [textToInsert] at the current selection.
+///
+/// If the current selection is expanded, the selected content is deleted first.
+/// Then [textToInsert] is inserted at the caret position, and the selection is
+/// collapsed immediately after the inserted text.
+class TypeTextCommand extends EditCommand {
+  const TypeTextCommand({
+    required this.textToInsert,
+  });
+
+  final AttributedText textToInsert;
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final composer = context.composer;
+    final selection = composer.selection;
+    if (selection == null) {
+      return;
+    }
+
+    final document = context.document;
+
+    if (!selection.isCollapsed) {
+      executor.executeCommand(
+        DeleteContentCommand(
+          documentRange: selection.normalize(document),
+        ),
+      );
+    }
+
+    final insertionPosition = selection.normalize(document).start;
+    final textNode = document.getNodeById(insertionPosition.nodeId);
+    if (textNode is! TextNode) {
+      return;
+    }
+
+    executor
+      ..executeCommand(
+        InsertAttributedTextCommand(
+          documentPosition: insertionPosition,
+          textToInsert: textToInsert,
+        ),
+      )
+      ..executeCommand(
+        ChangeSelectionCommand(
+          DocumentSelection.collapsed(
+            position: insertionPosition.copyWith(
+              nodePosition: TextNodePosition(
+                offset: (insertionPosition.nodePosition as TextPosition).offset + textToInsert.length,
+              ),
+            ),
+          ),
+          SelectionChangeType.alteredContent,
+          SelectionReason.userInteraction,
+        ),
+      );
+  }
+}
+
 class InsertInlinePlaceholderAtCaretRequest implements EditRequest {
   const InsertInlinePlaceholderAtCaretRequest(
     this.placeholder, {

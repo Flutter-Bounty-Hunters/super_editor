@@ -25,24 +25,10 @@ class _GiphyKeyboardPanelState extends State<GiphyKeyboardPanel> {
     }
 
     widget.editor.execute([
-      if (!selection.isCollapsed) //
-        DeleteContentRequest(
-          documentRange: selection.normalize(widget.editor.context.document),
-        ),
-      InsertAttributedTextRequest(
-        selection.base,
+      TypeTextRequest(
         AttributedText("", null, {
           0: InlineNetworkImagePlaceholder(url),
         }),
-      ),
-      ChangeSelectionRequest(
-        DocumentSelection.collapsed(
-          position: selection.base.copyWith(
-            nodePosition: TextNodePosition(offset: (selection.base.nodePosition as TextNodePosition).offset + 1),
-          ),
-        ),
-        SelectionChangeType.alteredContent,
-        SelectionReason.userInteraction,
       ),
     ]);
   }
