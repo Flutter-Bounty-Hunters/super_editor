@@ -1,10 +1,11 @@
 import 'package:attributed_text/attributed_text.dart';
-import 'package:flutter/foundation.dart' show ValueListenable, defaultTargetPlatform;
+import 'package:flutter/foundation.dart' show ValueListenable, defaultTargetPlatform, setEquals;
 import 'package:flutter/material.dart' hide SelectableText;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:super_editor/src/core/document.dart';
+import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 import 'package:super_editor/src/core/document_composer.dart';
 import 'package:super_editor/src/core/document_debug_paint.dart';
 import 'package:super_editor/src/core/document_interaction.dart';
@@ -553,7 +554,7 @@ class SuperEditorState extends State<SuperEditor> {
       if (widget.selectionStyles != oldWidget.selectionStyles) {
         _docLayoutSelectionStyler.selectionStyles = widget.selectionStyles;
       }
-      if (widget.stylesheet != oldWidget.stylesheet) {
+      if (widget.stylesheet != oldWidget.stylesheet || !setEquals(widget.plugins, oldWidget.plugins)) {
         _createLayoutPresenter();
       }
     }
@@ -644,7 +645,13 @@ class SuperEditorState extends State<SuperEditor> {
 
     final document = editContext.document;
 
-    _docStylesheetStyler = SingleColumnStylesheetStyler(stylesheet: widget.stylesheet);
+    _docStylesheetStyler = SingleColumnStylesheetStyler(
+      stylesheet: widget.stylesheet,
+      inlineWidgetBuilders: [
+        for (final plugin in widget.plugins) //
+          ...plugin.inlineWidgetBuilders,
+      ],
+    );
 
     _docLayoutPerComponentBlockStyler = SingleColumnLayoutCustomComponentStyler();
 
@@ -1295,6 +1302,9 @@ abstract class SuperEditorPlugin {
 
   /// Additional [ComponentBuilder]s that will be added to a given [SuperEditor] widget.
   List<ComponentBuilder> get componentBuilders => [];
+
+  /// Additional [InlineWidgetBuilder]s that will be added to a given [SuperEditor] widget.
+  List<InlineWidgetBuilder> get inlineWidgetBuilders => const [];
 
   /// Additional underlay [SuperEditorLayerBuilder]s that will be added to a given [SuperEditor].
   List<SuperEditorLayerBuilder> get documentUnderlayBuilders => [];

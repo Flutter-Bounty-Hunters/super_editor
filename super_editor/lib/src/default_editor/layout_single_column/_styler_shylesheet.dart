@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:super_editor/src/core/styles.dart';
+import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 
 import '../../core/document.dart';
 import '_presenter.dart';
@@ -8,9 +10,12 @@ import '_presenter.dart';
 class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
   SingleColumnStylesheetStyler({
     required Stylesheet stylesheet,
-  }) : _stylesheet = stylesheet;
+    List<InlineWidgetBuilder> inlineWidgetBuilders = const [],
+  })  : _stylesheet = stylesheet,
+        _inlineWidgetBuilders = inlineWidgetBuilders;
 
   Stylesheet _stylesheet;
+  List<InlineWidgetBuilder> _inlineWidgetBuilders;
 
   /// Sets the [stylesheet] that's used by this styler to generate view models
   /// for document content.
@@ -27,6 +32,17 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     }
 
     _stylesheet = newStylesheet;
+    markDirty();
+  }
+
+  /// Sets additional [inlineWidgetBuilders] that are applied along with the
+  /// stylesheet's inline widget builders.
+  set inlineWidgetBuilders(List<InlineWidgetBuilder> newBuilders) {
+    if (listEquals(newBuilders, _inlineWidgetBuilders)) {
+      return;
+    }
+
+    _inlineWidgetBuilders = newBuilders;
     markDirty();
   }
 
@@ -54,7 +70,10 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     // for this component.
     final aggregateStyles = <String, dynamic>{
       Styles.inlineTextStyler: _stylesheet.inlineTextStyler,
-      Styles.inlineWidgetBuilders: _stylesheet.inlineWidgetBuilders,
+      Styles.inlineWidgetBuilders: [
+        ..._inlineWidgetBuilders,
+        ..._stylesheet.inlineWidgetBuilders,
+      ],
     };
     for (final rule in _stylesheet.rules) {
       if (rule.selector.matches(document, node)) {

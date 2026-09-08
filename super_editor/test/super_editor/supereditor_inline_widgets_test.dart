@@ -50,7 +50,37 @@ void main() {
       // Ensure the layout was not invalidated.
       expect(wasLayoutInvalidated, isFalse);
     });
+
+    testWidgetsOnAllPlatforms('renders inline widget provided by SuperEditorPlugin', (tester) async {
+      await tester
+          .createDocument()
+          .withCustomContent(
+            MutableDocument(
+              nodes: [
+                ParagraphNode(
+                  id: '1',
+                  text: AttributedText('Hello, world!', null, {
+                    7: const _NamedPlaceHolder('world'),
+                  }),
+                ),
+              ],
+            ),
+          )
+          .withPlugin(_InlineWidgetTestPlugin([_boxPlaceHolderBuilder]))
+          .pump();
+
+      expect(find.byKey(const ValueKey('placeholder-world')), findsOneWidget);
+    });
   });
+}
+
+class _InlineWidgetTestPlugin extends SuperEditorPlugin {
+  _InlineWidgetTestPlugin(this._builders);
+
+  final List<InlineWidgetBuilder> _builders;
+
+  @override
+  List<InlineWidgetBuilder> get inlineWidgetBuilders => _builders;
 }
 
 /// A builder that renders a [ColoredBox] for a [_NamedPlaceHolder].
