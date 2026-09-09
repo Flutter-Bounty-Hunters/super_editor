@@ -438,6 +438,7 @@ class RenderLayoutAwareParagraph extends RenderParagraph {
           ..text = TextSpan(text: "a", style: textStyle)
           ..textDirection = textDirection
           ..textAlign = textAlign
+          ..textScaler = textScaler
           ..layout();
 
         // We have no text, so we set the height of this render object to the line height
