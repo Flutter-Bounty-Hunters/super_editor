@@ -5,7 +5,7 @@ import 'package:super_text_layout/super_text_layout.dart';
 import 'test_tools.dart';
 
 void main() {
-  group("SuperText", () {
+  group("Super Text >", () {
     testWidgets("renders text and layers in a single frame", (tester) async {
       bool didBuildLayerBeneath = false;
       bool didBuildLayerAbove = false;
@@ -167,7 +167,7 @@ void main() {
       expect(textBlock.textLayout, isA<TextLayout>());
     });
 
-    group("RenderSuperTextLayout", () {
+    group("text layout >", () {
       // TODO: getOffsetAtPosition()
       // TODO: getLineHeightAtPosition()
       // TODO: getOffsetForCaret()
@@ -181,7 +181,7 @@ void main() {
       // TODO: isTextAtOffset
       // TODO: getSelectionInRect()
 
-      group("calculates line count", () {
+      group("calculates line count >", () {
         testWidgets("for empty text", (tester) async {
           await _pumpEmptyText(tester);
 
@@ -211,7 +211,54 @@ void main() {
         });
       });
 
-      group("finds precise", () {
+      group("empty text sizing >", () {
+        testWidgets("empty text is as tall as one line of text", (tester) async {
+          await _pumpEmptyText(tester);
+          final emptyHeight = _textHeight(tester);
+
+          await _pumpSingleCharacterText(tester);
+
+          expect(emptyHeight, _textHeight(tester));
+        });
+
+        testWidgets("empty text is as tall as one line of scaled text", (tester) async {
+          // Empty text has no glyphs, so its height comes from a stand-in
+          // character (the Flutter #155620 workaround in performLayout). That
+          // stand-in has to be measured with the same scaler as the real
+          // paragraph, or an empty line keeps its unscaled height while every
+          // non-empty line around it grows.
+          const textScaler = TextScaler.linear(2.0);
+
+          await _pumpEmptyText(tester, textScaler: textScaler);
+          final emptyHeight = _textHeight(tester);
+
+          await _pumpSingleCharacterText(tester, textScaler: textScaler);
+
+          expect(emptyHeight, _textHeight(tester));
+        });
+
+        testWidgets("empty text grows taller as the text scaler grows", (tester) async {
+          await _pumpEmptyText(tester, textScaler: TextScaler.noScaling);
+          final unscaledHeight = _textHeight(tester);
+
+          await _pumpEmptyText(tester, textScaler: const TextScaler.linear(2.0));
+
+          expect(_textHeight(tester), greaterThan(unscaledHeight));
+        });
+
+        testWidgets("empty text uses the ambient text scaler when none is given", (tester) async {
+          await _pumpEmptyText(tester);
+          final unscaledHeight = _textHeight(tester);
+
+          tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          await _pumpEmptyText(tester);
+
+          expect(_textHeight(tester), greaterThan(unscaledHeight));
+        });
+      });
+
+      group("finds precise >", () {
         testWidgets("character when text is empty", (tester) async {
           await _pumpEmptyText(tester);
 
@@ -299,7 +346,7 @@ void main() {
         });
       });
 
-      group("finds nearest", () {
+      group("finds nearest >", () {
         testWidgets("TextPosition on the left side", (tester) async {
           await _pumpThreeLinePlainText(tester);
 
@@ -441,8 +488,8 @@ void main() {
         );
       });
 
-      group("moves a line", () {
-        group("up", () {
+      group("moves a line >", () {
+        group("up >", () {
           testWidgets("from the first line", (tester) async {
             await _pumpThreeLinePlainText(tester);
 
@@ -461,7 +508,7 @@ void main() {
           });
         });
 
-        group("down", () {
+        group("down >", () {
           testWidgets("from the last line", (tester) async {
             await _pumpThreeLinePlainText(tester);
 
@@ -495,16 +542,31 @@ Future<void> _pumpThreeLinePlainText(WidgetTester tester) async {
   );
 }
 
-Future<void> _pumpEmptyText(WidgetTester tester) async {
+Future<void> _pumpEmptyText(WidgetTester tester, {TextScaler? textScaler}) async {
   await tester.pumpWidget(
     _buildScaffold(
       child: SuperText(
         key: _textKey,
         richText: const TextSpan(text: "", style: _testTextStyle),
+        textScaler: textScaler,
       ),
     ),
   );
 }
+
+Future<void> _pumpSingleCharacterText(WidgetTester tester, {TextScaler? textScaler}) async {
+  await tester.pumpWidget(
+    _buildScaffold(
+      child: SuperText(
+        key: _textKey,
+        richText: _singleCharacterSpan,
+        textScaler: textScaler,
+      ),
+    ),
+  );
+}
+
+double _textHeight(WidgetTester tester) => tester.renderObject<RenderBox>(find.byKey(_textKey)).size.height;
 
 final _textKey = GlobalKey(debugLabel: "super_text");
 
@@ -517,6 +579,11 @@ const _threeLineSpan = TextSpan(
 
 const _oneLineSpan = TextSpan(
   text: "This is some text. It is explicitly laid out in", // Line indices: 0 -> 46/47 (upstream/downstream)
+  style: _testTextStyle,
+);
+
+const _singleCharacterSpan = TextSpan(
+  text: "a",
   style: _testTextStyle,
 );
 
