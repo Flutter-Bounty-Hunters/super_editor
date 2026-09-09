@@ -1,3 +1,7 @@
+## [0.1.22]
+### Sept, 2026
+* [FIX]: Use text scale factor when measuring height for an empty `SuperText`.
+
 ## [0.1.21]
 ### June, 2026
 * [FIX]: `BlinkController` correctly preserves and re-uses its `Ticker` after stopping and starting.
