@@ -3,6 +3,7 @@ package com.flutterbountyhunters.superkeyboard.super_keyboard
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -34,6 +35,8 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
 
   private var binding: ActivityPluginBinding? = null
 
+  private var applicationContext: android.content.Context? = null
+
   // The Activity's lifecycle, which reports things like when the Android
   // app comes into the foreground from the background.
   private var lifecycle: Lifecycle? = null
@@ -59,6 +62,7 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     SuperKeyboardLog.d("super_keyboard", "Attached to Flutter engine")
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "super_keyboard_android")
+    applicationContext = flutterPluginBinding.applicationContext
 
     channel.setMethodCallHandler { call, result ->
       when (call.method) {
@@ -70,6 +74,13 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
         "stopLogging" -> {
           SuperKeyboardLog.disable()
           result.success(null)
+        }
+        "getActiveKeyboardId" -> {
+          val activeImeId = Settings.Secure.getString(
+            applicationContext!!.contentResolver,
+            Settings.Secure.DEFAULT_INPUT_METHOD,
+          )
+          result.success(activeImeId)
         }
         else -> result.notImplemented()
       }
@@ -135,6 +146,7 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
     SuperKeyboardLog.d("super_keyboard", "Detached from Flutter engine")
     SuperKeyboardLog.disable()
     this.binding = null
+    this.applicationContext = null
   }
 
   private fun startListeningToActivityLifecycle() {
