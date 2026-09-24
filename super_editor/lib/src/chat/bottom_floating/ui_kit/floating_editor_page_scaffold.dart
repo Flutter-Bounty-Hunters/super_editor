@@ -579,6 +579,14 @@ class _AboveKeyboardMessagePageElement<PanelType> extends RenderObjectElement {
         _keyboardPanel = updateChild(_keyboardPanel, null, _keyboardPanelSlot);
         _lastBuiltPanel = null;
         _waitingForPanelAnimationToCompleteBeforeRemoval = false;
+
+        // When the panel is removed from behind a fully open keyboard, its height
+        // animation never ran to completion, so it still holds the panel's full
+        // height. Now that the panel is gone, reset that height. Otherwise, the
+        // panel height continues to push the bottom sheet up after the keyboard
+        // closes, and the next panel pops in at full height instead of animating
+        // up from zero.
+        renderObject._panelHeightController.value = 0;
         return;
       } else {
         // The panel is animating closed. We want to let it finish the animation.
