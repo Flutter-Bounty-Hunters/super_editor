@@ -263,6 +263,19 @@ class SuperKeyboardPlugin: FlutterPlugin, ActivityAware, DefaultLifecycleObserve
       SuperKeyboardLog.d("super_keyboard", "Setting keyboard state to Opening")
       sendMessageKeyboardOpening()
       keyboardState = KeyboardState.Opening
+    } else if (imeVisible && keyboardState == KeyboardState.Open) {
+      // The keyboard can change height while it's open, without running an insets
+      // animation. For example, SwiftKey on a Pixel 9 Pro grows after it finishes
+      // opening, as its suggestion strip arrives. Such a change doesn't pass through
+      // the insets animation callback, so we report the new height from here.
+      // Otherwise, the app continues to believe the keyboard has its old, shorter height.
+      val newImeHeightInDpi = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom / dpi
+      if (newImeHeightInDpi != imeHeightInDpi) {
+        SuperKeyboardLog.d("super_keyboard", "Keyboard height changed while open, from $imeHeightInDpi to $newImeHeightInDpi")
+        imeHeightInDpi = newImeHeightInDpi
+        bottomPaddingInDpi = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures()).bottom / dpi
+        sendMessageMetricsUpdate()
+      }
     } else if (!imeVisible && keyboardState != KeyboardState.Closing && keyboardState != KeyboardState.Closed) {
       if (insets.getInsets(WindowInsetsCompat.Type.ime()).bottom == 0) {
         SuperKeyboardLog.d("super_keyboard", "Setting keyboard state to Closed")
