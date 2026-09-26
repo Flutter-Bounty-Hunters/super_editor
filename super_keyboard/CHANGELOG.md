@@ -1,3 +1,8 @@
+## [0.4.1]
+### Sept 26, 2026
+* FIX: Android - When keyboard is open, and it changes height, such as adding a suggestion bar, 
+  report the new height to the Flutter side
+
 ## [0.4.0]
 ### March 27, 2026
 * BREAKING: Remove `WidgetTester` parameter from keyboard simulator API so that it can
