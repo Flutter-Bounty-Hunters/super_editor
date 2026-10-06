@@ -44,6 +44,7 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
     }
 
     _selectionStyles = selectionStyles;
+    _stylesChanged = true;
     markDirty();
   }
 
@@ -54,8 +55,16 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
     }
 
     _selectedTextColorStrategy = strategy;
+    _stylesChanged = true;
     markDirty();
   }
+
+  /// Whether the selection's styles changed since this phase last styled,
+  /// which changes every selected component.
+  bool _stylesChanged = false;
+
+  /// The selection as this phase last styled it.
+  DocumentSelection? _styledSelection;
 
   bool _shouldDocumentShowCaret = false;
   set shouldDocumentShowCaret(bool newValue) {
@@ -68,42 +77,82 @@ class SingleColumnLayoutSelectionStyler extends SingleColumnLayoutStylePhase {
     markDirty();
   }
 
+  /// Restyles the changed components and the ones the selection was or is in,
+  /// or all of them when the selection's styles changed.
+  @override
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) {
+    final documentSelection = _selection.value;
+    final selectedNodes = _selectedNodes(documentSelection);
+    final previouslySelectedNodes = _selectedNodes(_styledSelection);
+    if (_stylesChanged || selectedNodes == null || previouslySelectedNodes == null) {
+      return style(document, viewModel);
+    }
+    _styledSelection = documentSelection;
+
+    return restyleOnly(
+      viewModel,
+      nodeIds: {
+        ...changedNodeIds,
+        for (final node in previouslySelectedNodes) node.id,
+        for (final node in selectedNodes) node.id,
+      },
+      previousOutput: previousOutput,
+      styleComponent: (component) => _applySelection(component.copy(), documentSelection, selectedNodes),
+    );
+  }
+
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
     editorStyleLog.info("(Re)calculating selection view model for document layout");
     editorStyleLog.fine("Applying selection to components: ${_selection.value}");
+    final documentSelection = _selection.value;
+    // This situation can happen in the moment between a document change and
+    // a corresponding selection change. For example: deleting an image and
+    // replacing it with an empty paragraph. Between the doc change and the
+    // selection change, the old image selection is applied to the new paragraph.
+    // This results in an exception.
+    //
+    // TODO: introduce a unified event ledger that combines related behaviors
+    //       into atomic transactions (#423)
+    final selectedNodes = _selectedNodes(documentSelection) ?? const <DocumentNode>[];
+    _stylesChanged = false;
+    _styledSelection = documentSelection;
+
     return SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final previousViewModel in viewModel.componentViewModels) //
-          _applySelection(previousViewModel.copy()),
+          _applySelection(previousViewModel.copy(), documentSelection, selectedNodes),
       ],
     );
   }
 
-  SingleColumnLayoutComponentViewModel _applySelection(SingleColumnLayoutComponentViewModel viewModel) {
-    final documentSelection = _selection.value;
+  /// The nodes [selection] spans, or `null` when it doesn't fit the document.
+  List<DocumentNode>? _selectedNodes(DocumentSelection? selection) {
+    if (selection == null) {
+      return const [];
+    }
+    try {
+      return _document.getNodesInside(selection.base, selection.extent);
+    } catch (exception) {
+      return null;
+    }
+  }
+
+  SingleColumnLayoutComponentViewModel _applySelection(
+    SingleColumnLayoutComponentViewModel viewModel,
+    DocumentSelection? documentSelection,
+    List<DocumentNode> selectedNodes,
+  ) {
     final node = _document.getNodeById(viewModel.nodeId)!;
 
     DocumentNodeSelection? nodeSelection;
     if (documentSelection != null) {
-      late List<DocumentNode> selectedNodes;
-      try {
-        selectedNodes = _document.getNodesInside(
-          documentSelection.base,
-          documentSelection.extent,
-        );
-      } catch (exception) {
-        // This situation can happen in the moment between a document change and
-        // a corresponding selection change. For example: deleting an image and
-        // replacing it with an empty paragraph. Between the doc change and the
-        // selection change, the old image selection is applied to the new paragraph.
-        // This results in an exception.
-        //
-        // TODO: introduce a unified event ledger that combines related behaviors
-        //       into atomic transactions (#423)
-        selectedNodes = [];
-      }
       nodeSelection =
           _computeNodeSelection(documentSelection: documentSelection, selectedNodes: selectedNodes, node: node);
     }

@@ -399,6 +399,40 @@ void main() {
         expect(document.getNodeIndexById(fourthNode.id), 2);
       });
     });
+
+    group("getNodeById returns the correct node", () {
+      test("when replacing a node with one of the same ID", () {
+        final document = _createThreeParagraphDoc();
+        final edited = ParagraphNode(id: "2", text: AttributedText("This is the edited paragraph."));
+
+        document.replaceNodeById("2", edited);
+
+        expect(document.getNodeById("2"), same(edited));
+        expect(document.getNodeAt(1), same(edited));
+        expect(document.getNodeIndexById("2"), 1);
+      });
+
+      test("when deleting a node", () {
+        final document = _createThreeParagraphDoc();
+
+        document.deleteNode("2");
+
+        expect(document.getNodeById("2"), isNull);
+        expect(document.getNodeIndexById("2"), -1);
+        expect(document.getNodeById("3"), same(document.getNodeAt(1)));
+      });
+
+      test("when inserting a node", () {
+        final document = _createThreeParagraphDoc();
+        final inserted = ParagraphNode(id: "4", text: AttributedText("This is the inserted paragraph."));
+
+        document.insertNodeAfter(existingNodeId: "1", newNode: inserted);
+
+        expect(document.getNodeById("4"), same(inserted));
+        expect(document.getNodeIndexById("4"), 1);
+        expect(document.getNodeIndexById("3"), 3);
+      });
+    });
   });
 }
 

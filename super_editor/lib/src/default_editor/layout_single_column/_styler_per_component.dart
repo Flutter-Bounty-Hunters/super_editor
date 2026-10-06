@@ -17,6 +17,25 @@ import '_presenter.dart';
 class SingleColumnLayoutCustomComponentStyler extends SingleColumnLayoutStylePhase {
   SingleColumnLayoutCustomComponentStyler();
 
+  /// Restyles the changed components: each one's styles come from its node.
+  @override
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) {
+    return restyleOnly(
+      viewModel,
+      nodeIds: changedNodeIds,
+      previousOutput: previousOutput,
+      styleComponent: (component) => _applyLayoutStyles(
+        document.getNodeById(component.nodeId)!,
+        component.copy(),
+      ),
+    );
+  }
+
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
     editorStyleLog.info("(Re)calculating custom component styles view model for document layout");

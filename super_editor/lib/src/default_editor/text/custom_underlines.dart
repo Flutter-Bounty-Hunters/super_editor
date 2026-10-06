@@ -16,6 +16,23 @@ import 'package:super_text_layout/super_text_layout.dart';
 ///
 /// To associate an underline type with a visual style, see [CustomUnderlineStyles].
 class CustomUnderlineStyler extends SingleColumnLayoutStylePhase {
+  /// Restyles the changed components: each one's underlines come from its
+  /// own text.
+  @override
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) {
+    return restyleOnly(
+      viewModel,
+      nodeIds: changedNodeIds,
+      previousOutput: previousOutput,
+      styleComponent: (component) => _applyUnderlines(component.copy()),
+    );
+  }
+
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
     final updatedViewModel = SingleColumnLayoutViewModel(

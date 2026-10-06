@@ -45,6 +45,13 @@ class SingleColumnDocumentComponentContext {
 /// something other than the document changes, like the user's selection,
 /// only some of the pipeline phases are re-run. For this reason, the most
 /// volatile phases should be placed at the end of the [pipeline].
+///
+/// Components are reused across runs where nothing changed: a node that's
+/// the same object as last time keeps its component view model, when its
+/// builder makes an equal one. Each phase is told which of its incoming
+/// components changed, through [SingleColumnLayoutStylePhase.styleChanges],
+/// so that a phase that styles each component on its own can restyle only
+/// those, instead of every component in the document.
 class SingleColumnLayoutPresenter {
   SingleColumnLayoutPresenter({
     required Document document,
@@ -69,6 +76,12 @@ class SingleColumnLayoutPresenter {
   final List<SingleColumnLayoutStylePhase> _pipeline;
   final List<SingleColumnLayoutViewModel?> _phaseViewModels = [];
   int _earliestDirtyPhase = 0;
+
+  /// The view model the first phase got last time, before any styling.
+  SingleColumnLayoutViewModel? _baseViewModel;
+
+  /// The nodes [_baseViewModel]'s components were made from, in order.
+  List<DocumentNode> _baseNodes = const [];
 
   bool get isDirty => _earliestDirtyPhase < _pipeline.length;
 
@@ -159,34 +172,31 @@ class SingleColumnLayoutPresenter {
     editorLayoutLog.fine("Running layout presenter pipeline");
     // (Re)generate all dirty phases.
     SingleColumnLayoutViewModel? newViewModel = _getCleanCachedViewModel();
+    // What the first dirty phase got last time, to tell it what changed since.
+    SingleColumnLayoutViewModel? previousInput = newViewModel;
 
     if (newViewModel == null) {
-      // The document changed. All view models were invalidated. Create a
-      // new base document view model.
-      final viewModels = <SingleColumnLayoutComponentViewModel>[];
-      for (final node in _document) {
-        SingleColumnLayoutComponentViewModel? viewModel;
-        for (final builder in _componentBuilders) {
-          viewModel = builder.createViewModel(_document, node);
-          if (viewModel != null) {
-            break;
-          }
-        }
-        if (viewModel == null) {
-          throw Exception("Couldn't find styler to create component for document node: ${node.runtimeType}");
-        }
-        viewModels.add(viewModel);
-      }
-
-      newViewModel = SingleColumnLayoutViewModel(
-        componentViewModels: viewModels,
-      );
+      // The document changed. Create a new base document view model.
+      previousInput = _baseViewModel;
+      newViewModel = _baseViewModel = _createBaseViewModel();
     }
 
     // Style the document view model.
     for (int i = _earliestDirtyPhase; i < _pipeline.length; i += 1) {
       editorLayoutLog.fine("Running phase $i: ${_pipeline[i]}");
-      newViewModel = _pipeline[i].style(_document, newViewModel!);
+      final previousOutput = _phaseViewModels[i];
+      final changedNodeIds =
+          previousInput != null && previousOutput != null ? _changedNodeIds(previousInput, newViewModel!) : null;
+      previousInput = previousOutput;
+
+      newViewModel = changedNodeIds == null
+          ? _pipeline[i].style(_document, newViewModel!)
+          : _pipeline[i].styleChanges(
+              _document,
+              newViewModel!,
+              previousOutput: previousOutput!,
+              changedNodeIds: changedNodeIds,
+            );
       editorLayoutLog.fine("Storing phase $i view model");
       _phaseViewModels[i] = newViewModel;
     }
@@ -194,6 +204,68 @@ class SingleColumnLayoutPresenter {
     _earliestDirtyPhase = _pipeline.length;
 
     return newViewModel!;
+  }
+
+  /// Creates a component view model for every node in the document, keeping
+  /// the previous one for each node that's the same object as last time and
+  /// gets an equal view model.
+  ///
+  /// The node has to be the same object, not just the view model equal,
+  /// because phases read their nodes too, like a node's metadata.
+  SingleColumnLayoutViewModel _createBaseViewModel() {
+    final previousComponents = _baseViewModel?.componentViewModels ?? const [];
+    final previousNodes = _baseNodes;
+
+    final nodes = <DocumentNode>[];
+    final viewModels = <SingleColumnLayoutComponentViewModel>[];
+    for (final node in _document) {
+      SingleColumnLayoutComponentViewModel? viewModel;
+      for (final builder in _componentBuilders) {
+        viewModel = builder.createViewModel(_document, node);
+        if (viewModel != null) {
+          break;
+        }
+      }
+      if (viewModel == null) {
+        throw Exception("Couldn't find styler to create component for document node: ${node.runtimeType}");
+      }
+
+      final index = viewModels.length;
+      if (index < previousNodes.length &&
+          identical(previousNodes[index], node) &&
+          previousComponents[index] == viewModel) {
+        viewModel = previousComponents[index];
+      }
+      nodes.add(node);
+      viewModels.add(viewModel);
+    }
+    _baseNodes = nodes;
+
+    return SingleColumnLayoutViewModel(
+      componentViewModels: viewModels,
+    );
+  }
+
+  /// The nodes whose components in [current] aren't the ones in [previous],
+  /// or `null` when components were added, removed, or moved.
+  Set<String>? _changedNodeIds(SingleColumnLayoutViewModel previous, SingleColumnLayoutViewModel current) {
+    final previousComponents = previous.componentViewModels;
+    final currentComponents = current.componentViewModels;
+    if (previousComponents.length != currentComponents.length) {
+      return null;
+    }
+
+    final changed = <String>{};
+    for (int i = 0; i < currentComponents.length; i += 1) {
+      final component = currentComponents[i];
+      if (component.nodeId != previousComponents[i].nodeId) {
+        return null;
+      }
+      if (!identical(component, previousComponents[i])) {
+        changed.add(component.nodeId);
+      }
+    }
+    return changed;
   }
 
   SingleColumnLayoutViewModel? _getCleanCachedViewModel() {
@@ -207,6 +279,25 @@ class SingleColumnLayoutPresenter {
     required SingleColumnLayoutViewModel newViewModel,
   }) {
     editorLayoutLog.finer("Computing layout view model changes to notify listeners of those changes.");
+
+    final changedInPlace = _changedInPlace(oldViewModel, newViewModel);
+    if (changedInPlace != null) {
+      if (changedInPlace.isEmpty) {
+        editorLayoutLog.fine("Nothing has changed in the view model. Not notifying any listeners.");
+        return;
+      }
+
+      editorLayoutLog.fine("Notifying layout presenter listeners of changes: $changedInPlace");
+      for (final listener in _listeners.toList()) {
+        listener.onViewModelChange(
+          addedComponents: const [],
+          movedComponents: const [],
+          changedComponents: changedInPlace,
+          removedComponents: const [],
+        );
+      }
+      return;
+    }
 
     final addedComponents = <String>[];
     final movedComponents = <String>[];
@@ -322,6 +413,30 @@ class SingleColumnLayoutPresenter {
       );
     }
   }
+
+  /// The components of [newViewModel] that changed from [oldViewModel], when
+  /// both have the same nodes in the same order and every component kept its
+  /// type, or `null` otherwise.
+  List<String>? _changedInPlace(SingleColumnLayoutViewModel oldViewModel, SingleColumnLayoutViewModel newViewModel) {
+    final oldComponents = oldViewModel.componentViewModels;
+    final newComponents = newViewModel.componentViewModels;
+    if (oldComponents.length != newComponents.length) {
+      return null;
+    }
+
+    final changed = <String>[];
+    for (int i = 0; i < newComponents.length; i += 1) {
+      final oldComponent = oldComponents[i];
+      final newComponent = newComponents[i];
+      if (oldComponent.nodeId != newComponent.nodeId || oldComponent.runtimeType != newComponent.runtimeType) {
+        return null;
+      }
+      if (oldComponent != newComponent) {
+        changed.add(newComponent.nodeId);
+      }
+    }
+    return changed;
+  }
 }
 
 class SingleColumnLayoutPresenterChangeListener {
@@ -409,6 +524,60 @@ abstract class SingleColumnLayoutStylePhase {
 
   /// Styles a [SingleColumnLayoutViewModel] by adjusting the given viewModel.
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel);
+
+  /// Styles [viewModel], knowing which of its components changed since this
+  /// phase last styled.
+  ///
+  /// The presenter calls this, instead of [style], when this phase styled
+  /// before and no components were added, removed, or moved since:
+  /// [changedNodeIds] are the nodes whose components in [viewModel] aren't the
+  /// ones this phase got last time, and [previousOutput] is the view model it
+  /// returned then. When this phase marked itself dirty, its own state changed
+  /// too, which it has to account for.
+  ///
+  /// A phase that styles each component on its own can restyle only the ones
+  /// that changed, with [restyleOnly]. By default, every component is styled
+  /// again, with [style].
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) =>
+      style(document, viewModel);
+
+  /// [viewModel] with the components of [nodeIds] styled by [styleComponent],
+  /// and [previousOutput]'s components for all the others.
+  ///
+  /// For [styleChanges]: the other components must be the ones this phase
+  /// styled into [previousOutput], and this phase must style them the same
+  /// way again. Like [style], [styleComponent] has to copy a component before
+  /// changing it.
+  @protected
+  SingleColumnLayoutViewModel restyleOnly(
+    SingleColumnLayoutViewModel viewModel, {
+    required Set<String> nodeIds,
+    required SingleColumnLayoutViewModel previousOutput,
+    required SingleColumnLayoutComponentViewModel Function(SingleColumnLayoutComponentViewModel component)
+        styleComponent,
+    EdgeInsetsGeometry? padding,
+  }) {
+    final components = viewModel.componentViewModels;
+    final previousComponents = previousOutput.componentViewModels;
+    final aligned = previousComponents.length == components.length;
+    return SingleColumnLayoutViewModel(
+      padding: padding ?? viewModel.padding,
+      componentViewModels: [
+        for (int i = 0; i < components.length; i += 1)
+          if (nodeIds.contains(components[i].nodeId))
+            styleComponent(components[i])
+          else if (aligned && previousComponents[i].nodeId == components[i].nodeId)
+            previousComponents[i]
+          else
+            previousOutput.getComponentViewModelByNodeId(components[i].nodeId) ?? styleComponent(components[i]),
+      ],
+    );
+  }
 }
 
 /// [AttributionStyleBuilder] that returns a default `TextStyle`, for
@@ -429,19 +598,18 @@ class SingleColumnLayoutViewModel {
   SingleColumnLayoutViewModel({
     this.padding = EdgeInsets.zero,
     required List<SingleColumnLayoutComponentViewModel> componentViewModels,
-  })  : _componentViewModels = componentViewModels,
-        _viewModelsByNodeId = {} {
-    for (final componentViewModel in _componentViewModels) {
-      _viewModelsByNodeId[componentViewModel.nodeId] = componentViewModel;
-    }
-  }
+  }) : _componentViewModels = componentViewModels;
 
   final EdgeInsetsGeometry padding;
 
   final List<SingleColumnLayoutComponentViewModel> _componentViewModels;
   List<SingleColumnLayoutComponentViewModel> get componentViewModels => _componentViewModels;
 
-  final Map<String, SingleColumnLayoutComponentViewModel> _viewModelsByNodeId;
+  // Built on the first lookup: every style phase creates a view model, and
+  // most are never looked up by node.
+  late final Map<String, SingleColumnLayoutComponentViewModel> _viewModelsByNodeId = {
+    for (final componentViewModel in _componentViewModels) componentViewModel.nodeId: componentViewModel,
+  };
   SingleColumnLayoutComponentViewModel? getComponentViewModelByNodeId(String nodeId) => _viewModelsByNodeId[nodeId];
 }
 

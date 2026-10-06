@@ -32,10 +32,52 @@ class SingleColumnLayoutComposingRegionStyler extends SingleColumnLayoutStylePha
   final ValueListenable<DocumentRange?> _composingRegion;
   final bool _showComposingRegionUnderline;
 
+  /// The composing region as this phase last styled it.
+  DocumentRange? _styledComposingRegion;
+
+  /// Restyles the changed components and the ones the composing region was or
+  /// is in.
+  ///
+  /// When there was no composing region, the last styling left every component
+  /// as it came, so all of them are styled again.
+  @override
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) {
+    final documentComposingRegion = _composingRegion.value;
+    final previousComposingRegion = _styledComposingRegion;
+    if (documentComposingRegion == null || !_showComposingRegionUnderline || previousComposingRegion == null) {
+      return style(document, viewModel);
+    }
+
+    final nodesWithComposingRegion = _nodesInside(documentComposingRegion);
+    final nodesWithPreviousComposingRegion = _nodesInside(previousComposingRegion);
+    if (nodesWithComposingRegion == null || nodesWithPreviousComposingRegion == null) {
+      return style(document, viewModel);
+    }
+    _styledComposingRegion = documentComposingRegion;
+
+    return restyleOnly(
+      viewModel,
+      nodeIds: {
+        ...changedNodeIds,
+        for (final node in nodesWithPreviousComposingRegion) node.id,
+        for (final node in nodesWithComposingRegion) node.id,
+      },
+      previousOutput: previousOutput,
+      styleComponent: (component) =>
+          _applyComposingRegion(component.copy(), documentComposingRegion, nodesWithComposingRegion),
+    );
+  }
+
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
     editorStyleLog.info("(Re)calculating composing region view model for document layout");
     final documentComposingRegion = _composingRegion.value;
+    _styledComposingRegion = null;
     if (documentComposingRegion == null) {
       // There's nothing for us to style if there's no composing region. Return the
       // view model as-is.
@@ -46,18 +88,34 @@ class SingleColumnLayoutComposingRegionStyler extends SingleColumnLayoutStylePha
       return viewModel;
     }
 
+    final nodesWithComposingRegion = _document.getNodesInside(
+      documentComposingRegion.start,
+      documentComposingRegion.end,
+    );
+    _styledComposingRegion = documentComposingRegion;
+
     return SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final previousViewModel in viewModel.componentViewModels) //
-          _applyComposingRegion(previousViewModel.copy(), documentComposingRegion),
+          _applyComposingRegion(previousViewModel.copy(), documentComposingRegion, nodesWithComposingRegion),
       ],
     );
+  }
+
+  /// The nodes [range] spans, or `null` when it doesn't fit the document.
+  List<DocumentNode>? _nodesInside(DocumentRange range) {
+    try {
+      return _document.getNodesInside(range.start, range.end);
+    } catch (exception) {
+      return null;
+    }
   }
 
   SingleColumnLayoutComponentViewModel _applyComposingRegion(
     SingleColumnLayoutComponentViewModel viewModel,
     DocumentRange documentComposingRegion,
+    List<DocumentNode> nodesWithComposingRegion,
   ) {
     final node = _document.getNodeById(viewModel.nodeId)!;
     if (node is! TextNode) {
@@ -74,10 +132,6 @@ class SingleColumnLayoutComposingRegionStyler extends SingleColumnLayoutStylePha
     editorStyleLog.fine("Applying composing region styles to node: ${node.id}");
 
     _DocumentNodeSelection? nodeSelection;
-    final nodesWithComposingRegion = _document.getNodesInside(
-      documentComposingRegion.start,
-      documentComposingRegion.end,
-    );
     nodeSelection = _computeNodeSelection(
       documentRange: documentComposingRegion,
       selectedNodes: nodesWithComposingRegion,

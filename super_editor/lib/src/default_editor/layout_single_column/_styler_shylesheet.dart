@@ -27,11 +27,63 @@ class SingleColumnStylesheetStyler extends SingleColumnLayoutStylePhase {
     }
 
     _stylesheet = newStylesheet;
+    _stylesheetChanged = true;
     markDirty();
+  }
+
+  /// Whether the [stylesheet] changed since this phase last styled.
+  bool _stylesheetChanged = false;
+
+  /// Restyles the changed components and the ones next to them, or all of
+  /// them when the [stylesheet] changed.
+  ///
+  /// A [BlockSelector] can depend on a node's neighbors, as with
+  /// [BlockSelector.after] and [BlockSelector.before], and its index, which
+  /// only changes when nodes are added, removed, or moved, and then the whole
+  /// document is styled again. A rule's styler must depend on no more than
+  /// that.
+  @override
+  SingleColumnLayoutViewModel styleChanges(
+    Document document,
+    SingleColumnLayoutViewModel viewModel, {
+    required SingleColumnLayoutViewModel previousOutput,
+    required Set<String> changedNodeIds,
+  }) {
+    if (_stylesheetChanged) {
+      return style(document, viewModel);
+    }
+
+    final restyle = <String>{};
+    for (final nodeId in changedNodeIds) {
+      final index = document.getNodeIndexById(nodeId);
+      if (index < 0) {
+        return style(document, viewModel);
+      }
+      restyle.add(nodeId);
+      if (index > 0) {
+        restyle.add(document.getNodeAt(index - 1)!.id);
+      }
+      if (index + 1 < document.nodeCount) {
+        restyle.add(document.getNodeAt(index + 1)!.id);
+      }
+    }
+
+    return restyleOnly(
+      viewModel,
+      nodeIds: restyle,
+      previousOutput: previousOutput,
+      padding: _stylesheet.documentPadding ?? viewModel.padding,
+      styleComponent: (component) => _styleComponent(
+        document,
+        document.getNodeById(component.nodeId)!,
+        component.copy(),
+      ),
+    );
   }
 
   @override
   SingleColumnLayoutViewModel style(Document document, SingleColumnLayoutViewModel viewModel) {
+    _stylesheetChanged = false;
     return SingleColumnLayoutViewModel(
       padding: _stylesheet.documentPadding ?? viewModel.padding,
       componentViewModels: [
