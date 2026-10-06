@@ -433,6 +433,60 @@ void main() {
         expect(document.getNodeIndexById("3"), 3);
       });
     });
+
+    group("an ID that several nodes have finds the last of them", () {
+      MutableDocument sharingAnId() => MutableDocument(
+            nodes: [
+              ParagraphNode(id: "1", text: AttributedText("First")),
+              ParagraphNode(id: "shared", text: AttributedText("Second")),
+              ParagraphNode(id: "3", text: AttributedText("Third")),
+              ParagraphNode(id: "shared", text: AttributedText("Fourth")),
+            ],
+          );
+
+      test("when the last of them is replaced", () {
+        final document = sharingAnId();
+        final first = document.getNodeAt(1);
+        final edited = ParagraphNode(id: "shared", text: AttributedText("Edited"));
+
+        document.replaceNodeById("shared", edited);
+
+        expect(document.getNodeAt(1), same(first));
+        expect(document.getNodeById("shared"), same(edited));
+        expect(document.getNodeIndexById("shared"), 3);
+      });
+
+      test("when the last of them takes a new ID", () {
+        final document = sharingAnId();
+        final first = document.getNodeAt(1);
+
+        document.replaceNodeById("shared", ParagraphNode(id: "4", text: AttributedText("Fourth")));
+
+        expect(document.getNodeById("shared"), same(first));
+        expect(document.getNodeIndexById("shared"), 1);
+        expect(document.getNodeIndexById("4"), 3);
+      });
+
+      test("when the last of them is deleted", () {
+        final document = sharingAnId();
+        final first = document.getNodeAt(1);
+
+        document.deleteNodeAt(3);
+
+        expect(document.getNodeById("shared"), same(first));
+        expect(document.getNodeIndexById("shared"), 1);
+      });
+
+      test("when one is inserted before them", () {
+        final document = sharingAnId();
+        final last = document.getNodeAt(3);
+
+        document.insertNodeAt(0, ParagraphNode(id: "shared", text: AttributedText("Zeroth")));
+
+        expect(document.getNodeById("shared"), same(last));
+        expect(document.getNodeIndexById("shared"), 4);
+      });
+    });
   });
 }
 

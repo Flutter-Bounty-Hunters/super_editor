@@ -1284,15 +1284,25 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   void _insertNodeAt(int index, DocumentNode node) {
     _nodes.insert(index, node);
-    _nodesById[node.id] = node;
-    _refreshNodeIndicesFrom(index);
+    _refreshNodeIdCachesFrom(index);
   }
 
   void _deleteNodeAt(int index) {
     final node = _nodes.removeAt(index);
     _nodesById.remove(node.id);
     _nodeIndicesById.remove(node.id);
-    _refreshNodeIndicesFrom(index);
+    _refreshNodeIdCachesFrom(index);
+    if (_nodeIndicesById.containsKey(node.id)) {
+      return;
+    }
+    // A node before it may have the same ID, which the caches now map to.
+    for (int i = index - 1; i >= 0; i--) {
+      if (_nodes[i].id == node.id) {
+        _nodeIndicesById[node.id] = i;
+        _nodesById[node.id] = _nodes[i];
+        return;
+      }
+    }
   }
 
   /// Deletes all nodes from the [Document].
@@ -1311,10 +1321,11 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
       throw Exception('Could not find node with nodeId: $nodeId');
     }
 
-    final fromIndex = getNodeIndexById(nodeId);
-    if (_nodes.remove(node)) {
+    final fromIndex = _nodes.indexOf(node);
+    if (fromIndex >= 0) {
+      _nodes.removeAt(fromIndex);
       _nodes.insert(targetIndex, node);
-      _refreshNodeIndicesFrom(min(fromIndex, targetIndex));
+      _refreshNodeIdCachesFrom(min(fromIndex, targetIndex));
     }
   }
 
@@ -1351,17 +1362,20 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
 
   /// Puts [newNode] in place of the node at [index].
   ///
-  /// Only that node's cache entries change: refreshing the whole caches would
-  /// make every edit of a large document pay for all of its nodes.
+  /// When the ID stays, only that node's cache entry changes: refreshing the
+  /// whole caches would make every edit of a large document pay for all of its
+  /// nodes.
   void _replaceNodeAt(int index, DocumentNode newNode) {
     final oldNode = _nodes[index];
     _nodes[index] = newNode;
     if (newNode.id != oldNode.id) {
-      _nodeIndicesById.remove(oldNode.id);
-      _nodesById.remove(oldNode.id);
+      // Other nodes may have either ID.
+      _refreshNodeIdCaches();
+      return;
     }
-    _nodeIndicesById[newNode.id] = index;
-    _nodesById[newNode.id] = newNode;
+    if (_nodeIndicesById[newNode.id] == index) {
+      _nodesById[newNode.id] = newNode;
+    }
   }
 
   /// Returns [true] if the content of the [other] [Document] is equivalent
@@ -1447,11 +1461,16 @@ class MutableDocument with Iterable<DocumentNode> implements Document, Editable 
     }
   }
 
-  /// Updates the cached indices of the nodes from [index] on, the only ones
-  /// an insertion, deletion, or move at [index] shifts.
-  void _refreshNodeIndicesFrom(int index) {
+  /// Updates the cache entries of the nodes from [index] on, the only ones an
+  /// insertion, deletion, or move at [index] shifts.
+  ///
+  /// Like [_refreshNodeIdCaches], an ID that several nodes have ends up with
+  /// the last of them.
+  void _refreshNodeIdCachesFrom(int index) {
     for (int i = index; i < _nodes.length; i++) {
-      _nodeIndicesById[_nodes[i].id] = i;
+      final node = _nodes[i];
+      _nodeIndicesById[node.id] = i;
+      _nodesById[node.id] = node;
     }
   }
 
