@@ -314,13 +314,6 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     } else {
       // Selection across nodes.
       final selectedNodes = _getNodeIdsBetween(base.nodeId, extent.nodeId);
-      if (selectedNodes.any((nodeId) => getComponentByNodeId(nodeId) == null)) {
-        // At least one component between the base and extent isn't currently mounted.
-        // We can't measure a selection whose content isn't displayed.
-        editorLayoutLog
-            .info('Could not find a component for every node in the selection. Base: $base, Extent: $extent');
-        return null;
-      }
       topComponent = getComponentByNodeId(selectedNodes.first)!;
       final startPosition = selectedNodes.first == base.nodeId ? base.nodePosition : extent.nodePosition;
       final endPosition = selectedNodes.first == base.nodeId ? extent.nodePosition : base.nodePosition;

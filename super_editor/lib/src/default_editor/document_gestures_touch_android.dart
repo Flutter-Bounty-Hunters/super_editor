@@ -690,7 +690,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
         ? _documentOffsetToViewportOffset(selectionRectInDocumentLayout.bottomCenter)
         : _documentOffsetToViewportOffset(selectionRectInDocumentLayout.topCenter);
 
-    widget.dragHandleAutoScroller.value?.ensureOffsetIsVisible(extentOffsetInViewport);
+    widget.dragHandleAutoScroller.value!.ensureOffsetIsVisible(extentOffsetInViewport);
   }
 
   void _onDocumentChange(_) {

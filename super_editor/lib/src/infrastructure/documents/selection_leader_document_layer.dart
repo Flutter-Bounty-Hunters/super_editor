@@ -89,8 +89,8 @@ class _SelectionLeadersDocumentLayerState
       return null;
     }
 
-    if (documentLayout.getComponentByNodeId(documentSelection.base.nodeId) == null ||
-        documentLayout.getComponentByNodeId(documentSelection.extent.nodeId) == null) {
+    final selectedComponent = documentLayout.getComponentByNodeId(widget.selection.value!.extent.nodeId);
+    if (selectedComponent == null) {
       // Assume that we're in a momentary transitive state where the document layout
       // just gained or lost a component. We expect this method ot run again in a moment
       // to correct for this.

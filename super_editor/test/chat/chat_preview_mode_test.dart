@@ -48,38 +48,6 @@ void main() {
       expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
       expect(tester.takeException(), isNull);
     });
-
-    testWidgetsOnMobilePhone("restores the previous selection in content that preview mode hides", (tester) async {
-      await _pumpScaffold(tester, _longDocument);
-
-      // Focus the editor to leave preview mode, and then place the caret in a
-      // paragraph that preview mode hides.
-      await tester.placeCaretInParagraph("1", 0);
-      await tester.placeCaretInParagraph("3", 0);
-
-      // Remove focus, which clears the selection and returns to preview mode.
-      final focusNode = tester.state<_ChatEditorState>(find.byType(_ChatEditor))._editorFocusNode;
-      focusNode.unfocus();
-      await tester.pumpAndSettle();
-      expect(SuperEditorInspector.findDocumentSelection(), isNull);
-      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
-
-      // Give focus back to the editor, which leaves preview mode and restores the
-      // previous selection.
-      focusNode.requestFocus();
-      await tester.pumpAndSettle();
-
-      // Ensure the previous selection was restored, and that nothing blew up trying
-      // to measure the selection before the layout displayed the selected content.
-      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNotNull);
-      expect(
-        SuperEditorInspector.findDocumentSelection(),
-        const DocumentSelection.collapsed(
-          position: DocumentPosition(nodeId: "3", nodePosition: TextNodePosition(offset: 0)),
-        ),
-      );
-      expect(tester.takeException(), isNull);
-    });
   });
 }
 
