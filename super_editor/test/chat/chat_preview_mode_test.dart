@@ -26,6 +26,60 @@ void main() {
       expect(SuperEditorInspector.maybeFindWidgetForComponent("2"), isNotNull);
       expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNotNull);
     });
+
+    testWidgetsOnMobilePhone("tolerates a selection in content that preview mode hides", (tester) async {
+      final editor = await _pumpScaffold(tester, _longDocument);
+
+      // Place the caret in a paragraph that preview mode hides, without giving the
+      // editor focus, so that the editor stays in preview mode.
+      editor.execute([
+        const ChangeSelectionRequest(
+          DocumentSelection.collapsed(
+            position: DocumentPosition(nodeId: "3", nodePosition: TextNodePosition(offset: 0)),
+          ),
+          SelectionChangeType.placeCaret,
+          SelectionReason.contentChange,
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      // Ensure that the editor is still in preview mode, and that nothing blew up
+      // trying to measure the selected content, which isn't in the layout.
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgetsOnMobilePhone("restores the previous selection in content that preview mode hides", (tester) async {
+      await _pumpScaffold(tester, _longDocument);
+
+      // Focus the editor to leave preview mode, and then place the caret in a
+      // paragraph that preview mode hides.
+      await tester.placeCaretInParagraph("1", 0);
+      await tester.placeCaretInParagraph("3", 0);
+
+      // Remove focus, which clears the selection and returns to preview mode.
+      final focusNode = tester.state<_ChatEditorState>(find.byType(_ChatEditor))._editorFocusNode;
+      focusNode.unfocus();
+      await tester.pumpAndSettle();
+      expect(SuperEditorInspector.findDocumentSelection(), isNull);
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
+
+      // Give focus back to the editor, which leaves preview mode and restores the
+      // previous selection.
+      focusNode.requestFocus();
+      await tester.pumpAndSettle();
+
+      // Ensure the previous selection was restored, and that nothing blew up trying
+      // to measure the selection before the layout displayed the selected content.
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNotNull);
+      expect(
+        SuperEditorInspector.findDocumentSelection(),
+        const DocumentSelection.collapsed(
+          position: DocumentPosition(nodeId: "3", nodePosition: TextNodePosition(offset: 0)),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -40,7 +94,7 @@ final _longDocument = MutableDocument(
   ],
 );
 
-Future<void> _pumpScaffold(WidgetTester tester, MutableDocument document) async {
+Future<Editor> _pumpScaffold(WidgetTester tester, MutableDocument document) async {
   final editor = createDefaultAiMessageEditor(document: document);
   final messagePageController = MessagePageController();
   final scrollController = ScrollController();
@@ -66,6 +120,8 @@ Future<void> _pumpScaffold(WidgetTester tester, MutableDocument document) async 
       ),
     ),
   );
+
+  return editor;
 }
 
 // TODO: When we have a good selection of public chat editor APIs, delete all of the

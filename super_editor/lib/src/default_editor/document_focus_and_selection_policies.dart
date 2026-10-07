@@ -183,13 +183,7 @@ class _EditorSelectionAndFocusPolicyState extends State<EditorSelectionAndFocusP
           restoredSelection = DocumentSelection.collapsed(position: previousSelection.base);
         }
 
-        widget.editor.execute([
-          ChangeSelectionRequest(
-            restoredSelection,
-            restoredSelection.isCollapsed ? SelectionChangeType.placeCaret : SelectionChangeType.expandSelection,
-            SelectionReason.contentChange,
-          ),
-        ]);
+        _restoreSelection(restoredSelection);
       } else if (widget.placeCaretAtEndOfDocumentOnGainFocus) {
         // Place the caret at the end of the document.
         editorPoliciesLog
@@ -234,6 +228,63 @@ class _EditorSelectionAndFocusPolicyState extends State<EditorSelectionAndFocusP
     }
 
     _wasFocused = widget.focusNode.hasFocus;
+  }
+
+  /// Restores the given [selection], first waiting for the document layout to display
+  /// the selected content, if it doesn't already.
+  ///
+  /// The document layout can lag behind a focus change. For example, a style phase might
+  /// only display some of the document's nodes while the editor is unfocused, and when
+  /// the editor gains focus, the layout doesn't display the other nodes until it rebuilds.
+  /// Restoring a selection that the layout doesn't display gives selection-driven
+  /// behaviors, e.g., auto-scrolling and drag handles, nothing to measure, so we wait
+  /// for the layout to rebuild.
+  void _restoreSelection(DocumentSelection selection, {bool hasWaitedForLayout = false}) {
+    if (!hasWaitedForLayout && !_doesLayoutDisplay(selection)) {
+      editorPoliciesLog.info(
+          "[${widget.runtimeType}] - waiting for the document layout to display the selection before restoring it");
+      WidgetsBinding.instance
+        ..addPostFrameCallback((_) {
+          if (!mounted || !widget.focusNode.hasFocus || widget.selection.value != null) {
+            // While we waited, the editor lost focus, or something else selected content.
+            return;
+          }
+
+          final baseNode = widget.document.getNodeById(selection.base.nodeId);
+          final extentNode = widget.document.getNodeById(selection.extent.nodeId);
+          if (baseNode == null ||
+              extentNode == null ||
+              !baseNode.containsPosition(selection.base.nodePosition) ||
+              !extentNode.containsPosition(selection.extent.nodePosition)) {
+            // The selected content changed while we waited. We can't restore this selection.
+            return;
+          }
+
+          _restoreSelection(selection, hasWaitedForLayout: true);
+        })
+        ..scheduleFrame();
+      return;
+    }
+
+    widget.editor.execute([
+      ChangeSelectionRequest(
+        selection,
+        selection.isCollapsed ? SelectionChangeType.placeCaret : SelectionChangeType.expandSelection,
+        SelectionReason.contentChange,
+      ),
+    ]);
+  }
+
+  /// Returns `true` if the document layout currently displays the base and extent of
+  /// the given [selection].
+  bool _doesLayoutDisplay(DocumentSelection selection) {
+    if (!widget.isDocumentLayoutAvailable()) {
+      return false;
+    }
+
+    final documentLayout = widget.getDocumentLayout();
+    return documentLayout.getComponentByNodeId(selection.base.nodeId) != null &&
+        documentLayout.getComponentByNodeId(selection.extent.nodeId) != null;
   }
 
   void _onSelectionChange() {

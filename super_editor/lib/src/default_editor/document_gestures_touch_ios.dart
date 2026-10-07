@@ -508,7 +508,14 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     // Calculate the y-value of the selection extent side of the selected content so that we
     // can ensure they're visible.
     final selectionRectInDocumentLayout =
-        widget.getDocumentLayout().getRectForSelection(selection.base, selection.extent)!;
+        widget.getDocumentLayout().getRectForSelection(selection.base, selection.extent);
+    if (selectionRectInDocumentLayout == null) {
+      // The layout doesn't currently display the selected content, e.g., a style phase
+      // removed those components, or the layout hasn't been rebuilt since the selection
+      // changed. There's nothing to scroll to.
+      editorGesturesLog.fine("Can't ensure selection extent is visible - the layout doesn't contain the selection.");
+      return;
+    }
     final extentOffsetInViewport = widget.document.getAffinityForSelection(selection) == TextAffinity.downstream
         ? _documentOffsetToViewportOffset(selectionRectInDocumentLayout.bottomCenter)
         : _documentOffsetToViewportOffset(selectionRectInDocumentLayout.topCenter);
