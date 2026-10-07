@@ -743,6 +743,14 @@ class IosControlsDocumentLayerState extends DocumentLayoutLayerState<IosHandlesD
       return null;
     }
 
+    if (documentLayout.getComponentByNodeId(selection.base.nodeId) == null ||
+        documentLayout.getComponentByNodeId(selection.extent.nodeId) == null) {
+      // The layout doesn't currently display the selected content, e.g., a style phase
+      // removed those components, or the layout hasn't been rebuilt since the selection
+      // changed. There's nothing to position the controls around.
+      return null;
+    }
+
     if (widget.areSelectionHandlesAllowed?.value == false) {
       /// We don't want to show any selection handles.
       return null;

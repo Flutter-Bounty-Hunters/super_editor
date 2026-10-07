@@ -26,6 +26,28 @@ void main() {
       expect(SuperEditorInspector.maybeFindWidgetForComponent("2"), isNotNull);
       expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNotNull);
     });
+
+    testWidgetsOnMobilePhone("tolerates a selection in content that preview mode hides", (tester) async {
+      final editor = await _pumpScaffold(tester, _longDocument);
+
+      // Place the caret in a paragraph that preview mode hides, without giving the
+      // editor focus, so that the editor stays in preview mode.
+      editor.execute([
+        const ChangeSelectionRequest(
+          DocumentSelection.collapsed(
+            position: DocumentPosition(nodeId: "3", nodePosition: TextNodePosition(offset: 0)),
+          ),
+          SelectionChangeType.placeCaret,
+          SelectionReason.contentChange,
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      // Ensure that the editor is still in preview mode, and that nothing blew up
+      // trying to measure the selected content, which isn't in the layout.
+      expect(SuperEditorInspector.maybeFindWidgetForComponent("3"), isNull);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -40,7 +62,7 @@ final _longDocument = MutableDocument(
   ],
 );
 
-Future<void> _pumpScaffold(WidgetTester tester, MutableDocument document) async {
+Future<Editor> _pumpScaffold(WidgetTester tester, MutableDocument document) async {
   final editor = createDefaultAiMessageEditor(document: document);
   final messagePageController = MessagePageController();
   final scrollController = ScrollController();
@@ -66,6 +88,8 @@ Future<void> _pumpScaffold(WidgetTester tester, MutableDocument document) async 
       ),
     ),
   );
+
+  return editor;
 }
 
 // TODO: When we have a good selection of public chat editor APIs, delete all of the
