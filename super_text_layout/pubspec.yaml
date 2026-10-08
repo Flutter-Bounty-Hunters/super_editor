@@ -49,6 +49,7 @@ dev_dependencies:
   args: ^2.3.1
   meta: ^1.8.0
   golden_runner: ^0.2.0
+  material_ui: ^1.6.0
 
 flutter:
   # no Flutter configuration
