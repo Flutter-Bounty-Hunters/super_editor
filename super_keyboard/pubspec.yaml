@@ -18,6 +18,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.6.0
 
   plugin_platform_interface: ^2.0.2
   # For accessing Activity lifecycle within the Android plugin implementation.

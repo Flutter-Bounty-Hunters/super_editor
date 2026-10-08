@@ -8,6 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.6.0
 
   follow_the_leader: ^0.5.2
   super_clipboard: ^0.9.1
