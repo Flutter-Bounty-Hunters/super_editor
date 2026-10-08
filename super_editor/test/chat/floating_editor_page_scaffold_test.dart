@@ -9,6 +9,44 @@ import '../infrastructure/keyboard_panel_scaffold_test.dart';
 
 void main() {
   group('Floating editor page scaffold >', () {
+    group('sheet height >', () {
+      testWidgetsOnMobilePhone('keeps a sheet full of content within the page above a tall keyboard', (tester) async {
+        await _pumpScaffold(
+          tester,
+          keyboardHeight: _tallKeyboardHeight,
+          paragraphCount: 100,
+        );
+
+        // Open the keyboard, which displays the sheet at its intrinsic height, which
+        // is taller than the space above the keyboard.
+        await tester.placeCaretInParagraph('1', 0);
+        await tester.pumpAndSettle();
+
+        // Ensure the sheet sits on top of the keyboard, and stops growing before it
+        // reaches the top of the page.
+        expect(tester.getBottomLeft(find.byKey(_editorSheetKey)).dy, _screenHeight(tester) - _tallKeyboardHeight);
+        expect(tester.getTopLeft(find.byKey(_editorSheetKey)).dy, greaterThanOrEqualTo(0));
+      });
+
+      testWidgetsOnMobilePhone('keeps an expanded sheet within the page above a tall keyboard', (tester) async {
+        final pageController = await _pumpScaffold(
+          tester,
+          keyboardHeight: _tallKeyboardHeight,
+        );
+
+        // Open the keyboard, and then expand the sheet to fill the page.
+        await tester.placeCaretInParagraph('1', 0);
+        await tester.pumpAndSettle();
+        pageController.expand();
+        await tester.pumpAndSettle();
+
+        // Ensure the sheet sits on top of the keyboard, and stops growing before it
+        // reaches the top of the page.
+        expect(tester.getBottomLeft(find.byKey(_editorSheetKey)).dy, _screenHeight(tester) - _tallKeyboardHeight);
+        expect(tester.getTopLeft(find.byKey(_editorSheetKey)).dy, greaterThanOrEqualTo(0));
+      });
+    });
+
     group('keyboard panel >', () {
       testWidgetsOnMobilePhone('holds the sheet above the panel while the keyboard replaces it', (tester) async {
         final pageController = await _pumpScaffold(tester, animateKeyboard: true);
@@ -156,11 +194,14 @@ void main() {
 Future<FloatingEditorPageController<_Panel>> _pumpScaffold(
   WidgetTester tester, {
   bool animateKeyboard = false,
+  double keyboardHeight = _keyboardHeight,
+  int paragraphCount = 1,
 }) async {
   final editor = createDefaultChatEditor(
     document: MutableDocument(
       nodes: [
-        ParagraphNode(id: '1', text: AttributedText('This is a chat message.')),
+        for (int i = 1; i <= paragraphCount; i += 1) //
+          ParagraphNode(id: '$i', text: AttributedText('This is a chat message.')),
       ],
     ),
   );
@@ -170,7 +211,7 @@ Future<FloatingEditorPageController<_Panel>> _pumpScaffold(
   await tester.pumpWidget(
     MaterialApp(
       home: SoftwareKeyboardHeightSimulator(
-        keyboardHeight: _keyboardHeight,
+        keyboardHeight: keyboardHeight,
         animateKeyboard: animateKeyboard,
         child: Scaffold(
           resizeToAvoidBottomInset: false,
@@ -225,6 +266,10 @@ double _screenHeight(WidgetTester tester) => tester.getSize(find.byType(Material
 // Simulated height of a fully visible phone keyboard. Keyboard panels take on the
 // height of the keyboard, so this is also the full height of a keyboard panel.
 const _keyboardHeight = 300.0;
+
+// Simulated height of a phone keyboard that the user made taller in the keyboard's
+// settings, which leaves less room above it than a typical keyboard does.
+const _tallKeyboardHeight = 500.0;
 
 const _editorSheetKey = ValueKey('editorSheet');
 const _keyboardPanelKey = ValueKey('keyboardPanel');
