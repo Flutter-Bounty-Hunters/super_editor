@@ -977,8 +977,10 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       _currentDesiredGlobalTopY = _pageController.desiredGlobalTopY;
 
       final pageGlobalBottom = localToGlobal(Offset(0, size.height)).dy;
-      _desiredDragHeight = pageGlobalBottom - max(_currentDesiredGlobalTopY!, _bottomSheetMinimumTopGap);
-      _expandedHeight = size.height - _bottomSheetMinimumTopGap;
+      // The sheet sits on top of the keyboard, or keyboard panel, so its height
+      // is measured from there, rather than from the bottom of the page.
+      _desiredDragHeight =
+          pageGlobalBottom - _keyboardOrPanelHeight - max(_currentDesiredGlobalTopY!, _bottomSheetMinimumTopGap);
 
       _velocityTracker.addPosition(
         _velocityStopwatch.elapsed,
@@ -1118,6 +1120,10 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
 
     return keyboardGeometry.keyboardHeight!;
   }
+
+  /// The height of whatever the bottom sheet sits on top of: the keyboard, a
+  /// keyboard panel, or the bottom view padding.
+  double get _keyboardOrPanelHeight => max(max(_panelHeight.value, _keyboardHeight), _mediaQueryBottomPadding);
 
   double _bestGuessMaxKeyboardHeight = 0.0;
 
@@ -1439,7 +1445,10 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
 
   void _onExpandCollapseTick(Duration elapsedTime) {
     final seconds = elapsedTime.inMilliseconds / 1000;
-    _animatedHeight = _simulation!.x(seconds).clamp(_bottomSheetMinimumHeight, _bottomSheetMaximumHeight);
+    _animatedHeight = _simulation!.x(seconds).clamp(
+          min<double>(_bottomSheetMinimumHeight, _bottomSheetMaximumHeight),
+          _bottomSheetMaximumHeight,
+        );
     _animatedVelocity = _simulation!.dx(seconds);
 
     if (_simulation!.isDone(seconds)) {
@@ -1605,7 +1614,14 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     _runningLayout = true;
 
     size = constraints.biggest;
-    _bottomSheetMaximumHeight = max(size.height - _bottomSheetMinimumTopGap, 0);
+
+    // The sheet sits on top of the keyboard, or keyboard panel, so the space
+    // available to the sheet is whatever the keyboard leaves free, not the full
+    // height of this scaffold. The keyboard's height varies by device, and by user
+    // settings, so no fixed sheet height can stand in for this bound.
+    final keyboardOrPanelHeight = _keyboardOrPanelHeight;
+    _bottomSheetMaximumHeight = max(size.height - keyboardOrPanelHeight - _bottomSheetMinimumTopGap, 0);
+    _expandedHeight = _bottomSheetMaximumHeight;
 
     messagePageLayoutLog.info(
       "Measuring the bottom sheet's preview height",
@@ -1666,8 +1682,12 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       }
 
       final minimumHeight = min(
+        min(
           _pageController.collapsedMode == MessagePageSheetCollapsedMode.preview ? _previewHeight : _intrinsicHeight,
-          _bottomSheetCollapsedMaximumHeight);
+          _bottomSheetCollapsedMaximumHeight,
+        ),
+        _bottomSheetMaximumHeight,
+      );
       final animatedHeight = _animatedHeight.clamp(minimumHeight, _bottomSheetMaximumHeight);
       _bottomSheet!.layout(
         bottomSheetConstraints.copyWith(
@@ -1682,7 +1702,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
       messagePageLayoutLog.info(
         ' - drag height: $_desiredDragHeight, minimized height: $minimizedHeight',
       );
-      final minimumHeight = min(minimizedHeight, _bottomSheetCollapsedMaximumHeight);
+      final minimumHeight = min(min(minimizedHeight, _bottomSheetCollapsedMaximumHeight), _bottomSheetMaximumHeight);
       final strictHeight = _desiredDragHeight!.clamp(minimumHeight, _bottomSheetMaximumHeight);
 
       messagePageLayoutLog.info(' - bounded drag height: $strictHeight');
@@ -1715,13 +1735,11 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
         // bottomSheetConstraints,
         bottomSheetConstraints.copyWith(
           minHeight: 0,
-          maxHeight: _bottomSheetCollapsedMaximumHeight,
+          maxHeight: min(_bottomSheetCollapsedMaximumHeight, _bottomSheetMaximumHeight),
         ),
         parentUsesSize: true,
       );
     }
-
-    final keyboardOrPanelHeight = max(max(_panelHeight.value, _keyboardHeight), _mediaQueryBottomPadding);
 
     (_bottomSheet!.parentData! as BoxParentData).offset =
         Offset(0, size.height - _bottomSheet!.size.height - keyboardOrPanelHeight);
@@ -1786,7 +1804,7 @@ class _RenderAboveKeyboardPageScaffold<PanelType> extends RenderBox
     );
 
     final boundedIntrinsicHeight = bottomSheetHeight.clamp(
-      _bottomSheetMinimumHeight,
+      min<double>(_bottomSheetMinimumHeight, _bottomSheetMaximumHeight),
       _bottomSheetMaximumHeight,
     );
     messagePageLayoutLog.info(
