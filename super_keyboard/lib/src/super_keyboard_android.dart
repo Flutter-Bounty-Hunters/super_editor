@@ -89,6 +89,12 @@ class SuperKeyboardAndroid {
     await _methodChannel.invokeMethod("stopLogging");
   }
 
+  /// Returns the ID of the keyboard (IME) that the user has currently selected as their
+  /// default, e.g., `"com.sec.android.inputmethod/.SamsungKeypad"`.
+  Future<String?> getActiveKeyboardId() async {
+    return _methodChannel.invokeMethod<String?>("getActiveKeyboardId");
+  }
+
   ValueListenable<MobileWindowGeometry> get geometry => _geometry;
   final _geometry = ValueNotifier<MobileWindowGeometry>(const MobileWindowGeometry());
 

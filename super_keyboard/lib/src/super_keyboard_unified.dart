@@ -95,6 +95,13 @@ class SuperKeyboard {
     }
   }
 
+  Future<String?> getActiveKeyboardId() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return SuperKeyboardAndroid.instance.getActiveKeyboardId();
+    }
+    return null;
+  }
+
   ValueListenable<MobileWindowGeometry> get mobileGeometry => _mobileGeometry;
   final _mobileGeometry = ValueNotifier<MobileWindowGeometry>(const MobileWindowGeometry());
 
