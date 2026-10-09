@@ -441,6 +441,15 @@ class TextDeltasDocumentEditor {
       return documentSelection;
     }
 
+    if (documentSelection.isCollapsed) {
+      // A caret never means "Select all". This check matters for an empty node,
+      // whose beginning and end are the same position, so a caret in it would
+      // otherwise look like a selection of the entire node. iOS reports a caret
+      // like that whenever it sends a selection change, e.g., right after the
+      // user moves the floating cursor onto an empty paragraph.
+      return documentSelection;
+    }
+
     final extentNode = document.getNodeById(documentSelection.extent.nodeId)!;
     final isWholeNodeSelected = documentSelection.start.nodeId == documentSelection.end.nodeId &&
         documentSelection.start.nodePosition == extentNode.beginningPosition &&
