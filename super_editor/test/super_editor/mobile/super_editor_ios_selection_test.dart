@@ -551,6 +551,58 @@ void main() {
           ),
         );
       });
+
+      testWidgetsOnIos("keeps the caret in an empty paragraph when the IME reports it", (tester) async {
+        // An empty paragraph begins and ends at the same position, so a caret in it covers the whole
+        // paragraph. This test ensures that a caret in an empty paragraph isn't mistaken for the user
+        // pressing "Select all", which the test above covers.
+        //
+        // iOS reports a caret like this whenever it sends a selection change, e.g., right after the user
+        // moves the floating cursor onto an empty paragraph.
+        await tester //
+            .createDocument()
+            .withCustomContent(MutableDocument(
+              nodes: [
+                ParagraphNode(
+                  id: '1',
+                  text: AttributedText('First paragraph'),
+                ),
+                ParagraphNode(
+                  id: '2',
+                  text: AttributedText(),
+                ),
+                ParagraphNode(
+                  id: '3',
+                  text: AttributedText('Third paragraph'),
+                ),
+              ],
+            ))
+            .pump();
+
+        // Place the caret in the empty paragraph.
+        await tester.placeCaretInParagraph('2', 0);
+
+        // Simulate iOS reporting the caret in the empty paragraph. The IME text of an empty paragraph is
+        // only its invisible placeholder characters, so the caret sits after them.
+        await tester.ime.sendDeltas(const [
+          TextEditingDeltaNonTextUpdate(
+            oldText: '. ',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange(start: -1, end: -1),
+          ),
+        ], getter: imeClientGetter);
+
+        // Ensure that the caret stayed in the empty paragraph, rather than selecting the entire document.
+        expect(
+          SuperEditorInspector.findDocumentSelection(),
+          const DocumentSelection.collapsed(
+            position: DocumentPosition(
+              nodeId: '2',
+              nodePosition: TextNodePosition(offset: 0),
+            ),
+          ),
+        );
+      });
     });
 
     group('within ancestor scrollable', () {
