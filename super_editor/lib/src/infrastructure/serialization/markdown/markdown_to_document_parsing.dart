@@ -455,20 +455,56 @@ class _MarkdownToDocument implements md.NodeVisitor {
 
   void _addTask(md.Element element) {
     bool checked = false;
-    if (element.children != null && //
-        element.children!.isNotEmpty &&
-        element.children!.first is md.Element &&
-        (element.children!.first as md.Element).tag == 'input') {
-      checked = (element.children!.first as md.Element).attributes['checked'] == 'true';
+    final checkbox = _findTaskCheckbox(element);
+    if (checkbox != null) {
+      checked = checkbox.attributes['checked'] == 'true';
     }
 
     _content.add(
       TaskNode(
         id: Editor.createNodeId(),
-        text: _parseInlineText(element.textContent),
+        text: _parseInlineText(_taskTextContent(element)),
         isComplete: checked,
       ),
     );
+  }
+
+  md.Element? _findTaskCheckbox(md.Element element) {
+    final children = element.children;
+    if (children == null || children.isEmpty) {
+      return null;
+    }
+
+    final firstChild = children.first;
+    if (firstChild is md.Element && firstChild.tag == 'input') {
+      return firstChild;
+    }
+
+    if (firstChild is md.Element && firstChild.tag == 'p') {
+      final paragraphChildren = firstChild.children;
+      if (paragraphChildren != null && paragraphChildren.isNotEmpty) {
+        final firstParagraphChild = paragraphChildren.first;
+        if (firstParagraphChild is md.Element && firstParagraphChild.tag == 'input') {
+          return firstParagraphChild;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String _taskTextContent(md.Element element) {
+    final children = element.children;
+    if (children == null || children.isEmpty) {
+      return element.textContent;
+    }
+
+    final firstChild = children.first;
+    if (firstChild is md.Element && firstChild.tag == 'p') {
+      return firstChild.textContent.trimLeft();
+    }
+
+    return element.textContent;
   }
 
   void _addTable(md.Element element) {
