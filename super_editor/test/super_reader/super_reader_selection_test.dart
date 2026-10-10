@@ -468,6 +468,72 @@ spans multiple lines.''',
         ),
       );
     });
+
+    testWidgetsOnDesktop("selects by word when double tap and dragging downstream", (tester) async {
+      // "Lorem ipsum |dolor sit| amet, consectetur adipiscing elit, sed do eiusmod tempor..."
+      //              ^  ^      ^
+      //             12  14    21
+      await tester //
+          .createDocument()
+          .withSingleParagraph()
+          .pump();
+
+      final gesture = await tester.doubleTapDownInParagraph("1", 14);
+
+      for (int i = 0; i < 10; i += 1) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+
+      expect(
+        SuperReaderInspector.findDocumentSelection(),
+        const DocumentSelection(
+          base: DocumentPosition(
+            nodeId: "1",
+            nodePosition: TextNodePosition(offset: 12),
+          ),
+          extent: DocumentPosition(
+            nodeId: "1",
+            nodePosition: TextNodePosition(offset: 21),
+          ),
+        ),
+      );
+
+      await gesture.up();
+    });
+
+    testWidgetsOnDesktop("selects by word when double tap and dragging upstream", (tester) async {
+      // "Lorem |ipsum dolor| sit amet, consectetur adipiscing elit, sed do eiusmod tempor..."
+      //        ^        ^  ^
+      //        6       14  17
+      await tester //
+          .createDocument()
+          .withSingleParagraph()
+          .pump();
+
+      final gesture = await tester.doubleTapDownInParagraph("1", 14);
+
+      for (int i = 0; i < 10; i += 1) {
+        await gesture.moveBy(const Offset(-10, 0));
+        await tester.pump();
+      }
+
+      expect(
+        SuperReaderInspector.findDocumentSelection(),
+        const DocumentSelection(
+          base: DocumentPosition(
+            nodeId: "1",
+            nodePosition: TextNodePosition(offset: 17),
+          ),
+          extent: DocumentPosition(
+            nodeId: "1",
+            nodePosition: TextNodePosition(offset: 6),
+          ),
+        ),
+      );
+
+      await gesture.up();
+    });
   });
 }
 
