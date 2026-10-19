@@ -1512,7 +1512,14 @@ void main() {
       expect(scrollController.position.pixels, pixels);
     });
 
-    testWidgetsOnMobile("doesn't throw when metrics change before the editor is laid out", (tester) async {
+    testWidgetsOnMobile("doesn't throw when metrics change but editor screen is behind the opaque visible screen",
+        (tester) async {
+      // This test reflects what happens when a navigator has 2+ screens. The visible screen
+      // opens the keyboard, but the editor screen is invisible, sitting behind that screen.
+      // Apparently built screens behind the visible one still receive metrics change
+      // notifications, but that 2nd screen doesn't run layout because Flutter knows it's
+      // not visible.
+
       addTearDown(tester.view.reset);
 
       final document = MutableDocument(
