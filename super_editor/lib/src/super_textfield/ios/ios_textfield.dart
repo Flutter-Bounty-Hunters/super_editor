@@ -808,7 +808,13 @@ class _IOSSuperTextFieldSystemContextMenuState extends State<IOSSuperTextFieldSy
   @override
   void initState() {
     super.initState();
-    _systemContextMenuController = SystemContextMenuController();
+    _systemContextMenuController = SystemContextMenuController(
+      // iOS hides its menu on its own, e.g., when the user presses "Paste", or taps
+      // elsewhere. Hide the toolbar when that happens. Otherwise, the next time the
+      // controller changes, the menu would re-appear, even though the user already
+      // dismissed it.
+      onSystemHide: () => widget.controller.hideToolbar(),
+    );
     widget.controller.addListener(_onControllerChanged);
     onNextFrame((_) {
       _positionSystemMenu();

@@ -1038,6 +1038,11 @@ Widget iOSSystemPopoverEditorToolbarWithFallbackBuilder(
   if (IOSSystemContextMenu.isSupported(context)) {
     return IOSSystemContextMenu(
       leaderLink: focalPoint,
+      // iOS hides its menu on its own, e.g., when the user presses "Paste", or taps
+      // elsewhere. Hide the toolbar when that happens. Otherwise, the next time the
+      // focal point moves, such as when the editor changes size, the menu would
+      // re-appear, even though the user already dismissed it.
+      onSystemHide: editorControlsController.hideToolbar,
     );
   }
 
