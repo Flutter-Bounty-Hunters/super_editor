@@ -1511,6 +1511,56 @@ void main() {
       await tester.pump();
       expect(scrollController.position.pixels, pixels);
     });
+
+    testWidgetsOnMobile("doesn't throw when metrics change but editor screen is behind the opaque visible screen",
+        (tester) async {
+      // This test reflects what happens when a navigator has 2+ screens. The visible screen
+      // opens the keyboard, but the editor screen is invisible, sitting behind that screen.
+      // Apparently built screens behind the visible one still receive metrics change
+      // notifications, but that 2nd screen doesn't run layout because Flutter knows it's
+      // not visible.
+
+      addTearDown(tester.view.reset);
+
+      final document = MutableDocument(
+        nodes: [
+          ParagraphNode(id: '1', text: AttributedText('Draft text')),
+        ],
+      );
+      final composer = MutableDocumentComposer(
+        initialSelection: const DocumentSelection.collapsed(
+          position: DocumentPosition(nodeId: '1', nodePosition: TextNodePosition(offset: 5)),
+        ),
+      );
+      final editor = createDefaultDocumentEditor(document: document, composer: composer);
+
+      // Build the editor's route underneath an opaque route in the same frame,
+      // so the Overlay builds the editor but never lays it out.
+      await tester.pumpWidget(
+        MaterialApp(
+          initialRoute: '/covered',
+          onGenerateRoute: (_) => null,
+          onGenerateInitialRoutes: (_) => [
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                body: SuperEditor(editor: editor),
+              ),
+            ),
+            MaterialPageRoute(
+              builder: (_) => const Scaffold(body: Text('Covering route')),
+            ),
+          ],
+        ),
+      );
+
+      // Animate the keyboard open, which changes the view insets each frame.
+      for (var i = 1; i <= 10; i++) {
+        tester.view.viewInsets = FakeViewPadding(bottom: 90.0 * i);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Reaching this point without an exception is the test.
+    });
   });
 }
 
