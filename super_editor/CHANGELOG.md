@@ -7,8 +7,6 @@
 * FIX: Don't run desktop caret ticker or timer when running on mobile.
 * ADJUSTMENT: Adjust Markdown image parsing to also handle syntax where image caption appears
   on the line directly above image.
-* FEATURE: Add `FloatingShadowSheet.editorSheetClipBehavior`, so an editor sheet can paint outside its own
-  bounds, e.g. a glass outline. Defaults to `Clip.hardEdge`, which is the previous behavior.
 
 ## [0.3.0-dev.51]
 ### Mar 27, 2026
