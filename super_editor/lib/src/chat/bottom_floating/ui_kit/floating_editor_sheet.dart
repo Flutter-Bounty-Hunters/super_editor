@@ -17,6 +17,7 @@ class FloatingShadowSheet extends SlottedMultiChildRenderObjectWidget<ShadowShee
     this.banner,
     required this.editorSheet,
     this.style = const FloatingShadowSheetStyle(),
+    this.editorSheetClipBehavior = Clip.hardEdge,
   });
 
   /// The banner that's displayed within the shadow sheet, just above the [editorSheet].
@@ -27,6 +28,19 @@ class FloatingShadowSheet extends SlottedMultiChildRenderObjectWidget<ShadowShee
 
   /// The visual style of this shadow sheet.
   final FloatingShadowSheetStyle style;
+
+  /// How the [editorSheet] is clipped to the sheet's superellipse.
+  ///
+  /// Defaults to [Clip.hardEdge], which cuts off anything the [editorSheet] paints
+  /// outside its own bounds.
+  ///
+  /// Use [Clip.none] for an [editorSheet] that intentionally paints outside its bounds,
+  /// for example a glass effect with an outline just outside its shape. With [Clip.none],
+  /// the [editorSheet] is responsible for keeping its own content inside the superellipse.
+  ///
+  /// This only affects the [editorSheet]. The [banner] is always clipped to the
+  /// superellipse around the whole sheet.
+  final Clip editorSheetClipBehavior;
 
   @override
   Iterable<ShadowSheetSlot> get slots => ShadowSheetSlot.values;
@@ -43,12 +57,13 @@ class FloatingShadowSheet extends SlottedMultiChildRenderObjectWidget<ShadowShee
 
   @override
   RenderShadowSheet createRenderObject(BuildContext context) {
-    return RenderShadowSheet(style: style);
+    return RenderShadowSheet(style: style, editorSheetClipBehavior: editorSheetClipBehavior);
   }
 
   @override
   void updateRenderObject(BuildContext context, RenderShadowSheet renderObject) {
     renderObject.style = style;
+    renderObject.editorSheetClipBehavior = editorSheetClipBehavior;
   }
 }
 
@@ -111,7 +126,19 @@ enum ShadowSheetSlot {
 class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin<ShadowSheetSlot, RenderBox> {
   RenderShadowSheet({
     required FloatingShadowSheetStyle style,
-  }) : _style = style;
+    Clip editorSheetClipBehavior = Clip.hardEdge,
+  })  : _style = style,
+        _editorSheetClipBehavior = editorSheetClipBehavior;
+
+  Clip _editorSheetClipBehavior;
+  set editorSheetClipBehavior(Clip value) {
+    if (value == _editorSheetClipBehavior) {
+      return;
+    }
+
+    _editorSheetClipBehavior = value;
+    markNeedsPaint();
+  }
 
   FloatingShadowSheetStyle _style;
   set style(FloatingShadowSheetStyle newStyle) {
@@ -304,10 +331,18 @@ class RenderShadowSheet extends RenderBox with SlottedContainerRenderObjectMixin
       context.canvas.restore();
     }
 
+    if (_editorSheetClipBehavior == Clip.none) {
+      // The editor sheet is allowed to paint outside its bounds. Don't keep a
+      // clip layer around, so a later switch back to a clip starts from a clean layer.
+      layer = null;
+      context.paintChild(editorSheet, editorSheetOffset);
+      return;
+    }
+
     // Clip any part of the editor sheet outside the expected superellipse shape.
     final clipLayer = (layer as ClipPathLayer? ?? ClipPathLayer())
       ..clipPath = editorSheetBoundary
-      ..clipBehavior = Clip.hardEdge;
+      ..clipBehavior = _editorSheetClipBehavior;
     layer = clipLayer;
 
     context.pushLayer(clipLayer, (clippedContext, clippedOffset) {
