@@ -29,6 +29,9 @@ class SpellingAndGrammarPlugin extends SuperEditorPlugin {
   ///   can be toggled at runtime by setting the value of [isGrammarCheckEnabled].
   /// - [grammarErrorUnderlineStyle]: the style of underline to apply to grammar errors.
   /// - [toolbarBuilder]: builds the toolbar for showing suggestions for misspelled words.
+  /// - [toolbarBoundary]: the boundary within which the suggestions toolbar is kept. When the
+  ///   toolbar doesn't fit on its preferred side of the misspelled word, it flips to the other
+  ///   side. Pass a [KeyboardFollowerBoundary] to keep the toolbar above the software keyboard.
   /// - [selectedWordHighlightColor]: the color to use when highlighting the selected word,
   ///   if it's a misspelled word.
   /// - [androidControlsController]: the controls controller to use when running on Android. This
@@ -51,6 +54,7 @@ class SpellingAndGrammarPlugin extends SuperEditorPlugin {
     UnderlineStyle grammarErrorUnderlineStyle = defaultGrammarErrorUnderlineStyle,
     Duration spellCheckDelayAfterEdit = Duration.zero,
     SpellingErrorSuggestionToolbarBuilder toolbarBuilder = defaultSpellingSuggestionToolbarBuilder,
+    FollowerBoundary toolbarBoundary = const ScreenFollowerBoundary(),
     Color? selectedWordHighlightColor,
     SuperEditorAndroidControlsController? androidControlsController,
     SuperEditorIosControlsController? iosControlsController,
@@ -88,6 +92,7 @@ class SpellingAndGrammarPlugin extends SuperEditorPlugin {
         _selectedWordLink,
         popoverController: _popoverController,
         toolbarBuilder: toolbarBuilder,
+        toolbarBoundary: toolbarBoundary,
       ),
     ];
 

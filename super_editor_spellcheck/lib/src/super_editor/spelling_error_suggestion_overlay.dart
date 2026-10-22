@@ -13,11 +13,18 @@ class SpellingErrorSuggestionOverlayBuilder implements SuperEditorLayerBuilder {
     this.suggestions,
     this.selectedWordLink, {
     this.toolbarBuilder = defaultSpellingSuggestionToolbarBuilder,
+    this.toolbarBoundary = const ScreenFollowerBoundary(),
     required this.popoverController,
   });
 
   final SpellingErrorSuggestions suggestions;
   final LeaderLink selectedWordLink;
+
+  /// The boundary within which the spelling suggestion toolbar is kept.
+  ///
+  /// When the toolbar doesn't fit on its preferred side of the misspelled word,
+  /// within this boundary, the toolbar flips to the other side.
+  final FollowerBoundary toolbarBoundary;
 
   /// Builder that creates the spelling suggestion toolbar, which appears near
   /// the currently selected mis-spelled word.
@@ -35,6 +42,7 @@ class SpellingErrorSuggestionOverlayBuilder implements SuperEditorLayerBuilder {
       suggestions: suggestions,
       selectedWordLink: selectedWordLink,
       toolbarBuilder: toolbarBuilder,
+      toolbarBoundary: toolbarBoundary,
       popoverController: popoverController,
     );
   }
@@ -48,6 +56,7 @@ class SpellingErrorSuggestionOverlay extends DocumentLayoutLayerStatefulWidget {
     required this.suggestions,
     required this.selectedWordLink,
     this.toolbarBuilder = defaultSpellingSuggestionToolbarBuilder,
+    this.toolbarBoundary = const ScreenFollowerBoundary(),
     this.popoverController,
     this.showDebugLeaderBounds = false,
   });
@@ -68,6 +77,14 @@ class SpellingErrorSuggestionOverlay extends DocumentLayoutLayerStatefulWidget {
   /// Builder that creates the spelling suggestion toolbar, which appears near
   /// the currently selected mis-spelled word.
   final SpellingErrorSuggestionToolbarBuilder toolbarBuilder;
+
+  /// The boundary within which the spelling suggestion toolbar is kept.
+  ///
+  /// When the toolbar doesn't fit on its preferred side of the misspelled word,
+  /// within this boundary, the toolbar flips to the other side. For example, pass
+  /// a [KeyboardFollowerBoundary] to flip the toolbar above the misspelled word,
+  /// instead of placing it behind the software keyboard.
+  final FollowerBoundary toolbarBoundary;
 
   /// A controller to which this overlay will attach itself as the delegate for
   /// showing/hiding the spelling suggestions popover.
@@ -462,24 +479,25 @@ class _SpellingErrorSuggestionOverlayState
         return Follower.withAligner(
           link: widget.selectedWordLink,
           aligner: CupertinoPopoverToolbarAligner(),
-          boundary: const ScreenFollowerBoundary(),
+          boundary: widget.toolbarBoundary,
           child: child,
         );
       case TargetPlatform.android:
-        late final Alignment leaderAnchor;
-        late final Alignment followerAnchor;
-        late final Offset offset;
-        if (_toolbarOrientation == SpellcheckToolbarOrientation.above) {
-          // Show toolbar above.
-          leaderAnchor = Alignment.topLeft;
-          followerAnchor = Alignment.bottomLeft;
-          offset = const Offset(0, -16);
-        } else {
-          // "Auto" or explicitly "below".
-          leaderAnchor = Alignment.bottomLeft;
-          followerAnchor = Alignment.topLeft;
-          offset = const Offset(0, 16);
-        }
+        // Prefer the requested side of the misspelled word, but flip to the other
+        // side when the toolbar doesn't fit within the boundary, e.g., when the
+        // toolbar would otherwise appear behind the software keyboard.
+        final aligner = _toolbarOrientation == SpellcheckToolbarOrientation.above
+            ? PreferredPositionAligner.top(
+                leaderCrossAxisAnchor: Alignment.topLeft,
+                followerCrossAxisAnchor: Alignment.bottomLeft,
+                gap: 16,
+              )
+            // "Auto" or explicitly "below".
+            : PreferredPositionAligner.bottom(
+                leaderCrossAxisAnchor: Alignment.bottomLeft,
+                followerCrossAxisAnchor: Alignment.topLeft,
+                gap: 16,
+              );
 
         return Stack(
           children: [
@@ -492,12 +510,10 @@ class _SpellingErrorSuggestionOverlayState
                 hideSuggestionsPopover();
               },
             ),
-            Follower.withOffset(
+            Follower.withAligner(
               link: widget.selectedWordLink,
-              leaderAnchor: leaderAnchor,
-              followerAnchor: followerAnchor,
-              offset: offset,
-              boundary: const ScreenFollowerBoundary(),
+              aligner: aligner,
+              boundary: widget.toolbarBoundary,
               child: child,
             ),
           ],
@@ -508,7 +524,7 @@ class _SpellingErrorSuggestionOverlayState
           leaderAnchor: Alignment.bottomLeft,
           followerAnchor: Alignment.topLeft,
           offset: const Offset(0, 16),
-          boundary: const ScreenFollowerBoundary(),
+          boundary: widget.toolbarBoundary,
           child: child,
         );
     }
