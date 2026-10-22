@@ -121,6 +121,43 @@ void main() {
           _expectHandlesAndToolbar();
         });
 
+        testWidgetsOnIos("stops selecting by long-press when the press is cancelled", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Long press down on the middle of "conse|ctetur", so a long-press
+          // selection starts, and then have the tap cancelled instead of
+          // released - which is what happens when another recognizer in the
+          // arena takes the pointer away from the document.
+          final longPress = await tester.longPressDownInParagraph("1", 33);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordConsecteturSelection);
+
+          await longPress.cancel();
+          await tester.pumpAndSettle();
+
+          // Now drag somewhere else in the document.
+          //
+          // The long press never became a drag, so nothing used to clear it.
+          // The interactor stayed in long-press mode, which made
+          // `EagerPanGestureRecognizer.shouldAccept` claim this unrelated pan
+          // as a long-press drag-selection: the selection expanded by word, the
+          // magnifier came up, and the drag auto-scroller started - none of
+          // which could be undone, because only the end of a drag-selection
+          // takes them back down.
+          final drag = await tester.startGesture(tester.getCenter(find.byType(SuperEditor)));
+          await tester.pump(kTapMinTime);
+          for (int i = 0; i < 5; i += 1) {
+            await drag.moveBy(const Offset(20, 0));
+            await tester.pump();
+          }
+
+          expect(find.byType(IOSRoundedRectangleMagnifyingGlass), findsNothing);
+          expect(SuperEditorInspector.findDocumentSelection(), _wordConsecteturSelection);
+
+          await drag.up();
+          await tester.pumpAndSettle();
+        });
+
         testWidgetsOnIos("does nothing with hack global property", (tester) async {
           disableLongPressSelectionForSuperlist = true;
           addTearDown(() => disableLongPressSelectionForSuperlist = false);
