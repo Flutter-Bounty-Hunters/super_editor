@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:flow_layout_prototype/profile_benchmark.dart';
 import 'package:flow_layout_prototype/profile_budgets.dart';
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -40,13 +41,14 @@ void main() {
     };
     final failures = profileBudgetFailures(result, budgets);
     binding.reportData!['budgetFailures'] = failures;
-    expect(result['scenarios'], hasLength(2));
+    expect(result['scenarios'], hasLength(profileFixtureMetadata.length));
     final samples = result['samplesPerPhase'] as int;
     expect(samples, greaterThan(0));
     for (final dynamic scenario in result['scenarios'] as List<dynamic>) {
-      expect(scenario['textCharacters'], 10000);
-      expect(scenario['inlineWidgets'], 100);
-      for (final phase in ['initial', 'resize', 'update']) {
+      final metadata = profileFixtureMetadata[scenario['name']]!;
+      expect(scenario['textCharacters'], metadata['textCharacters']);
+      expect(scenario['inlineWidgets'], metadata['inlineWidgets']);
+      for (final phase in profilePhases) {
         final values = scenario['samples'][phase] as List<dynamic>;
         expect(values, hasLength(samples));
         for (final dynamic sample in values) {

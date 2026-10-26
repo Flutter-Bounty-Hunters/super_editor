@@ -1,5 +1,9 @@
 # Candidate metrics and height reuse — 2026-10-25
 
+For the current four-fixture suite and subsequent changes, see
+[sequential optimization measurements](SEQUENTIAL_OPTIMIZATIONS.md). Measurements
+below describe the earlier implementation and fixtures.
+
 The two leading changes from the [CPU profile](PROFILE_HOTSPOTS.md) are implemented
 in the experimental compositor.
 

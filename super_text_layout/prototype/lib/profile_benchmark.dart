@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:super_text_layout/experimental_flow.dart';
+import 'profile_fixture_data.dart';
+import 'profile_fixture_widgets.dart';
 
 const _waitForProfiler =
     bool.fromEnvironment('FLOW_BENCHMARK_WAIT_FOR_PROFILER');
@@ -46,6 +48,10 @@ Future<Map<String, Object>> runFlowProfileBenchmark(
   const asset = String.fromEnvironment('FLOW_BENCHMARK_FONT_ASSET',
       defaultValue: 'assets/fonts/Roboto-Regular.ttf');
   await (FontLoader('FlowBenchmark')..addFont(rootBundle.load(asset))).load();
+  await (FontLoader('FlowBenchmarkCode')
+        ..addFont(rootBundle.load(
+            asset.replaceFirst('Roboto-Regular.ttf', 'FiraMono-Regular.ttf'))))
+      .load();
   final complete = Completer<Map<String, Object>>();
   runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -76,9 +82,11 @@ class _BenchmarkState extends State<_Benchmark> {
   final _controller = FlowLayoutController();
   final _paragraphKey = GlobalKey();
   bool _showParagraph = false;
-  bool _buttons = false;
+  String _scenario = 'test_boxes';
+  double get _fontSize =>
+      (profileFixtureMetadata[_scenario]!['fontSize']! as int).toDouble();
   double _width = 600;
-  String _suffix = '';
+  ProfileEdit? _edit;
   String _status = 'Preparing profile benchmark';
 
   @override
@@ -121,27 +129,39 @@ class _BenchmarkState extends State<_Benchmark> {
   }
 
   Future<Map<String, Map<String, Object>>> _cycle() async {
-    await _frame(() => _showParagraph = false);
-    final initial = await _measure(() {
-      _width = 600;
-      _suffix = '';
-      _showParagraph = true;
-    });
-    final resize = await _measure(() => _width = 320);
-    final update = await _measure(() => _suffix = 'changed');
-    return {'initial': initial, 'resize': resize, 'update': update};
+    final results = <String, Map<String, Object>>{};
+    // Every edit gets the same initial/resize history in a fresh render object.
+    // Restoring text in-place would retain choices from earlier edit cases.
+    for (final edit in ProfileEdit.values) {
+      await _frame(() => _showParagraph = false);
+      final initial = await _measure(() {
+        _width = 600;
+        _edit = null;
+        _showParagraph = true;
+      });
+      final resize = await _measure(() => _width = 320);
+      if (edit == ProfileEdit.beginning) {
+        results['initial'] = initial;
+        results['resize'] = resize;
+      }
+      results[edit.phase] = await _measure(() => _edit = edit);
+    }
+    return results;
   }
 
   Future<void> _run() async {
     try {
       if (samples < 1) throw StateError('At least one sample is required.');
       final scenarios = <Map<String, Object>>[];
-      for (final buttons in (_waitForProfiler ? [true] : [false, true])) {
+      for (final scenario in (_waitForProfiler
+          ? [
+              const String.fromEnvironment('FLOW_CPU_SCENARIO',
+                  defaultValue: 'unique_prose')
+            ]
+          : profileFixtureMetadata.keys)) {
         await _frame(() {
-          _buttons = buttons;
-          _status = buttons
-              ? 'Measuring 10k characters + 100 buttons'
-              : 'Measuring 10k characters + 100 boxes';
+          _scenario = scenario;
+          _status = 'Measuring $scenario';
         });
         final cold = await _cycle();
         for (var i = 0; i < warmups; i++) {
@@ -154,9 +174,7 @@ class _BenchmarkState extends State<_Benchmark> {
           await _profileStart.future;
         }
         final raw = <String, List<Map<String, Object>>>{
-          'initial': [],
-          'resize': [],
-          'update': [],
+          for (final phase in profilePhases) phase: [],
         };
         for (var i = 0; i < samples; i++) {
           final cycle = await _cycle();
@@ -165,11 +183,15 @@ class _BenchmarkState extends State<_Benchmark> {
           }
         }
         scenarios.add({
-          'name': buttons ? 'demo_buttons' : 'test_boxes',
-          'textCharacters': 10000,
-          'inlineWidgets': 100,
-          'fontSize': buttons ? 18 : 20,
-          'obstacle': buttons,
+          'name': scenario,
+          ...profileFixtureMetadata[scenario]!,
+          'editLocations': {
+            for (final edit in ProfileEdit.values)
+              edit.phase: {
+                'chunk': profileEditLocation(scenario, edit).chunk,
+                'offset': profileEditLocation(scenario, edit).offset
+              },
+          },
           // This is the first run of this scenario in the current process,
           // not an isolated process-cold run for each scenario.
           'firstObserved': cold,
@@ -185,7 +207,7 @@ class _BenchmarkState extends State<_Benchmark> {
       }
       final result = {
         'schemaVersion': 1,
-        'fixtureVersion': 1,
+        'fixtureVersion': profileFixtureVersion,
         'execution': 'standalone',
         'mode': 'profile',
         'platform': defaultTargetPlatform.name,
@@ -194,7 +216,8 @@ class _BenchmarkState extends State<_Benchmark> {
         'warmupCycles': warmups,
         'samplesPerPhase': samples,
         'widths': [600, 320],
-        'update': 'append 7 characters to final text participant at width 320',
+        'editSetup': profileEditSetup,
+        'editText': profileEditText,
         'timingScope':
             'fullLayoutUs wraps RenderFlowParagraph.performLayout, including snapshot disposal and fragment commits; compositionUs is the existing internal timer. Neither includes widget build, painting, rasterization, or frame scheduling.',
         'scenarios': scenarios,
@@ -251,43 +274,26 @@ class _BenchmarkState extends State<_Benchmark> {
                                 child: DefaultTextStyle(
                                     style: TextStyle(
                                         fontFamily: 'FlowBenchmark',
-                                        fontSize: _buttons ? 18 : 20,
+                                        fontSize: _fontSize,
                                         color: Colors.black),
                                     child: _TimedParagraph(
                                       key: _paragraphKey,
                                       controller: _controller,
                                       style: TextStyle(
                                           fontFamily: 'FlowBenchmark',
-                                          fontSize: _buttons ? 18 : 20,
+                                          fontSize: _fontSize,
                                           color: Colors.black),
                                       regions: RectangularFlowRegions(
-                                          obstacles: _buttons
+                                          obstacles: profileFixtureMetadata[
+                                                      _scenario]!['obstacle']!
+                                                  as bool
                                               ? [
                                                   const Rect.fromLTWH(
                                                       210, 20, 130, 80)
                                                 ]
                                               : []),
-                                      children: [
-                                        for (var i = 0; i < 100; i++) ...[
-                                          FlowText(
-                                              (_buttons
-                                                          ? 'A paragraph with fragmentable inline content and ordinary widgets. ' *
-                                                              2
-                                                          : 'a short sentence with enough spaces to wrap. ' *
-                                                              3)
-                                                      .substring(0, 100) +
-                                                  (i == 99 ? _suffix : ''),
-                                              id: 'text-$i'),
-                                          FlowBox(
-                                              id: 'box-$i',
-                                              child: _buttons
-                                                  ? _Counter(
-                                                      key: ValueKey(i),
-                                                      number: i)
-                                                  : const SizedBox(
-                                                      width: 30, height: 25)),
-                                        ]
-                                      ],
+                                      children: buildProfileFixture(_scenario,
+                                          edit: _edit),
                                     )))
                             : Text(_status))),
               ],
@@ -333,19 +339,4 @@ class _TimedRenderParagraph extends RenderFlowParagraph {
       calls++;
     }
   }
-}
-
-class _Counter extends StatefulWidget {
-  const _Counter({super.key, required this.number});
-  final int number;
-  @override
-  State<_Counter> createState() => _CounterState();
-}
-
-class _CounterState extends State<_Counter> {
-  int count = 0;
-  @override
-  Widget build(BuildContext context) => OutlinedButton(
-      onPressed: () => setState(() => count++),
-      child: Text('${widget.number}: $count'));
 }

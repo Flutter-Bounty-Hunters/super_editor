@@ -6,9 +6,19 @@ It uses the same workload and complete paragraph-layout stopwatch as the
 standalone benchmark, through `runFlowProfileBenchmark`. It runs on a real native
 profile build with live frames, not the headless widget-test clock.
 
-The default suite measures both 10,000-character fixtures (100 boxes and 100
-stateful buttons), with five warm-up cycles and 30 samples each for initial
-layout at width 600, resize to 320, and a seven-character update. The test fixes
+Fixture version 4 measures five workloads: the four v2 10,000-character fixtures
+(repeated prose with boxes, repeated prose with stateful buttons, nonrepeating
+prose with boxes, and nested decorated code with boxes), plus one uninterrupted
+1,000-character prose source with no widgets. The 10,000-character sources are
+still separated by 100 widgets; code additionally has 200 nested decorations.
+Inputs and metadata live in [profile_fixture_data.dart](lib/profile_fixture_data.dart).
+Each fixture gets five warm-up cycles and 30 samples for initial layout at
+width 600, resize to 320, and seven-character insertions at the beginning,
+middle, and end. Each edit independently starts with a fresh paragraph laid out
+at 600 and then resized to 320; no case inherits another edit's cache entries.
+The middle insertion is inside the central source (offset 50 in source 50 for
+100-source fixtures, offset 500 for the uninterrupted source). Nested code edits
+preserve the original styled segments. The test fixes
 the logical viewport at 800×600. Raw samples, median, p95, output counts, and host
 metadata are exported as JSON. Widget building, painting, and rasterization are
 outside the paragraph-layout stopwatch.
@@ -34,7 +44,7 @@ it does **not** assert a performance budget. The command prints that distinction
 Run more than once on an otherwise idle machine before reviewing a baseline.
 
 After reviewing the result, copy it to a versioned baseline location such as
-`benchmark_results/<runner>-integration-v1.json`. Do not automatically replace
+`benchmark_results/<runner>-integration-v4.json`. Do not automatically replace
 that reviewed file on every successful CI run: that would allow slow drift.
 
 ## Fail on regressions
@@ -46,7 +56,7 @@ dart run tool/profile_macos.dart \
 ```
 
 By default, **both median and p95 must remain within 20% of baseline** for each of
-six scenario/operation combinations. The derived limits are passed into the
+25 scenario/operation combinations (50 median/p95 limits). The derived limits are passed into the
 integration test. A regression fails that test and exits the runner nonzero.
 The result JSON and detailed log remain available even when a budget fails.
 Missing results and crashed/failed tests fail the command too; old output cannot
@@ -80,8 +90,14 @@ Keep power settings, thermal conditions, display/accessibility settings, and
 background load consistent; matching metadata alone cannot eliminate noise.
 
 An example from this Mac is included in
-[macos-m4-integration-v1-2026-10-25.json](benchmark_results/macos-m4-integration-v1-2026-10-25.json).
+[macos-v4-width-cache-final-2026-10-26.json](benchmark_results/macos-v4-width-cache-final-2026-10-26.json).
 It is not selected by default. Other developers should record their own baseline.
+Versions 1–3 are historical and are rejected by the v4 comparison gate.
+See [long-run optimization results](LONG_RUN_OPTIMIZATION.md) for the current
+implementation and [edit-position measurements](EDIT_POSITION_BENCHMARK.md) for
+the preceding baseline. Both use v4; the newer baseline protects the new gains. The preceding CPU capture and
+optimizations are in [PROSE_OPTIMIZATIONS.md](PROSE_OPTIMIZATIONS.md). Earlier
+results remain in [sequential measurements](SEQUENTIAL_OPTIMIZATIONS.md).
 
 ## CI
 
@@ -96,7 +112,7 @@ For example, from a checkout root on a configured macOS performance runner:
 ```sh
 cd super_text_layout/prototype  # Adjust to the checkout layout.
 dart run tool/profile_macos.dart \
-  --baseline benchmark_results/my-runner-integration-v1.json \
+  --baseline benchmark_results/my-runner-integration-v4.json \
   --output build/profile/current.json
 ```
 

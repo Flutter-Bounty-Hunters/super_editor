@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../tool/src/profile_baseline.dart';
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
 
 (Map<String, dynamic>, Map<String, dynamic>) fixture() {
   final host = {
@@ -19,7 +20,9 @@ import '../tool/src/profile_baseline.dart';
   };
   final baseline = {
     'schemaVersion': 1,
-    'fixtureVersion': 1,
+    'fixtureVersion': profileFixtureVersion,
+    'editSetup': profileEditSetup,
+    'editText': profileEditText,
     'execution': 'integration_test',
     'mode': 'profile',
     'platform': 'macOS',
@@ -30,21 +33,18 @@ import '../tool/src/profile_baseline.dart';
     'viewport': [800, 600],
     'host': host,
     'scenarios': [
-      for (final name in ['test_boxes', 'demo_buttons'])
+      for (final name in profileFixtureMetadata.keys)
         {
           'name': name,
-          'textCharacters': 10000,
-          'inlineWidgets': 100,
-          'fontSize': name == 'demo_buttons' ? 18 : 20,
-          'obstacle': name == 'demo_buttons',
+          ...profileFixtureMetadata[name]!,
           'samples': {
-            for (final phase in ['initial', 'resize', 'update'])
+            for (final phase in profilePhases)
               phase: [
                 for (final time in [1000, 1100, 1200]) {'fullLayoutUs': time}
               ]
           },
           'summary': {
-            for (final phase in ['initial', 'resize', 'update'])
+            for (final phase in profilePhases)
               phase: {
                 'fullLayoutUs': {'median': 1100, 'p95': 1200}
               }
@@ -65,7 +65,7 @@ void main() {
     final budgets = makeProfileBudgets(baseline, host, samples: 3);
     for (final dynamic phases
         in (budgets['scenarios'] as Map<String, dynamic>).values) {
-      expect(phases, hasLength(3));
+      expect(phases, hasLength(profilePhases.length));
       for (final dynamic stats in (phases as Map<String, dynamic>).values) {
         expect(stats, {'median': 1320, 'p95': 1440});
       }
@@ -103,7 +103,7 @@ void main() {
     for (final entry in {
       'mode': 'debug',
       'execution': 'standalone',
-      'fixtureVersion': 2,
+      'fixtureVersion': profileFixtureVersion + 1,
       'samplesPerPhase': 2,
       'widths': [300, 200],
       'viewport': [1000, 800]
@@ -153,5 +153,17 @@ void main() {
       expect(() => makeProfileBudgets(value, host, samples: 3),
           throwsFormatException);
     }
+  });
+  test('all edit phases and independent edit setup are required', () {
+    for (final phase in ['edit_beginning', 'edit_middle', 'edit_end']) {
+      final (baseline, host) = fixture();
+      (baseline['scenarios'][0]['samples'] as Map).remove(phase);
+      expect(() => makeProfileBudgets(baseline, host, samples: 3),
+          throwsFormatException);
+    }
+    final (baseline, host) = fixture();
+    baseline['editSetup'] = 'reuse the previous edit';
+    expect(() => makeProfileBudgets(baseline, host, samples: 3),
+        throwsFormatException);
   });
 }

@@ -1,3 +1,5 @@
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
+
 /// Pure comparison used by the integration test. All limits are microseconds;
 /// the runner derives them from a compatible machine's recorded baseline.
 List<String> profileBudgetFailures(
@@ -26,7 +28,7 @@ List<String> profileBudgetFailures(
       failures.add('Missing timing budgets for $name.');
       continue;
     }
-    for (final phase in ['initial', 'resize', 'update']) {
+    for (final phase in profilePhases) {
       final stats =
           scenario['summary'][phase]['fullLayoutUs'] as Map<String, dynamic>;
       final caps = phases[phase];

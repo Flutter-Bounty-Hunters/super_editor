@@ -82,6 +82,31 @@ conformance and the integrated wrapping policy.
   identical. Native profile medians for the actual-button fixture are now
   approximately 24/35/32 ms. See [optimization results](PROFILE_OPTIMIZATIONS.md)
   for before/after samples and regression evidence.
+- Subsequent internal optimizations cache bounded immutable break analysis,
+  index breaks and source offsets, defer compound vertical metrics, share exact
+  shaped text within a layout, and index snapshot fragments by participant.
+  Shape sharing preserves owner-local geometry and reference-counts resources;
+  eviction cannot dispose a shape still used by a committed measurement. Mutable
+  Paint styles bypass sharing. Font notifications invalidate break analysis, and
+  shape reuse never crosses layouts. Arbitrary custom sources keep their full
+  constraint-dependent measurement path. See
+  [sequential measurements](SEQUENTIAL_OPTIMIZATIONS.md) for per-step results.
+- Plain single-source text now bypasses compound measurement wrappers. The
+  built-in backend supplies immutable candidate windows; custom participants
+  retain ordered-opportunity validation. A bounded cache can reuse a plain-text
+  break decision only for identical full text, paragraph/content styles, start,
+  and available/maximum widths. The chosen range is measured afresh, using the
+  current owner; widget layout and region queries still run. Font notifications,
+  detaching, and disposal clear retained decisions. Mutable Paint and padded or
+  multi-source text bypass this cache. See [prose results](PROSE_OPTIMIZATIONS.md).
+- Long plain-text sources (at least 256 UTF-16 units) can retain exact candidate
+  widths across layouts. Keys contain the actual shaped span and full styles;
+  no document offsets or owners are retained. Cache hits can reject candidates
+  without allocating a painter. Selected candidates still obtain a live shaped
+  resource before their metrics, paint, or geometry are used. The same break
+  search and overflow policy apply. Mutable Paint and padded/compound sources
+  bypass this path. Font changes, detach, and disposal clear retention. See
+  [long-run results and memory bounds](LONG_RUN_OPTIMIZATION.md).
 - Composition is still horizontal LTR and greedy. Bidi, balancing, justification,
   and input handling are not implemented. Snapshots remain valid only until the
   next layout. Basic semantics checks do not establish screen-reader behavior.

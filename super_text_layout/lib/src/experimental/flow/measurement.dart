@@ -78,6 +78,57 @@ abstract class FlowRangeMeasurement {
   void dispose() {}
 }
 
+// Private capability for sources whose immutable break indexes are validated
+// when built. The public custom-content contract keeps its per-request checks.
+abstract interface class _IndexedBreakSource {
+  _BreakCandidates indexedCandidatesAfter(int start);
+}
+
+class _BreakWindow {
+  const _BreakWindow(this.values, this.start, this.end);
+  final List<FlowBreakOpportunity> values;
+  final int start;
+  final int end;
+  FlowBreakOpportunity? get first => start < end ? values[start] : null;
+  Iterable<FlowBreakOpportunity> get reversed sync* {
+    for (var i = end - 1; i >= start; i--) {
+      yield values[i];
+    }
+  }
+}
+
+class _BreakCandidates {
+  const _BreakCandidates(this.ordinary, this.emergency);
+  final _BreakWindow ordinary;
+  final _BreakWindow emergency;
+}
+
+_BreakCandidates _candidatesFor(FlowPreparedContent prepared, int start) {
+  if (prepared is _IndexedBreakSource) {
+    return (prepared as _IndexedBreakSource).indexedCandidatesAfter(start);
+  }
+  final ordinary = <FlowBreakOpportunity>[];
+  final emergency = <FlowBreakOpportunity>[];
+  var previous = start - 1;
+  var requiredSeen = false;
+  for (final opportunity in prepared.breaksAfter(start)) {
+    if (requiredSeen ||
+        opportunity.offset < start ||
+        opportunity.offset > prepared.length ||
+        opportunity.offset <= previous ||
+        (opportunity.offset == start && prepared.length != 0)) {
+      throw FlutterError(
+          'Invalid break opportunities: offsets must advance in order and stop at a required break.');
+    }
+    previous = opportunity.offset;
+    requiredSeen = opportunity.kind == FlowBreakKind.required;
+    (opportunity.kind == FlowBreakKind.emergency ? emergency : ordinary)
+        .add(opportunity);
+  }
+  return _BreakCandidates(_BreakWindow(ordinary, 0, ordinary.length),
+      _BreakWindow(emergency, 0, emergency.length));
+}
+
 class _PreparedAtom extends FlowPreparedContent {
   _PreparedAtom(this.entry, this.atom);
   final FlowContent entry;
@@ -143,7 +194,13 @@ class _DecoratedContent extends FlowContent {
       original.prepare(context);
 }
 
-List<_Run> _prepareRuns(List<FlowContent> entries, TextStyle style) {
+List<_Run> _prepareRuns(
+    List<FlowContent> entries,
+    TextStyle style,
+    _TextAnalysisCache analysisCache,
+    _TextShapeCache shapeCache,
+    _TextChoiceCache choiceCache,
+    _TextWidthCache widthCache) {
   final previousTag = _profileFlow ? _flowPrepareTag.makeCurrent() : null;
   try {
     final groups = <List<FlowContent>>[];
@@ -156,11 +213,35 @@ List<_Run> _prepareRuns(List<FlowContent> entries, TextStyle style) {
         groups.add([entry]);
       }
     }
+    // Cache admission is conservative: unique unpadded sources rarely repeat
+    // exact candidate spans. Avoid hashing every span on that common path.
+    final texts = <String?>[
+      for (final group in groups)
+        group.first.textContribution == null
+            ? null
+            : group.map((e) => e.textContribution!.text).join()
+    ];
+    final repetitions = <String, int>{};
+    for (final text in texts) {
+      if (text != null) {
+        repetitions.update(text, (n) => n + 1, ifAbsent: () => 1);
+      }
+    }
     var rank = 0;
     final result = <_Run>[];
-    for (final group in groups) {
-      final prepared = group.first.textContribution != null
-          ? _PreparedText(group, style)
+    for (var i = 0; i < groups.length; i++) {
+      final group = groups[i];
+      final text = texts[i];
+      final prepared = text != null
+          ? _PreparedText(group, style,
+              analysisCache: analysisCache,
+              shapeCache: shapeCache,
+              choiceCache: choiceCache,
+              widthCache: widthCache,
+              preparedText: text,
+              cacheShapes: repetitions[text]! > 1 ||
+                  group.any((e) =>
+                      e.decorations.any((d) => d.padding != EdgeInsets.zero)))
           : group.single.prepare(FlowPreparationContext(group.single, style));
       result.add(_Run(prepared, rank));
       rank += prepared.length;

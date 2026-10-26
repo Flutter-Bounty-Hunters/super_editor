@@ -1,3 +1,5 @@
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
+
 /// Validates a reviewed integration baseline and derives timing limits.
 /// No Flutter imports: the command-line runner uses the regular Dart VM.
 Map<String, dynamic> makeProfileBudgets(
@@ -16,7 +18,9 @@ Map<String, dynamic> makeProfileBudgets(
   final baseline = _object(input, 'Baseline');
   final expected = <String, dynamic>{
     'schemaVersion': 1,
-    'fixtureVersion': 1,
+    'fixtureVersion': profileFixtureVersion,
+    'editSetup': profileEditSetup,
+    'editText': profileEditText,
     'execution': 'integration_test',
     'mode': 'profile',
     'platform': 'macOS',
@@ -66,30 +70,25 @@ Map<String, dynamic> makeProfileBudgets(
   }
   final scenarios = _list(baseline['scenarios'], 'Baseline scenarios');
   final names = scenarios.map((s) => _object(s, 'Scenario')['name']).toSet();
-  if (scenarios.length != 2 ||
-      names.length != 2 ||
-      !names.containsAll(['test_boxes', 'demo_buttons'])) {
+  if (scenarios.length != profileFixtureMetadata.length ||
+      names.length != profileFixtureMetadata.length ||
+      !names.containsAll(profileFixtureMetadata.keys)) {
     throw const FormatException(
-        'Baseline must contain both standard benchmark scenarios.');
+        'Baseline must contain all standard benchmark scenarios.');
   }
   final factor = 1 + maxRegressionPercent / 100;
   final budgets = <String, dynamic>{};
   for (final value in scenarios) {
     final scenario = _object(value, 'Scenario');
     final name = scenario['name'] as String;
-    final fixture = {
-      'textCharacters': 10000,
-      'inlineWidgets': 100,
-      'fontSize': name == 'demo_buttons' ? 18 : 20,
-      'obstacle': name == 'demo_buttons'
-    };
+    final fixture = profileFixtureMetadata[name]!;
     if (fixture.entries.any((e) => scenario[e.key] != e.value)) {
       throw FormatException('Baseline fixture $name differs.');
     }
     final sampleSets = _object(scenario['samples'], 'Samples for $name');
     final summaries = _object(scenario['summary'], 'Summary for $name');
     final phases = <String, dynamic>{};
-    for (final phase in ['initial', 'resize', 'update']) {
+    for (final phase in profilePhases) {
       final values = _list(sampleSets[phase], 'Samples for $name.$phase');
       final times = <num>[];
       for (final sample in values) {
@@ -119,7 +118,7 @@ Map<String, dynamic> makeProfileBudgets(
     }
     budgets[name] = phases;
   }
-  return {'fixtureVersion': 1, 'scenarios': budgets};
+  return {'fixtureVersion': profileFixtureVersion, 'scenarios': budgets};
 }
 
 Map<String, dynamic> _object(Object? value, String label) {

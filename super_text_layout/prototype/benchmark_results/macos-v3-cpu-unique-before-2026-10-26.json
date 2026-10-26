@@ -1,0 +1,26 @@
+{
+  "fixtureVersion": 3,
+  "fixture": "unique_prose",
+  "samplePeriodUs": 1000,
+  "totalSamples": 4060,
+  "layoutSamples": 3938,
+  "layoutWindows": 90,
+  "coveredWindows": 90,
+  "inclusiveLayoutSamples": {
+    "_Composer._select": 3781,
+    "TextPainter.layout": 3405,
+    "TextPainter._createParagraph": 1221,
+    "_PreparedText.measureRange": 3475,
+    "_TextShapeCache.acquire": 3418,
+    "_TextShape.build": 3408,
+    "_Composer.compose": 3813
+  },
+  "layoutUserTags": {
+    "Flow.prepare": 91,
+    "Flow.firstAttempt": 3812,
+    "Flow.children": 4,
+    "Flow.layout": 31
+  },
+  "rawCapture": "build/profile/cpu-v3-unique-before.json",
+  "note": "Inclusive stack counts overlap; samples cover all 90 operations. CPU instrumentation is excluded from timing runs."
+}

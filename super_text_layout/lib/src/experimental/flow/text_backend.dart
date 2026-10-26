@@ -1,5 +1,31 @@
 part of 'flow.dart';
 
+int _lowerOffset(List<int> values, int offset) {
+  var low = 0, high = values.length;
+  while (low < high) {
+    final mid = (low + high) >> 1;
+    if (values[mid] < offset) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+int _upperOffset(List<int> values, int offset) {
+  var low = 0, high = values.length;
+  while (low < high) {
+    final mid = (low + high) >> 1;
+    if (values[mid] <= offset) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
 int _runeAt(String text, int offset) {
   final first = text.codeUnitAt(offset);
   if (first >= 0xd800 && first <= 0xdbff && offset + 1 < text.length) {
@@ -54,11 +80,21 @@ bool _canEmergencyBreak(String text, int offset) {
   return (metrics.ascent, metrics.descent);
 }
 
-/// Horizontal text backend using Unicode 16 default line breaks. Flutter word
-/// segmentation tailors complex-context (SA) runs where the engine supplies it.
-class _PreparedText extends FlowPreparedContent {
-  _PreparedText(this.entries, this.style) {
+class _TextBreakIndex {
+  _TextBreakIndex(Iterable<FlowBreakOpportunity> values)
+      : values = List.unmodifiable(values);
+  final List<FlowBreakOpportunity> values;
+  late final offsets =
+      values.map((value) => value.offset).toList(growable: false);
+  _BreakWindow after(int start, int limit) => _BreakWindow(
+      values, _upperOffset(offsets, start), _upperOffset(offsets, limit));
+}
+
+/// Unicode 16 break analysis, with Flutter dictionary tailoring for SA text.
+class _TextBreakAnalysis {
+  _TextBreakAnalysis(this.text, this.style) {
     final candidates = <int, FlowBreakOpportunity>{};
+    final hardBreaks = <TextRange>[];
     final graphemeEnds = <int>{0};
     var offset = 0;
     for (final grapheme in text.characters) {
@@ -86,7 +122,7 @@ class _PreparedText extends FlowPreparedContent {
             rune == 13 && i + 1 < text.length && text.codeUnitAt(i + 1) == 10
                 ? i + 2
                 : i + size;
-        _hardBreaks.add(TextRange(start: i, end: end));
+        hardBreaks.add(TextRange(start: i, end: end));
         if (i > 0 && graphemeEnds.contains(i)) {
           candidates[i] = FlowBreakOpportunity(i,
               kind: FlowBreakKind.required, endsLine: true);
@@ -107,12 +143,46 @@ class _PreparedText extends FlowPreparedContent {
             FlowBreakOpportunity(end, kind: FlowBreakKind.emergency);
       }
     }
-    _breaks.addAll(candidates.values.toList()
+    _breaks = List.unmodifiable(candidates.values.toList()
       ..sort((a, b) => a.offset.compareTo(b.offset)));
+    _hardBreaks = List.unmodifiable(hardBreaks);
   }
-  final List<TextRange> _hardBreaks = [];
-  @override
-  bool get measuresDecorationPadding => true;
+  final String text;
+  final TextStyle style;
+  late final List<TextRange> _hardBreaks;
+  late final List<FlowBreakOpportunity> _breaks;
+  late final offsets = List<int>.unmodifiable(_breaks.map((b) => b.offset));
+  late final legalOffsets = offsets.toSet();
+  late final requiredOffsets = List<int>.unmodifiable(_breaks
+      .where((b) => b.kind == FlowBreakKind.required)
+      .map((b) => b.offset));
+  late final controlsByEnd = {
+    for (final control in _hardBreaks) control.end: control
+  };
+  late final _ordinaryIndex =
+      _TextBreakIndex(_breaks.where((b) => b.kind != FlowBreakKind.emergency));
+  late final _emergencyIndex =
+      _TextBreakIndex(_breaks.where((b) => b.kind == FlowBreakKind.emergency));
+
+  _BreakCandidates candidatesAfter(int start) {
+    final from = text.isEmpty ? -1 : start;
+    final required = _upperOffset(requiredOffsets, from);
+    final limit = required < requiredOffsets.length
+        ? requiredOffsets[required]
+        : text.length;
+    return _BreakCandidates(
+        _ordinaryIndex.after(from, limit), _emergencyIndex.after(from, limit));
+  }
+
+  bool hasBreakInside(TextRange range) {
+    final i = _upperOffset(offsets, range.start);
+    return i < offsets.length && offsets[i] < range.end;
+  }
+
+  bool crossesRequired(TextRange range) {
+    final i = _upperOffset(requiredOffsets, range.start);
+    return i < requiredOffsets.length && requiredOffsets[i] < range.end;
+  }
 
   void _addDictionaryOpportunities(
       Map<int, FlowBreakOpportunity> candidates, Set<int> graphemeEnds) {
@@ -146,18 +216,122 @@ class _PreparedText extends FlowPreparedContent {
       painter.dispose();
     }
   }
+}
 
+class _TextAnalysisCache {
+  final _entries = <({String text, TextStyle style}), _TextBreakAnalysis>{};
+  int _units = 0;
+  int debugBuilds = 0;
+  _TextBreakAnalysis get(String text, TextStyle style) {
+    final key = (text: text, style: style);
+    final cached = _entries.remove(key);
+    if (cached != null) {
+      _entries[key] = cached;
+      return cached;
+    }
+    assert(() {
+      debugBuilds++;
+      return true;
+    }());
+    final analysis = _TextBreakAnalysis(text, style);
+    final weight = math.max(1, text.length);
+    if (weight > 65536) return analysis;
+    while (_entries.isNotEmpty &&
+        (_entries.length >= 256 || _units + weight > 65536)) {
+      final oldest = _entries.remove(_entries.keys.first)!;
+      _units -= math.max(1, oldest.text.length);
+    }
+    _entries[key] = analysis;
+    _units += weight;
+    return analysis;
+  }
+
+  void clear() {
+    _entries.clear();
+    _units = 0;
+  }
+}
+
+class _PreparedText extends FlowPreparedContent
+    implements _IndexedBreakSource, _ReusableBreakSource {
+  _PreparedText(this.entries, this.style,
+      {_TextAnalysisCache? analysisCache,
+      this.shapeCache,
+      this.choiceCache,
+      this.widthCache,
+      String? preparedText,
+      this.cacheShapes = true}) {
+    text = preparedText ?? entries.map((e) => e.textContribution!.text).join();
+    _analysis =
+        analysisCache?.get(text, style) ?? _TextBreakAnalysis(text, style);
+  }
+  final _TextShapeCache? shapeCache;
+  final _TextChoiceCache? choiceCache;
+  final _TextWidthCache? widthCache;
+  final bool cacheShapes;
+  late final _TextBreakAnalysis _analysis;
+  List<FlowBreakOpportunity> get _breaks => _analysis._breaks;
+  @override
+  bool get measuresDecorationPadding => true;
   @override
   final List<FlowContent> entries;
   final TextStyle style;
-  late final String text = entries.map((e) => e.textContribution!.text).join();
-  final List<FlowBreakOpportunity> _breaks = [];
+  late final String text;
+  // Decorations without padding still paint from committed fragments; they do
+  // not split shaping. Current-owner geometry remains in this prepared session.
+  late final bool _plain = entries.length == 1 &&
+      entries.single.decorations.every((d) => d.padding == EdgeInsets.zero);
+
+  late final bool _cacheWidths = _plain &&
+      text.length >= 256 &&
+      widthCache != null &&
+      style.foreground == null &&
+      style.background == null &&
+      entries.single.textContribution!.style.foreground == null &&
+      entries.single.textContribution!.style.background == null;
+
+  _TextChoiceKey? _choiceKey(int start, FlowFragmentConstraints constraints) {
+    if (!_plain || choiceCache == null) return null;
+    final contentStyle = entries.single.textContribution!.style;
+    // TextStyle can contain mutable Paint objects; keep that path uncached.
+    if (style.foreground != null ||
+        style.background != null ||
+        contentStyle.foreground != null ||
+        contentStyle.background != null) {
+      return null;
+    }
+    return (
+      text: text,
+      paragraphStyle: style,
+      contentStyle: contentStyle,
+      start: start,
+      availableWidth: constraints.availableWidth,
+      maximumWidth: constraints.maximumWidth
+    );
+  }
+
+  @override
+  _BreakDecision? lookupChoice(int start, FlowFragmentConstraints constraints) {
+    final key = _choiceKey(start, constraints);
+    return key == null ? null : choiceCache!.lookup(key);
+  }
+
+  @override
+  void rememberChoice(int start, FlowFragmentConstraints constraints,
+      FlowBreakOpportunity? opportunity) {
+    final key = _choiceKey(start, constraints);
+    if (key != null) choiceCache!.remember(key, opportunity);
+  }
+
+  @override
+  _BreakCandidates indexedCandidatesAfter(int start) =>
+      _analysis.candidatesAfter(start);
+
   @override
   Iterable<FlowBreakOpportunity> breaksAfter(int start) sync* {
-    for (final candidate in _breaks) {
-      if (candidate.offset <= start && text.isNotEmpty) {
-        continue;
-      }
+    final first = text.isEmpty ? 0 : _upperOffset(_analysis.offsets, start);
+    for (var i = first; i < _breaks.length; i++) {
+      final candidate = _breaks[i];
       yield candidate;
       if (candidate.kind == FlowBreakKind.required) {
         break;
@@ -165,10 +339,25 @@ class _PreparedText extends FlowPreparedContent {
     }
   }
 
-  InlineSpan span(int start, int end, {bool showSoftHyphen = false}) {
-    var offset = 0;
-    final spans = <InlineSpan>[];
+  late final List<int> _starts = () {
+    final result = <int>[0];
     for (final entry in entries) {
+      result.add(result.last + entry.length);
+    }
+    return result;
+  }();
+  @override
+  int get length => _starts.last;
+  // Include the preceding entry at a shared boundary so empty participants and
+  // upstream carets retain their existing ordering.
+  int _firstEntry(int offset) => math.max(0, _lowerOffset(_starts, offset) - 1);
+
+  InlineSpan span(int start, int end, {bool showSoftHyphen = false}) {
+    final first = _firstEntry(start);
+    var offset = _starts[first];
+    final spans = <InlineSpan>[];
+    for (var i = first; i < entries.length; i++) {
+      final entry = entries[i];
       final contribution = entry.textContribution!;
       final from = math.max(0, start - offset);
       final to = math.min(entry.length, end - offset);
@@ -195,24 +384,66 @@ class _PreparedText extends FlowPreparedContent {
     if (range.start < 0 ||
         range.end > length ||
         range.end < range.start ||
-        !_breaks.any((b) => b.offset == range.end) ||
-        (range.start != 0 && !_breaks.any((b) => b.offset == range.start)) ||
-        _breaks.any((b) =>
-            b.kind == FlowBreakKind.required &&
-            b.offset > range.start &&
-            b.offset < range.end)) {
+        !_analysis.legalOffsets.contains(range.end) ||
+        (range.start != 0 && !_analysis.legalOffsets.contains(range.start)) ||
+        _analysis.crossesRequired(range)) {
       throw ArgumentError('Invalid text candidate range: $range');
     }
     var visibleEnd = range.end;
-    for (final control in _hardBreaks) {
-      if (control.end == range.end && control.start >= range.start) {
-        visibleEnd = control.start;
-        break;
+    final control = _analysis.controlsByEnd[range.end];
+    if (control != null && control.start >= range.start) {
+      visibleEnd = control.start;
+    }
+    if (_plain) {
+      final contribution = entries.single.textContribution!;
+      final showSoftHyphen = visibleEnd > range.start &&
+          text.codeUnitAt(visibleEnd - 1) == 0xad &&
+          range.end < length;
+      final spanToShape = range.start == visibleEnd
+          ? TextSpan(text: '', style: style.merge(contribution.style))
+          : TextSpan(style: style, children: [
+              TextSpan(
+                  text: _visibleText(
+                      contribution.text.substring(range.start, visibleEnd),
+                      showSoftHyphen),
+                  style: contribution.style)
+            ]);
+      if (_cacheWidths) {
+        final cached = widthCache!.lookup(spanToShape);
+        if (cached != null) {
+          return _TextMeasurement.deferred(
+              this,
+              range,
+              visibleEnd,
+              cached,
+              () =>
+                  shapeCache?.acquire(spanToShape, visibleEnd - range.start,
+                      allowCache: cacheShapes) ??
+                  _TextShape.build(spanToShape),
+              constraints.maximumWidth);
+        }
       }
+      final shape = shapeCache?.acquire(spanToShape, visibleEnd - range.start,
+              allowCache: cacheShapes) ??
+          _TextShape.build(spanToShape);
+      if (_cacheWidths) {
+        widthCache!.remember(
+            spanToShape, visibleEnd - range.start, shape.painter.width);
+      }
+      // The source has exactly one owner, so no owner set/chunk wrappers are
+      // needed. Hard controls retain the original consumed and visible ranges.
+      return _TextMeasurement(
+          this, range, visibleEnd, shape, constraints.maximumWidth);
     }
     final chunks = <_TextChunk>[];
-    var offset = 0;
-    for (final entry in entries) {
+    final first = _firstEntry(range.start);
+    var offset = _starts[first];
+    for (var i = first; i < entries.length; i++) {
+      final entry = entries[i];
+      if (offset > visibleEnd ||
+          (offset == visibleEnd && visibleEnd < length)) {
+        break;
+      }
       final from = math.max(range.start, offset);
       final to = math.min(visibleEnd, offset + entry.length);
       final emptyHere = entry.length == 0 &&
@@ -234,8 +465,9 @@ class _PreparedText extends FlowPreparedContent {
     }
     if (chunks.isEmpty) {
       var owner = entries.last;
-      var offset = 0;
-      for (final entry in entries) {
+      var offset = _starts[first];
+      for (var i = first; i < entries.length; i++) {
+        final entry = entries[i];
         if (range.start >= offset && range.start < offset + entry.length) {
           owner = entry;
           break;
@@ -249,28 +481,33 @@ class _PreparedText extends FlowPreparedContent {
           [owner]));
     }
     final measured = <_MeasuredTextChunk>[];
-    for (var i = 0; i < chunks.length; i++) {
-      final chunk = chunks[i];
-      final end = i == chunks.length - 1 ? range.end : chunk.end;
-      final painter = TextPainter(
-          text: chunk.start == chunk.end
-              ? TextSpan(
-                  text: '',
-                  style:
-                      style.merge(chunk.entries.first.textContribution!.style))
-              : span(chunk.start, chunk.end,
-                  showSoftHyphen: i == chunks.length - 1 &&
-                      visibleEnd > range.start &&
-                      text.codeUnitAt(visibleEnd - 1) == 0xad &&
-                      range.end < length),
-          textDirection: TextDirection.ltr,
-          maxLines: 1)
-        ..layout();
-      measured.add(_MeasuredTextChunk(
-          _TextMeasurement(this, TextRange(start: chunk.start, end: end),
-              chunk.end, painter, constraints.maximumWidth,
-              owners: chunk.entries.toSet()),
-          chunk.padding));
+    try {
+      for (var i = 0; i < chunks.length; i++) {
+        final chunk = chunks[i];
+        final end = i == chunks.length - 1 ? range.end : chunk.end;
+        final spanToShape = chunk.start == chunk.end
+            ? TextSpan(
+                text: '',
+                style: style.merge(chunk.entries.first.textContribution!.style))
+            : span(chunk.start, chunk.end,
+                showSoftHyphen: i == chunks.length - 1 &&
+                    visibleEnd > range.start &&
+                    text.codeUnitAt(visibleEnd - 1) == 0xad &&
+                    range.end < length);
+        final shape = shapeCache?.acquire(spanToShape, chunk.end - chunk.start,
+                allowCache: cacheShapes) ??
+            _TextShape.build(spanToShape);
+        measured.add(_MeasuredTextChunk(
+            _TextMeasurement(this, TextRange(start: chunk.start, end: end),
+                chunk.end, shape, constraints.maximumWidth,
+                owners: chunk.entries.toSet()),
+            chunk.padding));
+      }
+    } catch (_) {
+      for (final chunk in measured) {
+        chunk.measurement.dispose();
+      }
+      rethrow;
     }
     if (measured.length == 1 && measured.single.padding.isEmpty) {
       return measured.single.measurement;
@@ -281,23 +518,44 @@ class _PreparedText extends FlowPreparedContent {
 }
 
 class _TextMeasurement extends FlowRangeMeasurement {
-  _TextMeasurement(
-      this.source, this.range, this.visibleEnd, this.painter, this.maximumWidth,
-      {this.owners});
+  _TextMeasurement(this.source, this.range, this.visibleEnd, _TextShape shape,
+      this.maximumWidth,
+      {this.owners})
+      : _shape = shape,
+        _createShape = null,
+        _cachedWidth = null;
+  _TextMeasurement.deferred(this.source, this.range, this.visibleEnd,
+      double width, _TextShape Function() createShape, this.maximumWidth)
+      : _shape = null,
+        _createShape = createShape,
+        _cachedWidth = width,
+        owners = null;
   final _PreparedText source;
   final Set<FlowContent>? owners;
   @override
   final TextRange range;
   final int visibleEnd;
-  final TextPainter painter;
+  _TextShape? _shape;
+  final _TextShape Function()? _createShape;
+  final double? _cachedWidth;
+  _TextShape get shape {
+    assert(!_disposed);
+    final result = _shape ??= _createShape!();
+    assert(_cachedWidth == null ||
+        (result.painter.width - _cachedWidth!).abs() < .001);
+    return result;
+  }
+
+  TextPainter get painter => shape.painter;
+  bool _disposed = false;
   final double maximumWidth;
   @override
   TextRange get caretRange => TextRange(start: range.start, end: visibleEnd);
   @override
-  double get width => painter.width;
+  double get width => _cachedWidth ?? painter.width;
   // Exact-range painters are immutable after layout. Validation, retries, and
   // committing can query these metrics repeatedly without asking the engine.
-  late final _metrics = painter.computeLineMetrics();
+  late final _metrics = shape.metrics;
   @override
   double get ascent =>
       _metrics.isEmpty ? painter.preferredLineHeight : _metrics.first.baseline;
@@ -306,14 +564,15 @@ class _TextMeasurement extends FlowRangeMeasurement {
   double get descent => painter.height - ascent;
   @override
   bool get allowsOverflow =>
-      width > maximumWidth &&
-      !source._breaks
-          .any((b) => b.offset > range.start && b.offset < range.end);
+      width > maximumWidth && !source._analysis.hasBreakInside(range);
   @override
   List<FlowLocalFragment> get fragments {
-    var offset = 0;
+    final first = source._firstEntry(range.start);
+    var offset = source._starts[first];
     final result = <FlowLocalFragment>[];
-    for (final entry in source.entries) {
+    for (var i = first; i < source.entries.length; i++) {
+      final entry = source.entries[i];
+      if (offset > visibleEnd) break;
       final from = math.max(range.start, offset);
       final to = math.min(visibleEnd, offset + entry.length);
       if ((owners == null || owners!.contains(entry)) &&
@@ -364,21 +623,26 @@ class _TextMeasurement extends FlowRangeMeasurement {
     final affinity = offset > 0 && offset == visibleEnd - range.start
         ? TextAffinity.upstream
         : TextAffinity.downstream;
-    var local = range.start + offset;
-    for (final entry in source.entries) {
+    final global = range.start + offset;
+    for (var i = source._firstEntry(global); i < source.entries.length; i++) {
+      final entry = source.entries[i];
+      final local = global - source._starts[i];
       if (local <= entry.length &&
           (owners == null || owners!.contains(entry))) {
         return FlowPosition(entry.owner.identity, entry.start + local,
             affinity: affinity);
       }
-      local -= entry.length;
     }
     final last = source.entries.last;
     return FlowPosition(last.owner.identity, last.end, affinity: affinity);
   }
 
   @override
-  void dispose() => painter.dispose();
+  void dispose() {
+    assert(!_disposed);
+    _disposed = true;
+    _shape?.release();
+  }
 }
 
 bool _matchingDecorations(
@@ -427,15 +691,9 @@ class _CompoundTextMeasurement extends FlowRangeMeasurement {
       }
       chunk.x = x;
       x += chunk.measurement.width;
-      var top = 0.0;
-      var bottom = 0.0;
       for (final decoration in chunk.padding) {
         x += decoration.padding.right;
-        top += decoration.padding.top;
-        bottom += decoration.padding.bottom;
       }
-      ascent = math.max(ascent, chunk.measurement.ascent + top);
-      descent = math.max(descent, chunk.measurement.descent + bottom);
       previous = chunk.padding;
     }
     width = x;
@@ -448,19 +706,30 @@ class _CompoundTextMeasurement extends FlowRangeMeasurement {
   final double maximumWidth;
   @override
   double width = 0;
+  late final (double, double) _verticalMetrics = () {
+    var ascent = 0.0, descent = 0.0;
+    for (final chunk in chunks) {
+      var top = 0.0, bottom = 0.0;
+      for (final decoration in chunk.padding) {
+        top += decoration.padding.top;
+        bottom += decoration.padding.bottom;
+      }
+      ascent = math.max(ascent, chunk.measurement.ascent + top);
+      descent = math.max(descent, chunk.measurement.descent + bottom);
+    }
+    return (ascent, descent);
+  }();
   @override
-  double ascent = 0;
+  double get ascent => _verticalMetrics.$1;
   @override
-  double descent = 0;
+  double get descent => _verticalMetrics.$2;
   Offset _origin(_MeasuredTextChunk chunk) =>
       Offset(chunk.x, ascent - chunk.measurement.ascent);
   @override
   TextRange get caretRange => TextRange(start: range.start, end: visibleEnd);
   @override
   bool get allowsOverflow =>
-      width > maximumWidth &&
-      !source._breaks
-          .any((b) => b.offset > range.start && b.offset < range.end);
+      width > maximumWidth && !source._analysis.hasBreakInside(range);
   @override
   List<FlowLocalFragment> get fragments => [
         for (final chunk in chunks)

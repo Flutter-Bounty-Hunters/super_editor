@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
 import 'package:path/path.dart' as p;
 
 import 'src/profile_baseline.dart';
@@ -280,7 +281,7 @@ flutter:
   print('\nSaved ${options.output}\nFull paragraph layout, milliseconds:');
   for (final dynamic scenario in result['scenarios'] as List<dynamic>) {
     print(scenario['name']);
-    for (final phase in ['initial', 'resize', 'update']) {
+    for (final phase in profilePhases) {
       final stats = scenario['summary'][phase]['fullLayoutUs'];
       print('  $phase: median ${(stats['median'] / 1000).toStringAsFixed(2)}; '
           'p95 ${(stats['p95'] / 1000).toStringAsFixed(2)}');

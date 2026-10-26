@@ -134,9 +134,19 @@ class FlowLayoutSnapshot {
   final Duration layoutDuration;
   final int lineRetries;
 
-  List<FlowFragment> fragmentsFor(Object participant) => fragments
-      .where((fragment) => fragment.participant == participant)
-      .toList(growable: false);
+  // Built on the first commit/query and owned only by this snapshot. Preserve
+  // global fragment order, including nested decorations and empty fragments.
+  late final Map<Object, List<FlowFragment>> _fragmentsByParticipant = () {
+    final result = <Object, List<FlowFragment>>{};
+    for (final fragment in fragments) {
+      (result[fragment.participant] ??= []).add(fragment);
+    }
+    return result;
+  }();
+
+  List<FlowFragment> fragmentsFor(Object participant) =>
+      List.of(_fragmentsByParticipant[participant] ?? const <FlowFragment>[],
+          growable: false);
 
   int _rank(FlowPosition position) {
     var rank = 0;

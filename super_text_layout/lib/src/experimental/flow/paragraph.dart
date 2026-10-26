@@ -40,6 +40,61 @@ class RenderFlowParagraph extends RenderBox
   FlowLayerPainter? _background;
   FlowLayerPainter? _foreground;
   FlowLayoutSnapshot? _snapshot;
+  final _textAnalysisCache = _TextAnalysisCache();
+  final _textChoiceCache = _TextChoiceCache();
+  final _textWidthCache = _TextWidthCache();
+  @visibleForTesting
+  int get debugTextWidthHits => _textWidthCache.debugHits;
+  @visibleForTesting
+  int get debugTextWidthEvictions => _textWidthCache.debugEvictions;
+  @visibleForTesting
+  int get debugTextWidthEntries => _textWidthCache._entries.length;
+  @visibleForTesting
+  int get debugTextWidthUnits => _textWidthCache._units;
+  @visibleForTesting
+  int get debugTextChoiceHits => _textChoiceCache.debugHits;
+  @visibleForTesting
+  int get debugTextChoiceEntries => _textChoiceCache._entries.length;
+  _TextShapeCache? _lastShapes;
+  final _debugShapePools = <_TextShapeCache>[];
+  @visibleForTesting
+  int get debugTextShapeBuilds => _lastShapes?.debugBuilds ?? 0;
+  @visibleForTesting
+  int get debugTextShapeHits => _lastShapes?.debugHits ?? 0;
+  @visibleForTesting
+  int get debugTextShapeLive =>
+      _debugShapePools.fold(0, (sum, pool) => sum + pool._active.length);
+  @visibleForTesting
+  int get debugTextShapePeakEntries => _lastShapes?.debugPeakEntries ?? 0;
+  @visibleForTesting
+  int get debugTextAnalysisBuilds => _textAnalysisCache.debugBuilds;
+  @visibleForTesting
+  int get debugTextAnalysisEntries => _textAnalysisCache._entries.length;
+
+  void _fontsChanged() {
+    _textAnalysisCache.clear();
+    _textChoiceCache.clear();
+    _textWidthCache.clear();
+    markNeedsLayout();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    PaintingBinding.instance.systemFonts.addListener(_fontsChanged);
+    // Fonts can have changed while a retained paragraph was detached.
+    markNeedsLayout();
+  }
+
+  @override
+  void detach() {
+    PaintingBinding.instance.systemFonts.removeListener(_fontsChanged);
+    _textAnalysisCache.clear();
+    _textChoiceCache.clear();
+    _textWidthCache.clear();
+    super.detach();
+  }
+
   void _connect() {
     assert(
         _controller._renderObject == null || _controller._renderObject == this,
@@ -105,8 +160,32 @@ class RenderFlowParagraph extends RenderBox
       }
 
       final entries = [for (final child in _children) ...child.content];
-      final engine = _Composer(entries, _regions, _style, constraints.maxWidth);
-      final result = engine.compose(watch);
+      final shapes = _TextShapeCache();
+      _lastShapes = shapes;
+      assert(() {
+        _debugShapePools
+            .removeWhere((pool) => pool._closed && pool._active.isEmpty);
+        _debugShapePools.add(shapes);
+        return true;
+      }());
+      late final FlowLayoutSnapshot result;
+      try {
+        final engine = _Composer(
+            entries,
+            _regions,
+            _style,
+            constraints.maxWidth,
+            _textAnalysisCache,
+            shapes,
+            _textChoiceCache,
+            _textWidthCache);
+        result = engine.compose(watch);
+      } catch (_) {
+        shapes.abort();
+        rethrow;
+      } finally {
+        shapes.close();
+      }
       size = constraints.constrain(result.size);
       _snapshot?._dispose();
       _snapshot = result;
@@ -164,6 +243,9 @@ class RenderFlowParagraph extends RenderBox
     _controller.removeListener(markNeedsPaint);
     _controller._renderObject = null;
     _snapshot?._dispose();
+    _textAnalysisCache.clear();
+    _textChoiceCache.clear();
+    _textWidthCache.clear();
     super.dispose();
   }
 }
@@ -230,8 +312,17 @@ class _Piece {
 /// Composes only prepared opportunities and measured ranges. No content-type
 /// dispatch or text fitting is performed here.
 class _Composer {
-  _Composer(this.entries, this.regions, this.style, this.width)
-      : runs = _prepareRuns(entries, style);
+  _Composer(
+      this.entries,
+      this.regions,
+      this.style,
+      this.width,
+      _TextAnalysisCache analysisCache,
+      _TextShapeCache shapeCache,
+      _TextChoiceCache choiceCache,
+      _TextWidthCache widthCache)
+      : runs = _prepareRuns(
+            entries, style, analysisCache, shapeCache, choiceCache, widthCache);
   final List<FlowContent> entries;
   final FlowRegionProvider regions;
   final TextStyle style;
@@ -453,78 +544,83 @@ class _Composer {
     final constraints = FlowFragmentConstraints(
         availableWidth: available,
         maximumWidth: math.max(0, width - run.padding.horizontal));
-    final opportunities = run.prepared.breaksAfter(start).toList();
-    var previous = start - 1;
-    var requiredSeen = false;
-    for (final opportunity in opportunities) {
-      if (requiredSeen ||
-          opportunity.offset < start ||
-          opportunity.offset > run.length ||
-          opportunity.offset <= previous ||
-          (opportunity.offset == start && run.length != 0)) {
-        throw FlutterError(
-            'Invalid break opportunities: offsets must advance in order and stop at a required break.');
-      }
-      previous = opportunity.offset;
-      requiredSeen = opportunity.kind == FlowBreakKind.required;
-    }
-    final ordinary =
-        opportunities.where((b) => b.kind != FlowBreakKind.emergency).toList();
+    late final candidates = _candidatesFor(run.prepared, start);
+    late final firstOrdinary = candidates.ordinary.first;
     double? firstOrdinaryWidth;
-    _Piece? choose(List<FlowBreakOpportunity> candidates) {
-      // Greedy means the furthest fitting offset. Walking backwards lets us
-      // stop at the first fit without assuming anything about width ordering.
-      for (final opportunity in candidates.reversed) {
-        final range = TextRange(start: start, end: opportunity.offset);
-        final measurement = run.prepared.measureRange(range, constraints);
-        final measuredWidth = measurement.width;
-        if (measurement.range != range ||
-            !measuredWidth.isFinite ||
-            measuredWidth < 0) {
+    _Piece? measure(FlowBreakOpportunity opportunity,
+        {bool recordFirstOrdinary = false}) {
+      final range = TextRange(start: start, end: opportunity.offset);
+      final measurement = run.prepared.measureRange(range, constraints);
+      final measuredWidth = measurement.width;
+      if (measurement.range != range ||
+          !measuredWidth.isFinite ||
+          measuredWidth < 0) {
+        measurement.dispose();
+        throw FlutterError(
+            'Invalid exact-range measurement from an inline participant.');
+      }
+      if (recordFirstOrdinary && identical(opportunity, firstOrdinary)) {
+        firstOrdinaryWidth = measuredWidth;
+      }
+      final fits = measuredWidth <= available + .01 ||
+          (measurement.allowsOverflow &&
+              available >= constraints.maximumWidth - .01);
+      if (fits) {
+        // Vertical metrics can cross into the text engine. Candidates that
+        // fail the width test never need them.
+        final ascent = measurement.ascent;
+        final descent = measurement.descent;
+        if (!ascent.isFinite ||
+            ascent < 0 ||
+            !descent.isFinite ||
+            descent < 0) {
           measurement.dispose();
           throw FlutterError(
               'Invalid exact-range measurement from an inline participant.');
         }
-        if (ordinary.isNotEmpty && identical(opportunity, ordinary.first)) {
-          firstOrdinaryWidth = measuredWidth;
-        }
-        final fits = measuredWidth <= available + .01 ||
-            (measurement.allowsOverflow &&
-                available >= constraints.maximumWidth - .01);
-        if (fits) {
-          // Vertical metrics can cross into the text engine. Candidates that
-          // fail the width test never need them.
-          final ascent = measurement.ascent;
-          final descent = measurement.descent;
-          if (!ascent.isFinite ||
-              ascent < 0 ||
-              !descent.isFinite ||
-              descent < 0) {
-            measurement.dispose();
-            throw FlutterError(
-                'Invalid exact-range measurement from an inline participant.');
-          }
-          return _Piece(run, measurement, opportunity, x, segment);
-        }
-        measurement.dispose();
+        return _Piece(run, measurement, opportunity, x, segment);
+      }
+      measurement.dispose();
+      return null;
+    }
+
+    _Piece? choose(_BreakWindow candidates) {
+      // Preserve the exact reverse search; no monotonic-width assumption.
+      for (final opportunity in candidates.reversed) {
+        final piece = measure(opportunity, recordFirstOrdinary: true);
+        if (piece != null) return piece;
       }
       return null;
     }
 
-    final ordinaryPiece = choose(ordinary);
+    final prepared = run.prepared;
+    final reusable = prepared is _ReusableBreakSource
+        ? prepared as _ReusableBreakSource
+        : null;
+    final cached = reusable?.lookupChoice(start, constraints);
+    if (cached != null) {
+      if (cached.opportunity == null) return null;
+      final piece = measure(cached.opportunity!);
+      if (piece != null) return piece;
+      // If a retained choice unexpectedly stops fitting, do the full search.
+    }
+    _Piece? remember(_Piece? piece) {
+      reusable?.rememberChoice(start, constraints, piece?.opportunity);
+      return piece;
+    }
+
+    final ordinaryPiece = choose(candidates.ordinary);
     if (ordinaryPiece != null) {
-      return ordinaryPiece;
+      return remember(ordinaryPiece);
     }
     // A narrow remainder alone does not justify breaking a normally fitting word.
     // If no ordinary candidate fit, the reverse search measured the first one
     // last; its width still decides whether emergency wrapping is permitted.
     if (firstOrdinaryWidth == null ||
         firstOrdinaryWidth! > constraints.maximumWidth + .01) {
-      return choose(opportunities
-          .where((b) => b.kind == FlowBreakKind.emergency)
-          .toList());
+      return remember(choose(candidates.emergency));
     }
-    return null;
+    return remember(null);
   }
 
   void _commit(_Piece piece, int line, double baseline) {

@@ -35,8 +35,11 @@ dart run tool/profile_macos.dart --baseline build/profile/baseline.json
 ```
 
 See [PROFILE_TESTING.md](PROFILE_TESTING.md) for developer/CI instructions,
-matching-machine checks, and result export. Historical measured timings are in
-[PROFILE_BENCHMARK.md](PROFILE_BENCHMARK.md).
+matching-machine checks, and result export. Current long-run optimization results are in
+[LONG_RUN_OPTIMIZATION.md](LONG_RUN_OPTIMIZATION.md). The preceding beginning/middle/end
+measurements are in [EDIT_POSITION_BENCHMARK.md](EDIT_POSITION_BENCHMARK.md). The preceding prose
+optimizations are in [PROSE_OPTIMIZATIONS.md](PROSE_OPTIMIZATIONS.md). The preceding five changes
+are recorded in [SEQUENTIAL_OPTIMIZATIONS.md](SEQUENTIAL_OPTIMIZATIONS.md).
 
 The current backend is horizontal LTR and greedy, with fixed text scaling and no
 keyboard editing. The range-measurement protocol is experimental, and text break

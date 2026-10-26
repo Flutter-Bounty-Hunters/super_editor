@@ -9,6 +9,9 @@ part 'participants.dart';
 part 'paragraph.dart';
 part 'measurement.dart';
 part 'text_backend.dart';
+part 'text_shape_cache.dart';
+part 'text_choice_cache.dart';
+part 'text_width_cache.dart';
 part 'unicode/line_break.dart';
 part 'unicode/line_break_data.dart';
 

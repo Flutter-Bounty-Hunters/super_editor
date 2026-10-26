@@ -1,5 +1,9 @@
 # Native profile measurement — 2026-10-25
 
+For the current four-fixture suite and subsequent changes, see
+[sequential optimization measurements](SEQUENTIAL_OPTIMIZATIONS.md). Measurements
+below describe the earlier implementation and fixtures.
+
 Measured on an **Apple M4, arm64, macOS 26.4**, using **Flutter 3.47.7 / Dart
 3.13.5**, native macOS **profile mode (AOT)**, Impeller/Metal. These measurements
 are from the desktop app, not the web demo or widget-test runner.

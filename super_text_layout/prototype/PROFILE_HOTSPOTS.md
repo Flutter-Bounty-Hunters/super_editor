@@ -1,5 +1,13 @@
 # Native CPU-profile findings — 2026-10-25
 
+The current nonrepeating-prose capture and follow-up work are in
+[PROSE_OPTIMIZATIONS.md](PROSE_OPTIMIZATIONS.md).
+
+
+For the current four-fixture suite and subsequent changes, see
+[sequential optimization measurements](SEQUENTIAL_OPTIMIZATIONS.md). Measurements
+below describe the earlier implementation and fixtures.
+
 This is the baseline capture. The first two recommended changes are now
 implemented; see [the optimization results](PROFILE_OPTIMIZATIONS.md).
 
@@ -89,10 +97,10 @@ These are recommendations from the capture and source inspection. The first two 
   It is intentionally left in the ignored build directory.
 - Opt-in `FLOW_PROFILE_LAYOUT=true` adds SDK `UserTag` attribution. Normal builds
   compile with it disabled. It changes no layout choices.
-- `FLOW_BENCHMARK_WAIT_FOR_PROFILER=true` runs only the button scenario, waits
+- `FLOW_BENCHMARK_WAIT_FOR_PROFILER=true` runs the scenario selected by
+  `FLOW_CPU_SCENARIO` (currently defaulting to `unique_prose`), and waits
   after warm-up for the collector, and exposes sample windows through local VM
-  service extensions. The ordinary benchmark remains automatic and runs both
-  scenarios.
+  service extensions. The ordinary benchmark remains automatic and runs all versioned fixtures.
 
 After creating the disposable host described by `tool/profile_macos.dart`, run in
 that host directory:
@@ -101,6 +109,7 @@ that host directory:
 flutter run --profile -d macos --no-pub \
   --dart-define=FLOW_BENCHMARK_FONT_ASSET=packages/flow_layout_prototype/assets/fonts/Roboto-Regular.ttf \
   --dart-define=FLOW_PROFILE_LAYOUT=true \
+  --dart-define=FLOW_CPU_SCENARIO=demo_buttons \
   --dart-define=FLOW_BENCHMARK_WAIT_FOR_PROFILER=true \
   > /tmp/flow-cpu.log 2>&1
 ```
@@ -173,5 +182,5 @@ prose, a long single text run, and nested decorated code before judging it.
 Incremental reuse of unaffected lines is a later architectural option for edits
 near the end. It needs conservative invalidation for shared shaping/break context,
 region changes, and arbitrary participant revisions. The current capture does
-not measure that potential. None of these recommendations has a measured
-speedup yet.
+not measure that potential. These candidates were subsequently implemented and measured individually in
+[sequential optimization measurements](SEQUENTIAL_OPTIMIZATIONS.md).

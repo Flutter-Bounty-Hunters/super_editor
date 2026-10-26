@@ -1,3 +1,5 @@
+import 'package:flow_layout_prototype/profile_fixture_data.dart';
+
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +12,7 @@ Map<String, dynamic> result() => {
           {
             'name': name,
             'summary': {
-              for (final phase in ['initial', 'resize', 'update'])
+              for (final phase in profilePhases)
                 phase: {
                   'fullLayoutUs': <String, dynamic>{
                     'median': 20000,
@@ -26,7 +28,7 @@ Map<String, dynamic> budgets() => {
       'scenarios': {
         for (final name in ['test_boxes', 'demo_buttons'])
           name: {
-            for (final phase in ['initial', 'resize', 'update'])
+            for (final phase in profilePhases)
               phase: <String, dynamic>{'median': 24000, 'p95': 36000},
           },
       }
@@ -40,7 +42,7 @@ void main() {
     expect(profileBudgetFailures(result(), budgets()), isEmpty);
     final exact = budgets();
     exact['scenarios']['test_boxes']['initial']['median'] = 20000;
-    exact['scenarios']['demo_buttons']['update']['p95'] = 30000;
+    exact['scenarios']['demo_buttons']['edit_end']['p95'] = 30000;
     expect(profileBudgetFailures(result(), exact), isEmpty);
   });
   test('median and tail regressions both fail with scenario and phase names',
@@ -86,5 +88,16 @@ void main() {
   test('JSON round-trip preserves threshold comparison', () {
     final decoded = jsonDecode(jsonEncode(budgets())) as Map<String, dynamic>;
     expect(profileBudgetFailures(result(), decoded), isEmpty);
+  });
+  test('beginning and middle median/p95 regressions are gated', () {
+    for (final phase in ['edit_beginning', 'edit_middle', 'edit_end']) {
+      for (final statistic in ['median', 'p95']) {
+        final current = result();
+        current['scenarios'][0]['summary'][phase]['fullLayoutUs'][statistic] =
+            999999;
+        expect(profileBudgetFailures(current, budgets()).single,
+            contains('test_boxes.$phase $statistic'));
+      }
+    }
   });
 }
