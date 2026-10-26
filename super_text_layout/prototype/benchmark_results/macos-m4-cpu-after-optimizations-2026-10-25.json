@@ -1,0 +1,115 @@
+{
+  "allSamples": 2292,
+  "layoutSamples": 2014,
+  "samplePeriodUs": 1000,
+  "truncatedLayoutStacks": 32,
+  "phaseTags": {
+    "Flow.children": {
+      "samples": 44,
+      "percent": 2.1847070506454815
+    },
+    "Flow.prepare": {
+      "samples": 280,
+      "percent": 13.902681231380338
+    },
+    "Flow.firstAttempt": {
+      "samples": 1640,
+      "percent": 81.42999006951341
+    },
+    "Flow.layout": {
+      "samples": 50,
+      "percent": 2.4826216484607744
+    }
+  },
+  "inclusiveHotspots": {
+    "candidate_evaluation": {
+      "samples": 1504,
+      "percent": 74.6772591857001
+    },
+    "text_painter_layout": {
+      "samples": 1318,
+      "percent": 65.44190665342602
+    },
+    "text_painter_create_paragraph": {
+      "samples": 920,
+      "percent": 45.680238331678254
+    },
+    "text_painter_metrics": {
+      "samples": 73,
+      "percent": 3.624627606752731
+    },
+    "unicode_default_rules": {
+      "samples": 162,
+      "percent": 8.04369414101291
+    },
+    "candidate_range_validation_any": {
+      "samples": 45,
+      "percent": 2.234359483614697
+    }
+  },
+  "coverage": {
+    "initial": {
+      "layouts": 30,
+      "samples": 503
+    },
+    "resize": {
+      "layouts": 30,
+      "samples": 780
+    },
+    "update": {
+      "layouts": 30,
+      "samples": 731
+    }
+  },
+  "timings": {
+    "initial": {
+      "fullLayoutUs": {
+        "min": 22489,
+        "median": 23566.5,
+        "p95": 27379,
+        "max": 28195
+      },
+      "compositionUs": {
+        "min": 22107,
+        "median": 23088.0,
+        "p95": 26970,
+        "max": 27820
+      }
+    },
+    "resize": {
+      "fullLayoutUs": {
+        "min": 34083,
+        "median": 34988.0,
+        "p95": 36679,
+        "max": 38622
+      },
+      "compositionUs": {
+        "min": 33346,
+        "median": 34198.0,
+        "p95": 35856,
+        "max": 37793
+      }
+    },
+    "update": {
+      "fullLayoutUs": {
+        "min": 31064,
+        "median": 31920.0,
+        "p95": 32748,
+        "max": 32982
+      },
+      "compositionUs": {
+        "min": 30104,
+        "median": 31076.5,
+        "p95": 31901,
+        "max": 32120
+      }
+    }
+  },
+  "recordedAtUtc": "2026-10-26T03:31:05.247637Z",
+  "workload": "10,000 characters and 100 buttons, 5 warm-up cycles, 30 measured initial/resize/update cycles",
+  "notes": [
+    "Inclusive hotspots overlap; percentages are sampled CPU, not predicted speedups.",
+    "All 90 measured layout windows contain samples.",
+    "This fixture repeats the same 100-character text; cache changes need unique-text and decorated-text benchmarks too."
+  ]
+}

@@ -1,7 +1,7 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
-    exclude: [build/**]
+    exclude: [build/**, android/**, ios/**, web/**, windows/**, macos/**, linux/**]
 
 linter:
     rules:

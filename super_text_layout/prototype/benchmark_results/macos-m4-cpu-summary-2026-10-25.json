@@ -1,0 +1,104 @@
+{
+  "source": "successful warmed native macOS profile capture, before the later rejected VM-flag launch",
+  "samplePeriodUs": 1000,
+  "maxStackDepth": 128,
+  "allSamples": 3894,
+  "layoutSamples": 3613,
+  "truncatedLayoutStacks": 47,
+  "phaseTags": {
+    "Flow.children": {
+      "samples": 60,
+      "percent": 1.66
+    },
+    "Flow.prepare": {
+      "samples": 275,
+      "percent": 7.61
+    },
+    "Flow.firstAttempt": {
+      "samples": 2037,
+      "percent": 56.38
+    },
+    "Flow.heightRetry": {
+      "samples": 1183,
+      "percent": 32.74
+    },
+    "Flow.layout": {
+      "samples": 58,
+      "percent": 1.61
+    }
+  },
+  "inclusiveHotspots": {
+    "candidate_evaluation": {
+      "samples": 3010,
+      "percent": 83.31
+    },
+    "text_painter_layout": {
+      "samples": 2004,
+      "percent": 55.47
+    },
+    "text_painter_create_paragraph": {
+      "samples": 1452,
+      "percent": 40.19
+    },
+    "text_painter_line_metrics": {
+      "samples": 764,
+      "percent": 21.15
+    },
+    "unicode_default_rules": {
+      "samples": 157,
+      "percent": 4.35
+    }
+  },
+  "operationCoverage": [
+    {
+      "phase": "initial",
+      "layoutSamples": 956,
+      "perLayoutSampleRange": [
+        29,
+        35
+      ],
+      "tags": {
+        "Flow.children": 48,
+        "Flow.prepare": 95,
+        "Flow.firstAttempt": 447,
+        "Flow.heightRetry": 354,
+        "Flow.layout": 12
+      }
+    },
+    {
+      "phase": "resize",
+      "layoutSamples": 1354,
+      "perLayoutSampleRange": [
+        43,
+        48
+      ],
+      "tags": {
+        "Flow.children": 10,
+        "Flow.prepare": 92,
+        "Flow.firstAttempt": 815,
+        "Flow.heightRetry": 416,
+        "Flow.layout": 21
+      }
+    },
+    {
+      "phase": "update",
+      "layoutSamples": 1303,
+      "perLayoutSampleRange": [
+        41,
+        48
+      ],
+      "tags": {
+        "Flow.prepare": 88,
+        "Flow.firstAttempt": 775,
+        "Flow.heightRetry": 413,
+        "Flow.layout": 25,
+        "Flow.children": 2
+      }
+    }
+  ],
+  "notes": [
+    "Inclusive hotspots overlap and must not be added to phase-tag percentages.",
+    "Height-retry phase includes candidate evaluation and successful retry commits, so it is not an exact estimate of removable work.",
+    "All 90 measured layout windows contain CPU samples."
+  ]
+}
