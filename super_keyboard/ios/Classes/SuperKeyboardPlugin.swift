@@ -48,11 +48,17 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
   }
   
   @objc private func keyboardWillShow(_ notification: Notification) {
+    if isFromAnotherApp(notification, name: "keyboard will show") {
+      return
+    }
     SuperKeyboardLog.log(message: "Keyboard will show")
     channel!.invokeMethod("keyboardWillShow", arguments: nil)
   }
   
   @objc private func keyboardDidShow(_ notification: Notification) {
+    if isFromAnotherApp(notification, name: "keyboard did show") {
+      return
+    }
     guard let window = window else {
 //      stopTrackingKeyboard()
       return
@@ -73,6 +79,9 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
   @objc private func keyboardWillChangeFrame(_ notification: Notification) {
     guard let userInfo = notification.userInfo,
           let endFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+      return
+    }
+    if isFromAnotherApp(notification, name: "keyboard will change frame") {
       return
     }
     SuperKeyboardLog.log(message: "Keyboard will change frame")
@@ -172,16 +181,37 @@ public class SuperKeyboardPlugin: NSObject, FlutterPlugin {
 //  }
   
   @objc private func keyboardWillHide(_ notification: Notification) {
+    if isFromAnotherApp(notification, name: "keyboard will hide") {
+      return
+    }
     SuperKeyboardLog.log(message: "Keyboard will hide")
     channel!.invokeMethod("keyboardWillHide", arguments: nil)
   }
   
   @objc private func keyboardDidHide(_ notification: Notification) {
+    if isFromAnotherApp(notification, name: "keyboard did hide") {
+      return
+    }
     SuperKeyboardLog.log(message: "Keyboard did hide - reporting height: 0")
     channel!.invokeMethod("keyboardDidHide", arguments: [
       "keyboardHeight": 0
     ])
 //    stopTrackingKeyboard()
+  }
+
+  /// Returns `true` if the notification describes another app's keyboard.
+  ///
+  /// iOS can deliver another app's keyboard notifications to this app, e.g., right
+  /// after this app moves to the background while the user types in the app they
+  /// switched to. Those notifications say nothing about this app's keyboard, and
+  /// no matching hide notification follows, so reporting them would leave this app
+  /// believing its keyboard is open.
+  private func isFromAnotherApp(_ notification: Notification, name: String) -> Bool {
+    guard let isLocal = notification.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool, !isLocal else {
+      return false
+    }
+    SuperKeyboardLog.log(message: "Ignoring \(name) for another app's keyboard")
+    return true
   }
 }
 
