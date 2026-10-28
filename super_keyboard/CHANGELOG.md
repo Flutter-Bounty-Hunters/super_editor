@@ -1,3 +1,7 @@
+## [0.4.2]
+### Oct 28, 2026
+* FIX: iOS - Don't react to other apps' keyboard geometry changes.
+
 ## [0.4.1]
 ### Sept 26, 2026
 * FIX: Android - When keyboard is open, and it changes height, such as adding a suggestion bar, 
