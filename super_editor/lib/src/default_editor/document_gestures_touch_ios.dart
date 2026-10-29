@@ -625,8 +625,9 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     final selection = widget.selection.value;
     if (selection != null &&
         !selection.isCollapsed &&
-        (_isOverBaseHandle(interactorOffset) || _isOverExtentHandle(interactorOffset))) {
-      // Don't do anything for long presses over the handles, because we want the user
+        (_isOnHandleForLongPress(selection.base, interactorOffset) ||
+            _isOnHandleForLongPress(selection.extent, interactorOffset))) {
+      // Don't do anything for long presses on the handles, because we want the user
       // to be able to drag them without worrying about how long they've pressed.
       //
       // A long-press over the caret still moves the caret, because that's what the
@@ -652,6 +653,28 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
       ..showMagnifier();
 
     widget.focusNode.requestFocus();
+  }
+
+  /// Whether the given [interactorOffset] sits on the handle at [handlePosition],
+  /// as far as a long-press is concerned.
+  ///
+  /// A tap or drag grabs a handle from well to either side of it (see
+  /// [_isOverBaseHandle] and [_isOverExtentHandle]), which makes handles easy to
+  /// grab. A long-press only counts as being on a handle when it's no further to
+  /// either side than the handle's ball, so that the user can still long-press the
+  /// characters right beside a handle.
+  bool _isOnHandleForLongPress(DocumentPosition handlePosition, Offset interactorOffset) {
+    final handleRect = _docLayout.getRectForPosition(handlePosition)!;
+    const halfWidth = defaultIosHandleBallDiameter / 2;
+    final handleArea = Rect.fromLTRB(
+      handleRect.left - halfWidth,
+      handleRect.top - defaultIosHandleBallDiameter,
+      handleRect.right + halfWidth,
+      handleRect.bottom + defaultIosHandleBallDiameter,
+    );
+
+    final docOffset = _interactorOffsetToDocumentOffset(interactorOffset);
+    return handleArea.contains(docOffset);
   }
 
   void _onTapCancel() {

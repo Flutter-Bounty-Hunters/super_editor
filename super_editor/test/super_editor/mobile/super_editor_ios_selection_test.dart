@@ -203,7 +203,7 @@ void main() {
           expect(SuperEditorInspector.findDocumentSelection(), _caretAt(33));
         });
 
-        testWidgetsOnIos("over an expanded selection's handle does nothing", (tester) async {
+        testWidgetsOnIos("on an expanded selection's handle does nothing", (tester) async {
           await _pumpAppWithLongText(tester);
 
           // Select the word "dolor".
@@ -211,18 +211,73 @@ void main() {
           await tester.pumpAndSettle();
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
 
-          // Long-press near the upstream handle, but just before the selected word.
-          await tester.longPressInParagraph("1", 11);
-          await tester.pumpAndSettle();
+          // Long-press on the caret of the upstream handle, within the line.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx, upstreamHandle.bottom - 8));
 
           // Ensure that the selection didn't change.
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
 
-          // Long-press near the downstream handle, but just after the selected word.
-          await tester.longPressInParagraph("1", 18);
-          await tester.pumpAndSettle();
+          // Long-press on the caret of the downstream handle, within the line.
+          final downstreamHandle = tester.getRect(find.byKey(DocumentKeys.downstreamHandle));
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx, downstreamHandle.top + 8));
 
           // Ensure that the selection didn't change.
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+        });
+
+        testWidgetsOnIos("beside an expanded selection's upstream handle places the caret", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the text just upstream from the upstream handle, close
+          // enough that a tap there would still grab the handle.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx - 14, upstreamHandle.bottom - 8));
+
+          // Ensure that the long-press placed the caret upstream from the word.
+          final selection = SuperEditorInspector.findDocumentSelection()!;
+          expect(selection.isCollapsed, isTrue);
+          expect((selection.extent.nodePosition as TextNodePosition).offset, lessThan(12));
+        });
+
+        testWidgetsOnIos("beside an expanded selection's downstream handle places the caret", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the text just downstream from the downstream handle, close
+          // enough that a tap there would still grab the handle.
+          final downstreamHandle = tester.getRect(find.byKey(DocumentKeys.downstreamHandle));
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx + 14, downstreamHandle.top + 8));
+
+          // Ensure that the long-press placed the caret downstream from the word.
+          final selection = SuperEditorInspector.findDocumentSelection()!;
+          expect(selection.isCollapsed, isTrue);
+          expect((selection.extent.nodePosition as TextNodePosition).offset, greaterThan(17));
+        });
+
+        testWidgetsOnIos("tap beside an expanded selection's handle keeps the selection", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Tap just upstream from the upstream handle, where a long-press places the caret.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await tester.tapAt(Offset(upstreamHandle.center.dx - 14, upstreamHandle.bottom - 8));
+          await tester.pumpAndSettle();
+
+          // Ensure that the tap counted as a tap on the handle, which keeps the selection.
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
         });
 
@@ -603,6 +658,14 @@ Future<void> _pumpAppWithLongText(WidgetTester tester) async {
       .withiOSToolbarBuilder((context, mobileToolbarKey, focalPoint) =>
           IOSTextEditingFloatingToolbar(key: mobileToolbarKey, focalPoint: focalPoint))
       .pump();
+}
+
+/// Long-presses at the given global [offset], and releases.
+Future<void> _longPressAt(WidgetTester tester, Offset offset) async {
+  final gesture = await tester.startGesture(offset);
+  await tester.pump(kLongPressTimeout + kPressTimeout);
+  await gesture.up();
+  await tester.pumpAndSettle();
 }
 
 DocumentSelection _caretAt(int offset) => DocumentSelection.collapsed(
