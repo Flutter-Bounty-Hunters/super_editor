@@ -44,6 +44,9 @@ dependencies:
 #    path: ../attributed_text
 
 dev_dependencies:
+  crypto: ^3.0.6
+  flow_layout_test_fonts:
+    path: test/flow_layout/support/fonts
   flutter_lints: ^2.0.1
   golden_toolkit: ^0.15.0
   args: ^2.3.1

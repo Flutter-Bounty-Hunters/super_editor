@@ -92,3 +92,16 @@ Widget build(context) {
   );
 }
 ```
+
+
+## Flow layout example
+
+Run the dedicated flow-layout demo from `example/`:
+
+```sh
+flutter run -t lib/main_flow_layout.dart
+```
+
+See the [example guide](example/README.md) for the existing SuperText examples,
+flow-layout demo and tests. Profiling tools live in [performance/](performance/README.md). Flow APIs are currently exposed
+through `package:super_text_layout/experimental_flow.dart`.

@@ -1,0 +1,164 @@
+// ignore_for_file: avoid_print
+
+/// Generates pinned Unicode 16 tables from the four inputs listed in README.md.
+library;
+
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
+
+const _expected = {
+  'LineBreak':
+      'e97e4259d0d20fab150b9c7b4b28abfae5cd78ca97e7f4ac6ed20d685d5f4a7c',
+  'UnicodeData':
+      'ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f',
+  'EastAsianWidth':
+      '43adc76c0686a42cb370764eb8cfe2b2a45b10b855e5572a2db4a0eecce15d5b',
+  'Emoji': 'f1365a5173eee18e1f98b240cdc492e84a25f1ce7e0c9d1094eb29c41a22696a',
+};
+
+void main(List<String> arguments) {
+  final parser = ArgParser()
+    ..addOption('output', help: 'Override the generated Dart file location.')
+    ..addFlag('help', abbr: 'h', negatable: false);
+  try {
+    final args = parser.parse(arguments);
+    if (args['help'] as bool) {
+      print(
+          'dart run tool/unicode/generate_line_break_data.dart <input-directory>\n${parser.usage}');
+      return;
+    }
+    if (args.rest.length != 1) {
+      throw const FormatException(
+          'Provide a directory containing the four pinned Unicode inputs.');
+    }
+    final root = File.fromUri(Platform.script).parent.parent.parent;
+    generateLineBreakData(
+      Directory(args.rest.single),
+      File(args['output'] as String? ??
+          '${root.path}/lib/src/experimental/flow/unicode/line_break_data.dart'),
+    );
+  } on FormatException catch (error) {
+    stderr.writeln(error.message);
+    stderr.writeln(parser.usage);
+    exitCode = 1;
+  } on FileSystemException catch (error) {
+    stderr.writeln(error);
+    exitCode = 1;
+  }
+}
+
+Iterable<(int, int, String)> _records(File file) sync* {
+  for (final line in file.readAsLinesSync()) {
+    final value = line.split('#').first.trim();
+    if (value.isEmpty) continue;
+    final fields = value.split(';').map((field) => field.trim()).toList();
+    final ends = fields.first.split('..');
+    yield (
+      int.parse(ends.first, radix: 16),
+      int.parse(ends.last, radix: 16),
+      fields[1]
+    );
+  }
+}
+
+void generateLineBreakData(Directory source, File output) {
+  final files = {
+    for (final name in _expected.keys)
+      name: File('${source.path}/Flow$name-16.txt'),
+  };
+  // Validate every input before generating or replacing any output.
+  for (final entry in files.entries) {
+    if (sha256.convert(entry.value.readAsBytesSync()).toString() !=
+        _expected[entry.key]) {
+      throw FormatException(
+          '${entry.key}: input does not match the pinned Unicode 16 data');
+    }
+  }
+
+  final classes = {
+    ..._records(files['LineBreak']!).map((record) => record.$3),
+    'XX'
+  }.toList()
+    ..sort();
+  final values = Uint16List(0x110000)
+    ..fillRange(0, 0x110000, classes.indexOf('XX') | 512);
+  // UCD defaults for unassigned code points; explicit records override them.
+  for (final (start, end, property) in [
+    (0x3400, 0x4dbf, 'ID'),
+    (0x4e00, 0x9fff, 'ID'),
+    (0xf900, 0xfaff, 'ID'),
+    (0x20000, 0x2fffd, 'ID'),
+    (0x30000, 0x3fffd, 'ID'),
+    (0x1f000, 0x1faff, 'ID'),
+    (0x1fc00, 0x1fffd, 'ID'),
+    (0x20a0, 0x20cf, 'PR'),
+  ]) {
+    values.fillRange(start, end + 1, classes.indexOf(property) | 512);
+  }
+  for (final (start, end, property) in _records(files['LineBreak']!)) {
+    final lineClass = classes.indexOf(property);
+    for (var i = start; i <= end; i++) {
+      values[i] = (values[i] & ~63) | lineClass;
+    }
+  }
+  int? first;
+  for (final line in files['UnicodeData']!.readAsLinesSync()) {
+    final fields = line.split(';');
+    final cp = int.parse(fields[0], radix: 16),
+        name = fields[1],
+        category = fields[2];
+    if (name.endsWith(', First>')) {
+      first = cp;
+      continue;
+    }
+    final start = name.endsWith(', Last>') ? first! : cp;
+    first = null;
+    final flags = (category == 'Mn' || category == 'Mc' ? 64 : 0) |
+        (category == 'Pi' ? 128 : 0) |
+        (category == 'Pf' ? 256 : 0);
+    for (var i = start; i <= cp; i++) {
+      values[i] = (values[i] & ~512) | flags;
+    }
+  }
+  for (final (start, end, property) in _records(files['EastAsianWidth']!)) {
+    if (property == 'F' || property == 'W' || property == 'H') {
+      for (var i = start; i <= end; i++) {
+        values[i] |= 1024;
+      }
+    }
+  }
+  for (final (start, end, property) in _records(files['Emoji']!)) {
+    if (property == 'Extended_Pictographic') {
+      for (var i = start; i <= end; i++) {
+        values[i] |= 2048;
+      }
+    }
+  }
+
+  final rows = <String>[];
+  var start = 0;
+  String hex(int value) => value.toRadixString(16).toUpperCase();
+  for (var i = 1; i <= values.length; i++) {
+    if (i == values.length || values[i] != values[start]) {
+      rows.add('  0x${hex(start)},\n  0x${hex(i - 1)},\n  ${values[start]},');
+      start = i;
+    }
+  }
+  final names = classes.map((name) =>
+      '${name.toLowerCase()}${{'AS', 'IS', 'IN'}.contains(name) ? '_' : ''}');
+  output.writeAsStringSync(
+    '// GENERATED by tool/unicode/generate_line_break_data.dart; Unicode 16.0.0.\n'
+    '// Unicode data license: tool/unicode/UNICODE-LICENSE.txt.\n'
+    '// Low 6 bits: line class; flags: mark=64, Pi=128, Pf=256, Cn=512, EastAsian=1024, EP=2048.\n'
+    "part of '../flow.dart';\n\n"
+    'enum _Lb {\n  ${names.join(',\n  ')}\n}\n\n'
+    'const _lineBreakData = <int>[\n${rows.join('\n')}\n];\n',
+  );
+  for (final entry in _expected.entries) {
+    print('${entry.key} ${entry.value}');
+  }
+  print('${rows.length} ranges; ${output.lengthSync()} bytes');
+}

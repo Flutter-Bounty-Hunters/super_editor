@@ -1,4 +1,4 @@
-/// Experimental fragment layout. Not part of the stable SuperText API.
+/// Flow-based fragment layout, exposed separately from the SuperText API.
 library;
 
 export 'src/experimental/flow/flow.dart';

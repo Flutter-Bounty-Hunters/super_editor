@@ -1,0 +1,12 @@
+name: flow_layout_test_fonts
+description: Font assets used only by the flow-layout test suite.
+publish_to: none
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  assets:
+    - Roboto-Regular.ttf
+    - FiraMono-Regular.ttf

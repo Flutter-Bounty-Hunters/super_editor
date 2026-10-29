@@ -1,0 +1,129 @@
+{
+  "checkpoint": {
+    "checkpointVersion": 6,
+    "study": "automatic-routing",
+    "mode": "profile",
+    "recordedAtUtc": "2026-10-28T01:31:39.350106Z",
+    "scope": "Mixed text-style width fitting only. No production/widget routing or painting. Exact fallback is automatic for negative spacing, custom features/variations and mutable Paint. Three-grapheme compact context remains experimental.",
+    "results": [
+      {
+        "fixture": "supported",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 1997,
+        "exactCandidates": 0,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "negative_only",
+        "plans": 47,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 0,
+        "exactCandidates": 757,
+        "preparationMeasurements": 0,
+        "failures": []
+      },
+      {
+        "fixture": "negative_beginning",
+        "plans": 47,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 4202,
+        "exactCandidates": 3588,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "negative_middle",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 3918,
+        "exactCandidates": 7433,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "negative_end",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 1958,
+        "exactCandidates": 2983,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "split_word",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 1845,
+        "exactCandidates": 833,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "mixed_fonts",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 11609,
+        "exactCandidates": 0,
+        "preparationMeasurements": 112,
+        "failures": []
+      },
+      {
+        "fixture": "positive_spacing",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 10484,
+        "exactCandidates": 0,
+        "preparationMeasurements": 112,
+        "failures": []
+      },
+      {
+        "fixture": "negative_word_spacing",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 3927,
+        "exactCandidates": 7880,
+        "preparationMeasurements": 77,
+        "failures": []
+      },
+      {
+        "fixture": "mutable_paint",
+        "plans": 49,
+        "breakFailures": 0,
+        "geometryFailures": 0,
+        "compactCandidates": 3917,
+        "exactCandidates": 6292,
+        "preparationMeasurements": 77,
+        "failures": []
+      }
+    ]
+  },
+  "host": {
+    "os": "Version 26.4 (Build 25E246)",
+    "flutter": {
+      "frameworkVersion": "3.47.7",
+      "channel": "stable",
+      "repositoryUrl": "https://github.com/flutter/flutter.git",
+      "frameworkRevision": "abaf9c523780a608bd46686fd5e53740a07077f8",
+      "frameworkCommitDate": "2026-10-08 09:51:21 -0700",
+      "engineRevision": "deb287481e3ce9468f3434937ced4240a70539ca",
+      "engineCommitDate": "2026-10-07 17:09:12.000Z",
+      "engineContentHash": "d8a2d6c768c334d53e16277f837970ffa1e2de81",
+      "engineBuildDate": "2026-10-07 13:51:44.552",
+      "dartSdkVersion": "3.13.5",
+      "devToolsVersion": "2.60.0",
+      "flutterVersion": "3.47.7",
+      "flutterRoot": "/Volumes/Dock-Drive/Dev-Libs/flutter"
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "budgets": {
+    "fixtureVersion": 4,
+    "scenarios": {
+      "test_boxes": {
+        "initial": {
+          "median": 4102.8,
+          "p95": 6520.8
+        },
+        "resize": {
+          "median": 5779.2,
+          "p95": 6523.2
+        },
+        "edit_beginning": {
+          "median": 5298.0,
+          "p95": 5798.4
+        },
+        "edit_middle": {
+          "median": 5419.8,
+          "p95": 6081.599999999999
+        },
+        "edit_end": {
+          "median": 4930.8,
+          "p95": 5666.4
+        }
+      },
+      "demo_buttons": {
+        "initial": {
+          "median": 9361.199999999999,
+          "p95": 11682.0
+        },
+        "resize": {
+          "median": 6784.8,
+          "p95": 8371.199999999999
+        },
+        "edit_beginning": {
+          "median": 2878.7999999999997,
+          "p95": 3099.6
+        },
+        "edit_middle": {
+          "median": 3559.7999999999997,
+          "p95": 5818.8
+        },
+        "edit_end": {
+          "median": 4070.3999999999996,
+          "p95": 4736.4
+        }
+      },
+      "long_prose": {
+        "initial": {
+          "median": 18225.6,
+          "p95": 19802.399999999998
+        },
+        "resize": {
+          "median": 1809.0,
+          "p95": 1977.6
+        },
+        "edit_beginning": {
+          "median": 4101.0,
+          "p95": 4368.0
+        },
+        "edit_middle": {
+          "median": 4158.599999999999,
+          "p95": 4738.8
+        },
+        "edit_end": {
+          "median": 4083.6,
+          "p95": 4455.599999999999
+        }
+      },
+      "unique_prose": {
+        "initial": {
+          "median": 44944.799999999996,
+          "p95": 48457.2
+        },
+        "resize": {
+          "median": 12141.6,
+          "p95": 13926.0
+        },
+        "edit_beginning": {
+          "median": 11086.8,
+          "p95": 13333.199999999999
+        },
+        "edit_middle": {
+          "median": 10966.8,
+          "p95": 12882.0
+        },
+        "edit_end": {
+          "median": 11031.6,
+          "p95": 12531.6
+        }
+      },
+      "decorated_code": {
+        "initial": {
+          "median": 36937.799999999996,
+          "p95": 41386.799999999996
+        },
+        "resize": {
+          "median": 40851.0,
+          "p95": 44152.799999999996
+        },
+        "edit_beginning": {
+          "median": 41787.0,
+          "p95": 45184.799999999996
+        },
+        "edit_middle": {
+          "median": 41968.799999999996,
+          "p95": 45505.2
+        },
+        "edit_end": {
+          "median": 41731.2,
+          "p95": 45750.0
+        }
+      }
+    }
+  },
+  "budgetFailures": [
+    "demo_buttons.edit_beginning p95: 3.81 ms exceeds 3.10 ms budget."
+  ],
+  "budgetEnforced": true
+}

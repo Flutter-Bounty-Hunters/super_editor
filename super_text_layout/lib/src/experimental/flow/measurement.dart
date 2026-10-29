@@ -78,6 +78,11 @@ abstract class FlowRangeMeasurement {
   void dispose() {}
 }
 
+// Internal text hint capability, separate from arbitrary-width participants.
+abstract interface class _FlutterLineHintSource {
+  int? suggestLineEnd(int start, FlowFragmentConstraints constraints);
+}
+
 // Private capability for sources whose immutable break indexes are validated
 // when built. The public custom-content contract keeps its per-request checks.
 abstract interface class _IndexedBreakSource {
@@ -200,7 +205,9 @@ List<_Run> _prepareRuns(
     _TextAnalysisCache analysisCache,
     _TextShapeCache shapeCache,
     _TextChoiceCache choiceCache,
-    _TextWidthCache widthCache) {
+    _TextWidthCache widthCache,
+    bool useFlutterHints,
+    _CompactTextCache? compactCache) {
   final previousTag = _profileFlow ? _flowPrepareTag.makeCurrent() : null;
   try {
     final groups = <List<FlowContent>>[];
@@ -227,6 +234,12 @@ List<_Run> _prepareRuns(
         repetitions.update(text, (n) => n + 1, ifAbsent: () => 1);
       }
     }
+    final shortCount = texts.where((t) => t != null && t.length < 256).length;
+    final repeatedShortCount = repetitions.entries
+        .where((e) => e.key.length < 256 && e.value > 1)
+        .fold(0, (sum, e) => sum + e.value);
+    final mostlyRepeatedShort =
+        shortCount > 1 && repeatedShortCount * 2 >= shortCount;
     var rank = 0;
     final result = <_Run>[];
     for (var i = 0; i < groups.length; i++) {
@@ -238,6 +251,12 @@ List<_Run> _prepareRuns(
               shapeCache: shapeCache,
               choiceCache: choiceCache,
               widthCache: widthCache,
+              nativeFitting: useFlutterHints,
+              // Short repeated runs already share shapes and decisions; their
+              // preparation cost exceeds the benefit of another representation.
+              compactCache: mostlyRepeatedShort && text.length < 256
+                  ? null
+                  : compactCache,
               preparedText: text,
               cacheShapes: repetitions[text]! > 1 ||
                   group.any((e) =>

@@ -5,8 +5,8 @@ Date: 2026-10-24.
 
 Implementation update: this document records the pre-refactor baseline and design
 discussion. The range-measurement seam and independent custom participant now
-exist. The text backend also implements pinned Unicode 16 default break rules
-with grapheme filtering and Flutter dictionary tailoring. See the shorter [current implementation note](../../prototype/PROTOCOL.md)
+exist. The text layout implementation also implements pinned Unicode 16 default break rules
+with grapheme filtering and Flutter dictionary tailoring. See the shorter [current implementation note](../../example/doc/flow_layout/PROTOCOL.md)
 for actual APIs, validation, and remaining limits.
 
 ## Purpose
@@ -18,7 +18,7 @@ buttons. Existing `SuperText`, exports, and behavior remain intact.
 
 The next implementation should prove an explicit negotiation contract:
 participants supply legal breaks and measurements; the paragraph chooses breaks
-and places fragments. The working prototype demonstrates much of the geometry,
+and places fragments. The working flow layout example demonstrates much of the geometry,
 but does not yet implement that general contract.
 
 ## Agreed requirements
@@ -40,14 +40,14 @@ but does not yet implement that general contract.
 | Accessibility | Preserve logical reading order and interactive descendants; fragments do not automatically become separate semantic items. |
 | Scale | Initial stress case: 10,000 characters and 100 inline participants, including resize and content updates. |
 
-## What the prototype establishes
+## What the flow layout example establishes
 
-Implementation: [experimental entry point](../../lib/experimental_flow.dart),
+Implementation: [entry point](../../lib/experimental_flow.dart),
 [render participants](../../lib/src/experimental/flow/participants.dart),
 [composer](../../lib/src/experimental/flow/paragraph.dart), and
 [geometry](../../lib/src/experimental/flow/geometry.dart).
 
-The [16 widget tests](../../prototype/test/flow_test.dart) passed in the last
+The [16 widget tests](../../test/flow_layout/flow_test.dart) passed in the last
 implementation verification. They exercise wrapping code with fragment padding;
 text on both sides of an obstacle; tall-content retries; advancing past a
 full-width obstacle; button interaction and retained state after resize;
@@ -69,7 +69,7 @@ simple box children; it does not measure 100 complex interactive controls.
 
 - `_Composer` recognizes text and atomic entries directly. It is not yet an
   extensible range-measurement implementation for arbitrary participants.
-- The text backend asks Flutter for a fitting prefix and reshapes that prefix.
+- The text layout implementation asks Flutter for a fitting prefix and reshapes that prefix.
   This demonstrates greedy fitting, not independent enumeration of legal breaks.
 - Splits between run types are not yet governed by a general boundary resolver.
   A widget boundary must not automatically become a legal text break.
@@ -113,16 +113,16 @@ every fragment as a separate widget or render object.
 | Prepared paragraph | An ordered composition view, cross-participant boundary resolution, measurement dispatch, and shared shaping services |
 | Line composer | Region queries, candidate selection, baselines, retries, and final placement |
 | Region provider | Available segments for a proposed vertical band and how to advance when no space exists |
-| Text backend | Shared text context, legal text opportunities, shaping, glyph rendering, and text geometry |
+| Text layout implementation | Shared text context, legal text opportunities, shaping, glyph rendering, and text geometry |
 | Editor/document adapter | Mapping layout locations to document positions, insertion context, mutations, and input handling |
 | External layers | Selection, carets, and other optional decoration visuals |
 
 Text needs cooperative shaping. Each text widget may own its string and
 semantics while contributing to a shared shaping context. A decoration-only
-wrapper must not force independent shaping. The text backend may produce one
+wrapper must not force independent shaping. The text layout implementation may produce one
 shared rendering artifact for several owners; source mappings preserve each
 owner's locations and decoration geometry. Arbitrary non-text participants need
-not expose strings or use that backend.
+not expose strings or use that text measurement implementation.
 
 ## Proposed negotiation contract
 
@@ -197,7 +197,7 @@ For the first strategy, the paragraph selects the furthest legal candidate that
 fits the current segment, respecting required breaks and fallback classes.
 It can reconsider earlier candidates when later information changes the fit.
 The measurement interface must not assume widths are strictly additive or
-monotonic across candidate ranges; optimized search requires backend guarantees.
+monotonic across candidate ranges; optimized search requires measurement guarantees.
 
 All segments of a line share its baseline. When candidate content increases the
 line's ascent or descent, recompute regions using the full grown band and retry
@@ -248,12 +248,12 @@ type or patch the composer to participate.
 ## Committed geometry, painting, and interaction
 
 Each fragment needs an owner, its local content interval or boundary events,
-line/segment identity, baseline, layout bounds, paint bounds, and the backend
+line/segment identity, baseline, layout bounds, paint bounds, and the text measurement implementation
 handle needed to render and query it. One logical interval can eventually have
 multiple visual fragments on the same line under bidi; avoid one-rect-per-range
 assumptions. Reading order and visual order must be represented separately.
 
-Retain the prototype's shared paragraph coordinate plane for the next experiment.
+Retain the flow layout example's shared paragraph coordinate plane for the next experiment.
 Box adapters transform ordinary children into that plane. Query results delivered
 to external layers use paragraph coordinates. Do not simulate one render object
 being located in several places by calling ordinary child painting repeatedly
@@ -292,7 +292,7 @@ resources. The exact ownership mechanism remains an implementation decision.
 3. Move the button sequence and its box adapters to the seam. Verify cloned
    padding around a container with several atoms, nested restrictions, no-fit
    advancement, and repeatable measurements with no state recreation.
-4. Move text opportunity discovery and shaping behind a backend. Prove that it
+4. Move text opportunity discovery and shaping into a dedicated text measurement component. Prove that it
    can offer alternative legal breaks and measure the chosen range using public
    Flutter APIs. A fitting-prefix query alone does not complete this step.
 5. Add focused real-font rendering checks for shaping across leaf/decorator
@@ -316,10 +316,10 @@ weaken text correctness or commit to native/Wasm distribution in this proposal.
 ## Review point
 
 The principal proposal is an exact-range measurement contract under
-paragraph-owned break selection, with shared shaping as a backend service.
+paragraph-owned break selection, with shared shaping as a text measurement service.
 That seam should work for code, ordinary box sequences, and an independent custom
 participant before being treated as stable API.
 
 The wrapper API, snapshot ownership details, full bidi behavior, balancing,
 justification, float placement, multi-paragraph flow, and keyboard editing remain
-separate work. This proposal does not settle them by copying prototype shortcuts.
+separate work. This proposal does not settle them by copying flow layout example shortcuts.

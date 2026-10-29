@@ -42,3 +42,28 @@ goldens update --plain-name "something"
 # update a single golden in a directory
 goldens update --plain-name "something" my_dir
 ```
+
+
+## Flow-layout tests
+
+Run from the package root:
+
+```sh
+flutter test test/flow_layout
+```
+
+The suite covers wrapping, fragmentation, custom participants, widgets, obstacles,
+carets and selection geometry, caches, compact fitting, and Unicode conformance.
+Its fonts and custom participant are test-only; the package has no runtime
+font dependency. The complete Unicode corpus is included under
+`test/flow_layout/data/unicode/`.
+
+Browser-compatible tests can also run with Flutter's Chrome test platform:
+
+```sh
+flutter test --platform chrome test/flow_layout/compact_integration_test.dart test/flow_layout/padded_compact_test.dart
+```
+
+Example UI tests remain in `example/test/`. Benchmark-tool and exploratory study
+tests live in `performance/test/`; native timing tests live in
+`performance/integration_test/`. Run performance commands from `performance/`.

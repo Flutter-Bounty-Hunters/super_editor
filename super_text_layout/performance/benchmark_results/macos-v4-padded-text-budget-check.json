@@ -1,0 +1,119 @@
+{
+  "budgets": {
+    "fixtureVersion": 4,
+    "scenarios": {
+      "test_boxes": {
+        "initial": {
+          "median": 2585.4,
+          "p95": 7326.0
+        },
+        "resize": {
+          "median": 3721.2,
+          "p95": 5672.4
+        },
+        "edit_beginning": {
+          "median": 3411.6,
+          "p95": 5056.8
+        },
+        "edit_middle": {
+          "median": 3264.0,
+          "p95": 5016.0
+        },
+        "edit_end": {
+          "median": 3067.7999999999997,
+          "p95": 4413.599999999999
+        }
+      },
+      "demo_buttons": {
+        "initial": {
+          "median": 10589.4,
+          "p95": 15829.199999999999
+        },
+        "resize": {
+          "median": 7218.0,
+          "p95": 11334.0
+        },
+        "edit_beginning": {
+          "median": 3348.6,
+          "p95": 7820.4
+        },
+        "edit_middle": {
+          "median": 4275.0,
+          "p95": 7093.2
+        },
+        "edit_end": {
+          "median": 3289.7999999999997,
+          "p95": 6196.8
+        }
+      },
+      "long_prose": {
+        "initial": {
+          "median": 15072.599999999999,
+          "p95": 34438.799999999996
+        },
+        "resize": {
+          "median": 1399.8,
+          "p95": 3675.6
+        },
+        "edit_beginning": {
+          "median": 3119.4,
+          "p95": 7885.2
+        },
+        "edit_middle": {
+          "median": 3188.4,
+          "p95": 6468.0
+        },
+        "edit_end": {
+          "median": 3121.7999999999997,
+          "p95": 6742.8
+        }
+      },
+      "unique_prose": {
+        "initial": {
+          "median": 51953.4,
+          "p95": 71881.2
+        },
+        "resize": {
+          "median": 15078.599999999999,
+          "p95": 19249.2
+        },
+        "edit_beginning": {
+          "median": 12808.199999999999,
+          "p95": 16824.0
+        },
+        "edit_middle": {
+          "median": 12723.0,
+          "p95": 14991.599999999999
+        },
+        "edit_end": {
+          "median": 12729.0,
+          "p95": 15477.599999999999
+        }
+      },
+      "decorated_code": {
+        "initial": {
+          "median": 43600.799999999996,
+          "p95": 49652.4
+        },
+        "resize": {
+          "median": 47660.4,
+          "p95": 56386.799999999996
+        },
+        "edit_beginning": {
+          "median": 50773.2,
+          "p95": 56998.799999999996
+        },
+        "edit_middle": {
+          "median": 49348.2,
+          "p95": 59020.799999999996
+        },
+        "edit_end": {
+          "median": 48717.0,
+          "p95": 56913.6
+        }
+      }
+    }
+  },
+  "budgetFailures": [],
+  "budgetEnforced": true
+}

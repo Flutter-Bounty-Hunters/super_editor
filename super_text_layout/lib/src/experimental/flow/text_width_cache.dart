@@ -1,6 +1,6 @@
 part of 'flow.dart';
 
-/// Exact widths of immutable spans shaped with the backend's fixed LTR,
+/// Exact widths of immutable spans shaped with the text measurement implementation's fixed LTR,
 /// single-line, unconstrained TextPainter configuration. No native resources,
 /// source offsets, break decisions, or participant references are retained.
 class _TextWidthCache {

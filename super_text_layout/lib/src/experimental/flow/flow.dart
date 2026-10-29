@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:developer' as developer;
+import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -12,6 +13,7 @@ part 'text_backend.dart';
 part 'text_shape_cache.dart';
 part 'text_choice_cache.dart';
 part 'text_width_cache.dart';
+part 'compact_text.dart';
 part 'unicode/line_break.dart';
 part 'unicode/line_break_data.dart';
 

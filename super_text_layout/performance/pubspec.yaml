@@ -1,0 +1,43 @@
+name: performance
+description: Reproducible performance cases for super_text_layout.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.27.0'
+
+dependencies:
+  args: ^2.7.0
+  path: ^1.9.1
+  flutter:
+    sdk: flutter
+  super_text_layout:
+    path: ../
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/metrics/
+    - assets/fonts/Roboto-LICENSE.txt
+    - assets/fonts/FiraMono-OFL.txt
+  fonts:
+    - family: DashboardSans
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+    - family: DashboardMono
+      fonts:
+        - asset: assets/fonts/FiraMono-Regular.ttf
+    - family: FlowBenchmark
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+    - family: FlowBenchmarkCode
+      fonts:
+        - asset: assets/fonts/FiraMono-Regular.ttf

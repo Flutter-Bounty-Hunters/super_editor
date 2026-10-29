@@ -34,6 +34,24 @@ class RenderFlowParagraph extends RenderBox
       this._background, this._foreground) {
     _connect();
   }
+  // Only diagnostic reference builds disable the automatic strategy.
+  bool _useCompact = !const bool.fromEnvironment('FLOW_BENCHMARK_EXHAUSTIVE');
+  // The older native line-hint experiment remains diagnostic-only.
+  bool _useFlutterHints =
+      const bool.fromEnvironment('FLOW_BENCHMARK_VALIDATED_HINTS');
+
+  /// Diagnostic reference path for differential tests only.
+  @visibleForTesting
+  set debugUseExhaustiveTextFitting(bool value) {
+    if (_useCompact == !value) return;
+    _useCompact = !value;
+    _useFlutterHints = false;
+    _textChoiceCache.clear();
+    markNeedsLayout();
+  }
+
+  @visibleForTesting
+  int debugFlutterLineFits = 0;
   FlowLayoutController _controller;
   FlowRegionProvider _regions;
   TextStyle _style;
@@ -43,6 +61,35 @@ class RenderFlowParagraph extends RenderBox
   final _textAnalysisCache = _TextAnalysisCache();
   final _textChoiceCache = _TextChoiceCache();
   final _textWidthCache = _TextWidthCache();
+  final _compactTextCache = _CompactTextCache();
+  @visibleForTesting
+  int get debugCompactRejections => _compactTextCache.debugRejections;
+  @visibleForTesting
+  int get debugCompactBuilds => _compactTextCache.debugBuilds;
+  @visibleForTesting
+  int get debugCompactEntries => _compactTextCache._models.length;
+  @visibleForTesting
+  int get debugCompactUnits => _compactTextCache._units;
+  @visibleForTesting
+  int get debugCompactMeasurementEntries =>
+      _compactTextCache._widths.length + _compactTextCache._calibrations.length;
+  @visibleForTesting
+  int get debugCompactMeasurementUnits =>
+      _compactTextCache._widthUnits + _compactTextCache._calibrationUnits;
+  @visibleForTesting
+  int get debugCompactBinarySearches => _compactTextCache.debugBinarySearches;
+  @visibleForTesting
+  int get debugCompactBinaryProbes => _compactTextCache.debugBinaryProbes;
+  @visibleForTesting
+  int get debugCompactBinarySkipped => _compactTextCache.debugBinarySkipped;
+  @visibleForTesting
+  int get debugCompactUnorderedSearches =>
+      _compactTextCache.debugUnorderedSearches;
+  @visibleForTesting
+  int get debugCompactMaximumGuards => _compactTextCache.debugMaximumGuards;
+  @visibleForTesting
+  int get debugCompactCalibrationFailures =>
+      _compactTextCache.debugCalibrationFailures;
   @visibleForTesting
   int get debugTextWidthHits => _textWidthCache.debugHits;
   @visibleForTesting
@@ -75,6 +122,7 @@ class RenderFlowParagraph extends RenderBox
     _textAnalysisCache.clear();
     _textChoiceCache.clear();
     _textWidthCache.clear();
+    _compactTextCache.clear();
     markNeedsLayout();
   }
 
@@ -92,6 +140,7 @@ class RenderFlowParagraph extends RenderBox
     _textAnalysisCache.clear();
     _textChoiceCache.clear();
     _textWidthCache.clear();
+    _compactTextCache.clear();
     super.detach();
   }
 
@@ -143,7 +192,7 @@ class RenderFlowParagraph extends RenderBox
   void performLayout() {
     if (!constraints.hasBoundedWidth) {
       throw FlutterError(
-          'The flow prototype requires a bounded paragraph width.');
+          'FlowParagraph requires a bounded paragraph width.');
     }
     final previousTag = _profileFlow ? _flowLayoutTag.makeCurrent() : null;
     try {
@@ -178,8 +227,14 @@ class RenderFlowParagraph extends RenderBox
             _textAnalysisCache,
             shapes,
             _textChoiceCache,
-            _textWidthCache);
+            _textWidthCache,
+            _useFlutterHints,
+            _useCompact ? _compactTextCache : null);
         result = engine.compose(watch);
+        assert(() {
+          debugFlutterLineFits = engine.flutterLineFits;
+          return true;
+        }());
       } catch (_) {
         shapes.abort();
         rethrow;
@@ -246,6 +301,7 @@ class RenderFlowParagraph extends RenderBox
     _textAnalysisCache.clear();
     _textChoiceCache.clear();
     _textWidthCache.clear();
+    _compactTextCache.clear();
     super.dispose();
   }
 }
@@ -309,8 +365,8 @@ class _Piece {
   double get descent => measurement.descent + run.padding.bottom;
 }
 
-/// Composes only prepared opportunities and measured ranges. No content-type
-/// dispatch or text fitting is performed here.
+/// Composes prepared opportunities and exact measured ranges. Eligible text
+/// sources can optionally suggest where candidate fitting should begin.
 class _Composer {
   _Composer(
       this.entries,
@@ -320,9 +376,11 @@ class _Composer {
       _TextAnalysisCache analysisCache,
       _TextShapeCache shapeCache,
       _TextChoiceCache choiceCache,
-      _TextWidthCache widthCache)
-      : runs = _prepareRuns(
-            entries, style, analysisCache, shapeCache, choiceCache, widthCache);
+      _TextWidthCache widthCache,
+      bool useFlutterHints,
+      _CompactTextCache? compactCache)
+      : runs = _prepareRuns(entries, style, analysisCache, shapeCache,
+            choiceCache, widthCache, useFlutterHints, compactCache);
   final List<FlowContent> entries;
   final FlowRegionProvider regions;
   final TextStyle style;
@@ -333,6 +391,7 @@ class _Composer {
   final List<_PlacedRange> placements = [];
   final Map<(Object, int, int), int> decorationFragments = {};
   int retries = 0;
+  int flutterLineFits = 0;
 
   FlowLayoutSnapshot compose(Stopwatch watch) {
     final metrics = _defaultTextMetrics(style);
@@ -550,6 +609,17 @@ class _Composer {
     _Piece? measure(FlowBreakOpportunity opportunity,
         {bool recordFirstOrdinary = false}) {
       final range = TextRange(start: start, end: opportunity.offset);
+      final prepared = run.prepared;
+      final rejected = prepared is _CompactRejectionSource
+          ? (prepared as _CompactRejectionSource)
+              .rejectedWidth(range, constraints)
+          : null;
+      if (rejected != null) {
+        if (recordFirstOrdinary && identical(opportunity, firstOrdinary)) {
+          firstOrdinaryWidth = rejected;
+        }
+        return null;
+      }
       final measurement = run.prepared.measureRange(range, constraints);
       final measuredWidth = measurement.width;
       if (measurement.range != range ||
@@ -584,8 +654,64 @@ class _Composer {
       return null;
     }
 
+    // Eligible text sources suggest a starting point; exact validation retains
+    // the furthest-fitting contract, including nonmonotonic font behavior.
+    late final int? hint = () {
+      final source = run.prepared;
+      final value = source is _FlutterLineHintSource
+          ? (source as _FlutterLineHintSource)
+              .suggestLineEnd(start, constraints)
+          : null;
+      assert(() {
+        if (value != null) flutterLineFits++;
+        return true;
+      }());
+      return value;
+    }();
     _Piece? choose(_BreakWindow candidates) {
-      // Preserve the exact reverse search; no monotonic-width assumption.
+      final prepared = run.prepared;
+      final bound = prepared is _PreparedBreakSearch
+          ? (prepared as _PreparedBreakSearch)
+              .furthestPotentialBreak(start, candidates, constraints)
+          : null;
+      if (bound != null) {
+        candidates =
+            _BreakWindow(candidates.values, candidates.start, bound + 1);
+      }
+      final endHint = hint;
+      if (endHint != null && candidates.start < candidates.end) {
+        var low = candidates.start, high = candidates.end;
+        while (low < high) {
+          final mid = (low + high) >> 1;
+          if (candidates.values[mid].offset <= endHint) {
+            low = mid + 1;
+          } else {
+            high = mid;
+          }
+        }
+        final proposed = math.max(candidates.start, low - 1);
+        for (var i = proposed; i >= candidates.start; i--) {
+          var best = measure(candidates.values[i], recordFirstOrdinary: true);
+          if (best == null) continue;
+          // A first failure cannot rule out a later fitting range: contextual
+          // shaping can make widths nonmonotonic. Validate the remaining tail
+          // from the longest candidate down before accepting the hinted fit.
+          for (var next = candidates.end - 1; next > i; next--) {
+            final longer =
+                measure(candidates.values[next], recordFirstOrdinary: true);
+            if (longer == null) continue;
+            best.measurement.dispose();
+            return longer;
+          }
+          return best;
+        }
+        for (var next = candidates.end - 1; next > proposed; next--) {
+          final piece =
+              measure(candidates.values[next], recordFirstOrdinary: true);
+          if (piece != null) return piece;
+        }
+        return null;
+      }
       for (final opportunity in candidates.reversed) {
         final piece = measure(opportunity, recordFirstOrdinary: true);
         if (piece != null) return piece;
@@ -613,9 +739,15 @@ class _Composer {
     if (ordinaryPiece != null) {
       return remember(ordinaryPiece);
     }
+    // Binary trimming may never visit the first ordinary break. Its width
+    // still decides whether this is an overlong word or just a narrow region.
+    if (firstOrdinaryWidth == null && firstOrdinary != null) {
+      final firstPiece = measure(firstOrdinary, recordFirstOrdinary: true);
+      if (firstPiece != null) return remember(firstPiece);
+    }
     // A narrow remainder alone does not justify breaking a normally fitting word.
-    // If no ordinary candidate fit, the reverse search measured the first one
-    // last; its width still decides whether emergency wrapping is permitted.
+    // The retained first ordinary width decides whether emergency wrapping
+    // is permitted, regardless of which fitting strategy visited it.
     if (firstOrdinaryWidth == null ||
         firstOrdinaryWidth! > constraints.maximumWidth + .01) {
       return remember(choose(candidates.emergency));

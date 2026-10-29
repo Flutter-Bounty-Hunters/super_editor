@@ -253,23 +253,82 @@ class _TextAnalysisCache {
 }
 
 class _PreparedText extends FlowPreparedContent
-    implements _IndexedBreakSource, _ReusableBreakSource {
-  _PreparedText(this.entries, this.style,
+    implements
+        _IndexedBreakSource,
+        _ReusableBreakSource,
+        _FlutterLineHintSource {
+  factory _PreparedText(List<FlowContent> entries, TextStyle style,
+      {_TextAnalysisCache? analysisCache,
+      _TextShapeCache? shapeCache,
+      _TextChoiceCache? choiceCache,
+      _TextWidthCache? widthCache,
+      bool nativeFitting = false,
+      _CompactTextCache? compactCache,
+      String? preparedText,
+      bool cacheShapes = true}) {
+    if (compactCache != null &&
+        (preparedText ?? entries.map((e) => e.textContribution!.text).join())
+            .codeUnits
+            .every((c) => c >= 32 && c <= 126) &&
+        style.foreground == null &&
+        style.background == null &&
+        entries.every((entry) =>
+            entry.textContribution!.style.foreground == null &&
+            entry.textContribution!.style.background == null) &&
+        entries.any((entry) =>
+            _nativeStyle(style.merge(entry.textContribution!.style)))) {
+      if (entries.any((entry) =>
+          entry.decorations.any((d) => d.padding != EdgeInsets.zero))) {
+        return _CompactPaddedText(entries, style,
+            analysisCache: analysisCache,
+            shapeCache: shapeCache,
+            choiceCache: choiceCache,
+            widthCache: widthCache,
+            nativeFitting: nativeFitting,
+            compactCache: compactCache,
+            preparedText: preparedText,
+            cacheShapes: cacheShapes);
+      }
+      return _CompactPreparedText(entries, style,
+          analysisCache: analysisCache,
+          shapeCache: shapeCache,
+          choiceCache: choiceCache,
+          widthCache: widthCache,
+          nativeFitting: nativeFitting,
+          compactCache: compactCache,
+          preparedText: preparedText,
+          cacheShapes: cacheShapes);
+    }
+    return _PreparedText._exact(entries, style,
+        analysisCache: analysisCache,
+        shapeCache: shapeCache,
+        choiceCache: choiceCache,
+        widthCache: widthCache,
+        nativeFitting: nativeFitting,
+        preparedText: preparedText,
+        cacheShapes: cacheShapes);
+  }
+  _PreparedText._exact(this.entries, this.style,
       {_TextAnalysisCache? analysisCache,
       this.shapeCache,
       this.choiceCache,
       this.widthCache,
+      this.nativeFitting = false,
       String? preparedText,
-      this.cacheShapes = true}) {
+      this.cacheShapes = true})
+      : _analysisCache = analysisCache {
     text = preparedText ?? entries.map((e) => e.textContribution!.text).join();
-    _analysis =
-        analysisCache?.get(text, style) ?? _TextBreakAnalysis(text, style);
   }
   final _TextShapeCache? shapeCache;
   final _TextChoiceCache? choiceCache;
   final _TextWidthCache? widthCache;
+  final bool nativeFitting;
   final bool cacheShapes;
-  late final _TextBreakAnalysis _analysis;
+  final _TextAnalysisCache? _analysisCache;
+  // Numeric-only chunk sessions may never query breaks. In particular, short
+  // chunks and cached interaction models do not need a second Unicode analysis.
+  late final _TextBreakAnalysis _analysis =
+      _analysisCache?.get(text, style) ?? _TextBreakAnalysis(text, style);
   List<FlowBreakOpportunity> get _breaks => _analysis._breaks;
   @override
   bool get measuresDecorationPadding => true;
@@ -289,6 +348,44 @@ class _PreparedText extends FlowPreparedContent
       style.background == null &&
       entries.single.textContribution!.style.foreground == null &&
       entries.single.textContribution!.style.background == null;
+
+  static bool _nativeStyle(TextStyle style) =>
+      style.inherit &&
+      (style.letterSpacing ?? 0) >= 0 &&
+      (style.wordSpacing ?? 0) >= 0 &&
+      (style.fontFeatures?.isEmpty ?? true) &&
+      (style.fontVariations?.isEmpty ?? true) &&
+      style.foreground == null &&
+      style.background == null;
+
+  late final bool _nativeEligible = nativeFitting &&
+      _plain &&
+      _nativeStyle(style) &&
+      _nativeStyle(entries.single.textContribution!.style) &&
+      text.codeUnits.every((unit) => unit >= 32 && unit <= 126);
+
+  @override
+  int? suggestLineEnd(int start, FlowFragmentConstraints constraints) {
+    if (!_nativeEligible || start >= length) return null;
+    final ordinary = _analysis.candidatesAfter(start).ordinary;
+    // One ordinary candidate is cheap to measure directly. This also leaves
+    // protected/overlong single words on the fully general emergency path.
+    if (ordinary.end - ordinary.start < 2) return null;
+    final painter = TextPainter(
+        text: span(start, length),
+        textDirection: TextDirection.ltr,
+        maxLines: 1);
+    try {
+      painter.layout(maxWidth: constraints.availableWidth + .01);
+      final line = painter.getLineBoundary(const TextPosition(offset: 0));
+      if (line.start != 0 || line.end <= 0 || line.end > length - start) {
+        return null;
+      }
+      return start + line.end;
+    } finally {
+      painter.dispose();
+    }
+  }
 
   _TextChoiceKey? _choiceKey(int start, FlowFragmentConstraints constraints) {
     if (!_plain || choiceCache == null) return null;

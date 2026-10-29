@@ -1,0 +1,2470 @@
+{
+  "checkpoint": {
+    "checkpointVersion": 5,
+    "study": "shaping-context",
+    "mode": "profile",
+    "recordedAtUtc": "2026-10-28T01:13:02.143686Z",
+    "scope": "Width-fitting only in the existing LTR engine. Not RTL visual ordering, editing, selection, or rendering validation. Explicit font aliases; fallback glyph coverage not independently audited. Failures are findings, not suppressed. The .5px count supplements, not replaces, the .01px width criterion.",
+    "fonts": {
+      "StudyTimes": {
+        "path": "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
+        "available": true,
+        "bytes": 824920,
+        "sha256": "f3b4ffff71c2a0c7227d37497683b2498fb2d0a4e8beae26f022e3ccfcaabfa3"
+      },
+      "StudyPalatino": {
+        "path": "/System/Library/Fonts/Palatino.ttc",
+        "available": true,
+        "bytes": 1788068,
+        "sha256": "16ab9a45e8e802db73662cd411cd08402c1360e5c87ffdd4cd0824dc8457bf3e"
+      },
+      "StudyArabic": {
+        "path": "/System/Library/Fonts/GeezaPro.ttc",
+        "available": true,
+        "bytes": 979396,
+        "sha256": "5b4309f8d596abee520c0826885a39483a16fb244489d2c313322575df4b04a2"
+      },
+      "StudyNastaliq": {
+        "path": "/System/Library/Fonts/NotoNastaliq.ttc",
+        "available": true,
+        "bytes": 920420,
+        "sha256": "c6b75b3b3ca434c69e4a1d44205c35de0c57f314cb14c3fc33f1ef0cf0455aa7"
+      },
+      "StudyDevanagari": {
+        "path": "/System/Library/Fonts/Supplemental/Devanagari Sangam MN.ttc",
+        "available": true,
+        "bytes": 1029884,
+        "sha256": "aa26617121bda473948944563b7aae9b155236ec31340d3062ebad4d0b54d79b"
+      },
+      "StudyBengali": {
+        "path": "/System/Library/Fonts/KohinoorBangla.ttc",
+        "available": true,
+        "bytes": 706144,
+        "sha256": "b24e05af7634658467865703d741ce2fb19c8fdff7d763ea69a1f413acb6a573"
+      },
+      "StudyTamil": {
+        "path": "/System/Library/Fonts/Supplemental/Tamil Sangam MN.ttc",
+        "available": true,
+        "bytes": 365320,
+        "sha256": "8a3606d50f768d1a0418906026f9665c6b6abadd9cdf700d86b08e0e085abbdf"
+      },
+      "StudySinhala": {
+        "path": "/System/Library/Fonts/Supplemental/Sinhala Sangam MN.ttc",
+        "available": true,
+        "bytes": 757768,
+        "sha256": "ab965f76f05df703eb96dd93bc5a3708626cddd45cd037cacbfe3f47c3f51ba4"
+      },
+      "StudyThai": {
+        "path": "/System/Library/Fonts/Supplemental/Thonburi.ttc",
+        "available": true,
+        "bytes": 1515388,
+        "sha256": "005370c5ec29075f193ba8b67db94b15a27739cd9b46bebace758fd8c01cabb1"
+      },
+      "StudyKhmer": {
+        "path": "/System/Library/Fonts/Supplemental/Khmer Sangam MN.ttf",
+        "available": true,
+        "bytes": 188048,
+        "sha256": "60d4d878979f391fae7b3adfe69c03fc933001e9cfc8585e40b2f97047709424"
+      },
+      "StudyCJK": {
+        "path": "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        "available": true,
+        "bytes": 23522052,
+        "sha256": "f887295caf2881cab9554b14c5ab4c9ee624c3895599da152ec37416b5aefae0"
+      },
+      "StudyEmoji": {
+        "path": "/System/Library/Fonts/Apple Color Emoji.ttc",
+        "available": true,
+        "bytes": 192123488,
+        "sha256": "435ee0b75b26d671e089ddad38640473cc31febc4dbdfae27843a0a000d7ff62"
+      }
+    },
+    "results": [
+      {
+        "name": "latin_control",
+        "font": "CheckpointRoboto",
+        "text": "office affinity AVATAR To Wi final",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 75,
+            "tableEntries": 102
+          },
+          {
+            "graphemes": 4,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 106,
+            "tableEntries": 134
+          },
+          {
+            "graphemes": 6,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 165,
+            "tableEntries": 195
+          },
+          {
+            "graphemes": 8,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 220,
+            "tableEntries": 252
+          }
+        ]
+      },
+      {
+        "name": "mono_control",
+        "font": "CheckpointMono",
+        "text": "office affinity AVATAR To Wi final",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 41,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 75,
+            "tableEntries": 102
+          },
+          {
+            "graphemes": 4,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 41,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 106,
+            "tableEntries": 134
+          },
+          {
+            "graphemes": 6,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 41,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 165,
+            "tableEntries": 195
+          },
+          {
+            "graphemes": 8,
+            "ranges": 595,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 41,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 220,
+            "tableEntries": 252
+          }
+        ]
+      },
+      {
+        "name": "times_ligatures",
+        "font": "StudyTimes",
+        "text": "office affinity efficient AVATAR To Wi",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 31,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 80,
+            "tableEntries": 114
+          },
+          {
+            "graphemes": 4,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 31,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 114,
+            "tableEntries": 150
+          },
+          {
+            "graphemes": 6,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 31,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 181,
+            "tableEntries": 219
+          },
+          {
+            "graphemes": 8,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 31,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 244,
+            "tableEntries": 284
+          }
+        ]
+      },
+      {
+        "name": "palatino_ligatures",
+        "font": "StudyPalatino",
+        "text": "office affinity efficient AVATAR To Wi",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 80,
+            "tableEntries": 114
+          },
+          {
+            "graphemes": 4,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 114,
+            "tableEntries": 150
+          },
+          {
+            "graphemes": 6,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 181,
+            "tableEntries": 219
+          },
+          {
+            "graphemes": 8,
+            "ranges": 741,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 244,
+            "tableEntries": 284
+          }
+        ]
+      },
+      {
+        "name": "positive_spacing",
+        "font": "CheckpointRoboto",
+        "text": "office affinity AVATAR To Wi",
+        "fontSize": 20.0,
+        "letterSpacing": 1.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 406,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 37,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 65,
+            "tableEntries": 84
+          },
+          {
+            "graphemes": 4,
+            "ranges": 406,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 37,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 90,
+            "tableEntries": 110
+          },
+          {
+            "graphemes": 6,
+            "ranges": 406,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 37,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 137,
+            "tableEntries": 159
+          },
+          {
+            "graphemes": 8,
+            "ranges": 406,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 37,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 180,
+            "tableEntries": 204
+          }
+        ]
+      },
+      {
+        "name": "negative_spacing",
+        "font": "CheckpointRoboto",
+        "text": "Wi WiWi iiiiiii WWW AVATAR",
+        "fontSize": 20.0,
+        "letterSpacing": -5.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 351,
+            "rangeFailures": 236,
+            "errorsAtLeastHalfPixel": 155,
+            "maxWidthError": 1.3671875,
+            "layoutPlans": 50,
+            "breakFailures": 24,
+            "worstRanges": [
+              {
+                "start": 1,
+                "end": 20,
+                "text": "i WiWi iiiiiii WWW ",
+                "predicted": 63.427734375,
+                "exact": 62.060546875,
+                "error": 1.3671875
+              },
+              {
+                "start": 6,
+                "end": 20,
+                "text": "i iiiiiii WWW ",
+                "predicted": 38.232421875,
+                "exact": 36.9140625,
+                "error": 1.318359375
+              },
+              {
+                "start": 1,
+                "end": 23,
+                "text": "i WiWi iiiiiii WWW AVA",
+                "predicted": 85.615234375,
+                "exact": 84.296875,
+                "error": 1.318359375
+              }
+            ],
+            "breakExamples": [
+              {
+                "plan": "threshold_5_25.126484375",
+                "widths": [
+                  25.126484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_5_25.166484375",
+                "widths": [
+                  25.166484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_7_37.724140625",
+                "widths": [
+                  37.724140625
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 16,
+                    "width": 36.62109375
+                  },
+                  {
+                    "row": 1,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 2,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 3,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 4,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 25.1953125
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 3,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 5,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ]
+              }
+            ],
+            "measurementCalls": 39,
+            "tableEntries": 78
+          },
+          {
+            "graphemes": 4,
+            "ranges": 351,
+            "rangeFailures": 232,
+            "errorsAtLeastHalfPixel": 154,
+            "maxWidthError": 1.3671875,
+            "layoutPlans": 50,
+            "breakFailures": 23,
+            "worstRanges": [
+              {
+                "start": 1,
+                "end": 20,
+                "text": "i WiWi iiiiiii WWW ",
+                "predicted": 63.427734375,
+                "exact": 62.060546875,
+                "error": 1.3671875
+              },
+              {
+                "start": 1,
+                "end": 25,
+                "text": "i WiWi iiiiiii WWW AVATA",
+                "predicted": 98.564453125,
+                "exact": 97.24609375,
+                "error": 1.318359375
+              },
+              {
+                "start": 1,
+                "end": 16,
+                "text": "i WiWi iiiiiii ",
+                "predicted": 25.1953125,
+                "exact": 23.876953125,
+                "error": 1.318359375
+              }
+            ],
+            "breakExamples": [
+              {
+                "plan": "threshold_5_25.126484375",
+                "widths": [
+                  25.126484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_5_25.166484375",
+                "widths": [
+                  25.166484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_7_37.724140625",
+                "widths": [
+                  37.724140625
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 16,
+                    "width": 36.62109375
+                  },
+                  {
+                    "row": 1,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 2,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 3,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 4,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 25.1953125
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 3,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 5,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ]
+              }
+            ],
+            "measurementCalls": 59,
+            "tableEntries": 102
+          },
+          {
+            "graphemes": 6,
+            "ranges": 351,
+            "rangeFailures": 226,
+            "errorsAtLeastHalfPixel": 154,
+            "maxWidthError": 1.3671875,
+            "layoutPlans": 50,
+            "breakFailures": 23,
+            "worstRanges": [
+              {
+                "start": 1,
+                "end": 20,
+                "text": "i WiWi iiiiiii WWW ",
+                "predicted": 63.427734375,
+                "exact": 62.060546875,
+                "error": 1.3671875
+              },
+              {
+                "start": 1,
+                "end": 16,
+                "text": "i WiWi iiiiiii ",
+                "predicted": 25.1953125,
+                "exact": 23.876953125,
+                "error": 1.318359375
+              },
+              {
+                "start": 1,
+                "end": 17,
+                "text": "i WiWi iiiiiii W",
+                "predicted": 37.939453125,
+                "exact": 36.62109375,
+                "error": 1.318359375
+              }
+            ],
+            "breakExamples": [
+              {
+                "plan": "threshold_5_25.126484375",
+                "widths": [
+                  25.126484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_5_25.166484375",
+                "widths": [
+                  25.166484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_7_37.724140625",
+                "widths": [
+                  37.724140625
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 16,
+                    "width": 36.62109375
+                  },
+                  {
+                    "row": 1,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 2,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 3,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 4,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 25.1953125
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 3,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 5,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ]
+              }
+            ],
+            "measurementCalls": 99,
+            "tableEntries": 147
+          },
+          {
+            "graphemes": 8,
+            "ranges": 351,
+            "rangeFailures": 213,
+            "errorsAtLeastHalfPixel": 142,
+            "maxWidthError": 1.3671875,
+            "layoutPlans": 50,
+            "breakFailures": 21,
+            "worstRanges": [
+              {
+                "start": 1,
+                "end": 20,
+                "text": "i WiWi iiiiiii WWW ",
+                "predicted": 63.427734375,
+                "exact": 62.060546875,
+                "error": 1.3671875
+              },
+              {
+                "start": 6,
+                "end": 20,
+                "text": "i iiiiiii WWW ",
+                "predicted": 38.232421875,
+                "exact": 36.9140625,
+                "error": 1.318359375
+              },
+              {
+                "start": 1,
+                "end": 16,
+                "text": "i WiWi iiiiiii ",
+                "predicted": 25.1953125,
+                "exact": 23.876953125,
+                "error": 1.318359375
+              }
+            ],
+            "breakExamples": [
+              {
+                "plan": "threshold_5_25.126484375",
+                "widths": [
+                  25.126484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_5_25.166484375",
+                "widths": [
+                  25.166484375
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.548828125
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 24.072265625
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 3,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 5,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 6,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 5,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 2,
+                    "start": 5,
+                    "end": 16,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 3,
+                    "start": 16,
+                    "end": 17,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 17,
+                    "end": 18,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 5,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 6,
+                    "start": 20,
+                    "end": 23,
+                    "width": 22.236328125
+                  },
+                  {
+                    "row": 7,
+                    "start": 23,
+                    "end": 26,
+                    "width": 21.5234375
+                  }
+                ]
+              },
+              {
+                "plan": "threshold_8_37.6753125",
+                "widths": [
+                  37.6753125
+                ],
+                "exact": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 16,
+                    "width": 36.62109375
+                  },
+                  {
+                    "row": 1,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 2,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.6953125
+                  },
+                  {
+                    "row": 3,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 4,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ],
+                "predicted": [
+                  {
+                    "row": 0,
+                    "start": 0,
+                    "end": 3,
+                    "width": 12.59765625
+                  },
+                  {
+                    "row": 1,
+                    "start": 3,
+                    "end": 16,
+                    "width": 25.1953125
+                  },
+                  {
+                    "row": 2,
+                    "start": 16,
+                    "end": 18,
+                    "width": 25.48828125
+                  },
+                  {
+                    "row": 3,
+                    "start": 18,
+                    "end": 20,
+                    "width": 12.744140625
+                  },
+                  {
+                    "row": 4,
+                    "start": 20,
+                    "end": 25,
+                    "width": 35.185546875
+                  },
+                  {
+                    "row": 5,
+                    "start": 25,
+                    "end": 26,
+                    "width": 7.314453125
+                  }
+                ]
+              }
+            ],
+            "measurementCalls": 138,
+            "tableEntries": 188
+          }
+        ]
+      },
+      {
+        "name": "arabic",
+        "font": "StudyArabic",
+        "text": "السلام عليكم ورحمة الله العربية جميلة",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 703,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 80,
+            "tableEntries": 111
+          },
+          {
+            "graphemes": 4,
+            "ranges": 703,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 114,
+            "tableEntries": 146
+          },
+          {
+            "graphemes": 6,
+            "ranges": 703,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 179,
+            "tableEntries": 213
+          },
+          {
+            "graphemes": 8,
+            "ranges": 703,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 240,
+            "tableEntries": 276
+          }
+        ]
+      },
+      {
+        "name": "arabic_marks",
+        "font": "StudyArabic",
+        "text": "السَّلَامُ عَلَيْكُمْ بِسْمِ اللَّهِ",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 231,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 27,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 53,
+            "tableEntries": 63
+          },
+          {
+            "graphemes": 4,
+            "ranges": 231,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 27,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 71,
+            "tableEntries": 82
+          },
+          {
+            "graphemes": 6,
+            "ranges": 231,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 27,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 104,
+            "tableEntries": 117
+          },
+          {
+            "graphemes": 8,
+            "ranges": 231,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 27,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 133,
+            "tableEntries": 148
+          }
+        ]
+      },
+      {
+        "name": "urdu_nastaliq",
+        "font": "StudyNastaliq",
+        "text": "پاکستان کی خوبصورت زبان اردو ہے",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 496,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 73,
+            "tableEntries": 93
+          },
+          {
+            "graphemes": 4,
+            "ranges": 496,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 101,
+            "tableEntries": 122
+          },
+          {
+            "graphemes": 6,
+            "ranges": 496,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 154,
+            "tableEntries": 177
+          },
+          {
+            "graphemes": 8,
+            "ranges": 496,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 203,
+            "tableEntries": 228
+          }
+        ]
+      },
+      {
+        "name": "devanagari",
+        "font": "StudyDevanagari",
+        "text": "नमस्ते दुनिया क्षत्रिय श्रद्धा प्रार्थना",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 171,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 48,
+            "tableEntries": 54
+          },
+          {
+            "graphemes": 4,
+            "ranges": 171,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 63,
+            "tableEntries": 70
+          },
+          {
+            "graphemes": 6,
+            "ranges": 171,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 90,
+            "tableEntries": 99
+          },
+          {
+            "graphemes": 8,
+            "ranges": 171,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 113,
+            "tableEntries": 124
+          }
+        ]
+      },
+      {
+        "name": "bengali",
+        "font": "StudyBengali",
+        "text": "বাংলা ভাষা সুন্দর পৃথিবী বন্ধু শ্রদ্ধা",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 190,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 50,
+            "tableEntries": 57
+          },
+          {
+            "graphemes": 4,
+            "ranges": 190,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 66,
+            "tableEntries": 74
+          },
+          {
+            "graphemes": 6,
+            "ranges": 190,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 95,
+            "tableEntries": 105
+          },
+          {
+            "graphemes": 8,
+            "ranges": 190,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0000152587890625,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 120,
+            "tableEntries": 132
+          }
+        ]
+      },
+      {
+        "name": "tamil",
+        "font": "StudyTamil",
+        "text": "தமிழ் மொழி அழகான உலகம் நண்பர்கள்",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 276,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 43,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 62,
+            "tableEntries": 69
+          },
+          {
+            "graphemes": 4,
+            "ranges": 276,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 43,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 82,
+            "tableEntries": 90
+          },
+          {
+            "graphemes": 6,
+            "ranges": 276,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 43,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 119,
+            "tableEntries": 129
+          },
+          {
+            "graphemes": 8,
+            "ranges": 276,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 43,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 152,
+            "tableEntries": 164
+          }
+        ]
+      },
+      {
+        "name": "sinhala",
+        "font": "StudySinhala",
+        "text": "සිංහල භාෂාව ලස්සන ලෝකයක්",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 153,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 45,
+            "tableEntries": 51
+          },
+          {
+            "graphemes": 4,
+            "ranges": 153,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 59,
+            "tableEntries": 66
+          },
+          {
+            "graphemes": 6,
+            "ranges": 153,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 84,
+            "tableEntries": 93
+          },
+          {
+            "graphemes": 8,
+            "ranges": 153,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 29,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 105,
+            "tableEntries": 116
+          }
+        ]
+      },
+      {
+        "name": "thai",
+        "font": "StudyThai",
+        "text": "ภาษาไทยเป็นภาษาที่สวยงามและน่าสนใจ",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 465,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 39,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 72,
+            "tableEntries": 90
+          },
+          {
+            "graphemes": 4,
+            "ranges": 465,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 39,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 98,
+            "tableEntries": 118
+          },
+          {
+            "graphemes": 6,
+            "ranges": 465,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 39,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 149,
+            "tableEntries": 171
+          },
+          {
+            "graphemes": 8,
+            "ranges": 465,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 39,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 196,
+            "tableEntries": 220
+          }
+        ]
+      },
+      {
+        "name": "khmer",
+        "font": "StudyKhmer",
+        "text": "ភាសាខ្មែរមានភាពស្រស់ស្អាត",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 120,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 25,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 39,
+            "tableEntries": 45
+          },
+          {
+            "graphemes": 4,
+            "ranges": 120,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 25,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 51,
+            "tableEntries": 58
+          },
+          {
+            "graphemes": 6,
+            "ranges": 120,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 25,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 72,
+            "tableEntries": 81
+          },
+          {
+            "graphemes": 8,
+            "ranges": 120,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 25,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 89,
+            "tableEntries": 100
+          }
+        ]
+      },
+      {
+        "name": "cjk",
+        "font": "StudyCJK",
+        "text": "中文排版（标点）测试。文字可以换行。",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 105,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 26,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 49,
+            "tableEntries": 54
+          },
+          {
+            "graphemes": 4,
+            "ranges": 105,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 26,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 64,
+            "tableEntries": 70
+          },
+          {
+            "graphemes": 6,
+            "ranges": 105,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 26,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 91,
+            "tableEntries": 99
+          },
+          {
+            "graphemes": 8,
+            "ranges": 105,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 26,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 114,
+            "tableEntries": 124
+          }
+        ]
+      },
+      {
+        "name": "emoji",
+        "font": "StudyEmoji",
+        "text": "👩‍👩‍👧‍👦 👨🏽‍💻 🇯🇵 ❤️ 🏳️‍🌈 😀",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 66,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 20,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 26,
+            "tableEntries": 33
+          },
+          {
+            "graphemes": 4,
+            "ranges": 66,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 20,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 34,
+            "tableEntries": 42
+          },
+          {
+            "graphemes": 6,
+            "ranges": 66,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 20,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 47,
+            "tableEntries": 57
+          },
+          {
+            "graphemes": 8,
+            "ranges": 66,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 20,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 56,
+            "tableEntries": 68
+          }
+        ]
+      },
+      {
+        "name": "combining_marks",
+        "font": "CheckpointRoboto",
+        "text": "café naïve Å éé office",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 253,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 52,
+            "tableEntries": 66
+          },
+          {
+            "graphemes": 4,
+            "ranges": 253,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 71,
+            "tableEntries": 86
+          },
+          {
+            "graphemes": 6,
+            "ranges": 253,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 106,
+            "tableEntries": 123
+          },
+          {
+            "graphemes": 8,
+            "ranges": 253,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 33,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 137,
+            "tableEntries": 156
+          }
+        ]
+      },
+      {
+        "name": "mixed_bidi_width_only",
+        "font": "StudyArabic",
+        "text": "abc العربية 123 (مرحبا) xyz",
+        "fontSize": 20.0,
+        "letterSpacing": 0.0,
+        "contexts": [
+          {
+            "graphemes": 3,
+            "ranges": 325,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 72,
+            "tableEntries": 81
+          },
+          {
+            "graphemes": 4,
+            "ranges": 325,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 96,
+            "tableEntries": 106
+          },
+          {
+            "graphemes": 6,
+            "ranges": 325,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 141,
+            "tableEntries": 153
+          },
+          {
+            "graphemes": 8,
+            "ranges": 325,
+            "rangeFailures": 0,
+            "errorsAtLeastHalfPixel": 0,
+            "maxWidthError": 0.0,
+            "layoutPlans": 35,
+            "breakFailures": 0,
+            "worstRanges": [],
+            "breakExamples": [],
+            "measurementCalls": 182,
+            "tableEntries": 196
+          }
+        ]
+      }
+    ]
+  },
+  "host": {
+    "os": "Version 26.4 (Build 25E246)",
+    "flutter": {
+      "frameworkVersion": "3.47.7",
+      "channel": "stable",
+      "repositoryUrl": "https://github.com/flutter/flutter.git",
+      "frameworkRevision": "abaf9c523780a608bd46686fd5e53740a07077f8",
+      "frameworkCommitDate": "2026-10-08 09:51:21 -0700",
+      "engineRevision": "deb287481e3ce9468f3434937ced4240a70539ca",
+      "engineCommitDate": "2026-10-07 17:09:12.000Z",
+      "engineContentHash": "d8a2d6c768c334d53e16277f837970ffa1e2de81",
+      "engineBuildDate": "2026-10-07 13:51:44.552",
+      "dartSdkVersion": "3.13.5",
+      "devToolsVersion": "2.60.0",
+      "flutterVersion": "3.47.7",
+      "flutterRoot": "/Volumes/Dock-Drive/Dev-Libs/flutter"
+    }
+  }
+}

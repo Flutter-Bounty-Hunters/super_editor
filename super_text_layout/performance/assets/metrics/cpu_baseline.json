@@ -1,0 +1,3693 @@
+{
+  "samplePeriodUs": 1000,
+  "captureSamples": 1569,
+  "firstSampleMicros": 4737630311993,
+  "lastSampleMicros": 4737633451836,
+  "timelineFlags": {
+    "type": "TimelineFlags",
+    "recorderName": "Ring",
+    "availableStreams": [
+      "API",
+      "Compiler",
+      "CompilerVerbose",
+      "Dart",
+      "Debugger",
+      "Embedder",
+      "GC",
+      "Isolate",
+      "Microtask",
+      "VM"
+    ],
+    "recordedStreams": [
+      "Dart",
+      "Embedder",
+      "GC",
+      "Microtask"
+    ]
+  },
+  "recordedGcIntervals": 2662,
+  "interpretation": "Exclusive buckets partition sampled layout CPU. Inclusive functions overlap. GC overlap includes concurrent activity and is not pause time. Unsampled wall time is not attributed.",
+  "phases": [
+    {
+      "scenario": "decorated_code",
+      "phase": "initial",
+      "layoutCount": 10,
+      "sampleCount": 300,
+      "layoutsWithoutSamples": 0,
+      "truncatedStacks": 2,
+      "exclusiveBuckets": {
+        "source_preparation": 40,
+        "gc": 2,
+        "other_layout": 14,
+        "numeric_model_preparation": 148,
+        "exact_fragment_artifacts": 35,
+        "numeric_chunk_preparation": 27,
+        "numeric_exact_widths": 27,
+        "numeric_candidate_search": 4,
+        "fragment_commit": 3
+      },
+      "topInclusiveLocalFunctions": [
+        {
+          "function": "RenderFlowParagraph.performLayout",
+          "samples": 300
+        },
+        {
+          "function": "_Composer.compose",
+          "samples": 261
+        },
+        {
+          "function": "_Composer._select",
+          "samples": 248
+        },
+        {
+          "function": "_select.measure",
+          "samples": 242
+        },
+        {
+          "function": "_select.choose",
+          "samples": 242
+        },
+        {
+          "function": "_CompactPaddedText.rejectedWidth",
+          "samples": 206
+        },
+        {
+          "function": "_CompactTextCache.measure",
+          "samples": 168
+        },
+        {
+          "function": "_CompactTextCache.get",
+          "samples": 148
+        },
+        {
+          "function": "_CompactPreparedText._compactModel",
+          "samples": 148
+        },
+        {
+          "function": "_CompactTextModel._CompactTextModel",
+          "samples": 95
+        },
+        {
+          "function": "_CompactTextModel.measure",
+          "samples": 91
+        },
+        {
+          "function": "_TextAnalysisCache.get",
+          "samples": 64
+        },
+        {
+          "function": "_PreparedText._PreparedText._exact",
+          "samples": 64
+        },
+        {
+          "function": "_TextBreakAnalysis._TextBreakAnalysis",
+          "samples": 60
+        },
+        {
+          "function": "_CompactTextModel.calibrate",
+          "samples": 53
+        },
+        {
+          "function": "calibrate.matches",
+          "samples": 50
+        },
+        {
+          "function": "_CompactPaddedText._CompactPaddedText",
+          "samples": 37
+        },
+        {
+          "function": "_PreparedText._PreparedText",
+          "samples": 37
+        },
+        {
+          "function": "_prepareRuns",
+          "samples": 37
+        },
+        {
+          "function": "_Composer._Composer",
+          "samples": 37
+        }
+      ],
+      "layoutsSlowestFirst": [
+        {
+          "fullLayoutUs": 51191,
+          "layoutStartMicros": 4737630329389,
+          "sampleCount": 37,
+          "buckets": {
+            "source_preparation": 3,
+            "gc": 1,
+            "other_layout": 2,
+            "numeric_model_preparation": 13,
+            "exact_fragment_artifacts": 8,
+            "numeric_chunk_preparation": 8,
+            "numeric_exact_widths": 1,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": false,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 37
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 33
+            },
+            {
+              "function": "_select.measure",
+              "samples": 31
+            },
+            {
+              "function": "_select.choose",
+              "samples": 31
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 31
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 23
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 14
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 13
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 13
+            },
+            {
+              "function": "_TextBreakAnalysis._TextBreakAnalysis",
+              "samples": 12
+            },
+            {
+              "function": "_TextAnalysisCache.get",
+              "samples": 12
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 12
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 43491,
+          "layoutStartMicros": 4737632146436,
+          "sampleCount": 31,
+          "buckets": {
+            "source_preparation": 4,
+            "numeric_model_preparation": 13,
+            "other_layout": 3,
+            "numeric_exact_widths": 5,
+            "exact_fragment_artifacts": 4,
+            "numeric_chunk_preparation": 2
+          },
+          "gcEventOverlapUs": 4080,
+          "layoutThreadGcEventOverlapUs": 4080,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 31
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 26
+            },
+            {
+              "function": "_select.measure",
+              "samples": 24
+            },
+            {
+              "function": "_select.choose",
+              "samples": 24
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 24
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 20
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 13
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 13
+            },
+            {
+              "function": "calibrate.matches",
+              "samples": 7
+            },
+            {
+              "function": "_CompactTextModel.calibrate",
+              "samples": 7
+            },
+            {
+              "function": "_TextBreakAnalysis._TextBreakAnalysis",
+              "samples": 6
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 41982,
+          "layoutStartMicros": 4737630645856,
+          "sampleCount": 30,
+          "buckets": {
+            "source_preparation": 4,
+            "numeric_model_preparation": 13,
+            "numeric_exact_widths": 4,
+            "exact_fragment_artifacts": 5,
+            "fragment_commit": 1,
+            "numeric_chunk_preparation": 3
+          },
+          "gcEventOverlapUs": 1947,
+          "layoutThreadGcEventOverlapUs": 1947,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 30
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 26
+            },
+            {
+              "function": "_select.choose",
+              "samples": 25
+            },
+            {
+              "function": "_select.measure",
+              "samples": 25
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 25
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 20
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 13
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 13
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 8
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 8
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 7
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 41479,
+          "layoutStartMicros": 4737632480002,
+          "sampleCount": 30,
+          "buckets": {
+            "source_preparation": 5,
+            "gc": 1,
+            "numeric_model_preparation": 17,
+            "exact_fragment_artifacts": 3,
+            "numeric_chunk_preparation": 1,
+            "numeric_exact_widths": 2,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 1913,
+          "layoutThreadGcEventOverlapUs": 1913,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 30
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 26
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 26
+            },
+            {
+              "function": "_select.measure",
+              "samples": 24
+            },
+            {
+              "function": "_select.choose",
+              "samples": 24
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 21
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 19
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 10
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 10
+            },
+            {
+              "function": "calibrate.matches",
+              "samples": 7
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 40962,
+          "layoutStartMicros": 4737630945962,
+          "sampleCount": 30,
+          "buckets": {
+            "source_preparation": 6,
+            "numeric_model_preparation": 16,
+            "numeric_chunk_preparation": 4,
+            "other_layout": 1,
+            "numeric_candidate_search": 1,
+            "numeric_exact_widths": 2
+          },
+          "gcEventOverlapUs": 2079,
+          "layoutThreadGcEventOverlapUs": 2079,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 30
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 25
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 25
+            },
+            {
+              "function": "_select.choose",
+              "samples": 24
+            },
+            {
+              "function": "_select.measure",
+              "samples": 24
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 23
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 18
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 16
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 16
+            },
+            {
+              "function": "_TextAnalysisCache.get",
+              "samples": 9
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 9
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 9
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 40597,
+          "layoutStartMicros": 4737631846389,
+          "sampleCount": 30,
+          "buckets": {
+            "source_preparation": 3,
+            "other_layout": 2,
+            "numeric_model_preparation": 17,
+            "exact_fragment_artifacts": 4,
+            "numeric_chunk_preparation": 2,
+            "numeric_exact_widths": 2
+          },
+          "gcEventOverlapUs": 1981,
+          "layoutThreadGcEventOverlapUs": 1981,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 30
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 27
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 25
+            },
+            {
+              "function": "_select.measure",
+              "samples": 25
+            },
+            {
+              "function": "_select.choose",
+              "samples": 25
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 21
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 18
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 17
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 14
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 13
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 5
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 39707,
+          "layoutStartMicros": 4737631546239,
+          "sampleCount": 29,
+          "buckets": {
+            "source_preparation": 4,
+            "numeric_model_preparation": 12,
+            "numeric_exact_widths": 5,
+            "exact_fragment_artifacts": 4,
+            "fragment_commit": 1,
+            "other_layout": 1,
+            "numeric_chunk_preparation": 1,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 1521,
+          "layoutThreadGcEventOverlapUs": 1521,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 29
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 25
+            },
+            {
+              "function": "_select.choose",
+              "samples": 23
+            },
+            {
+              "function": "_select.measure",
+              "samples": 23
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 23
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 19
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 15
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 12
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 12
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 6
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 6
+            },
+            {
+              "function": "_CompactTextModel.calibrate",
+              "samples": 6
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 38242,
+          "layoutStartMicros": 4737632780006,
+          "sampleCount": 28,
+          "buckets": {
+            "source_preparation": 3,
+            "numeric_exact_widths": 2,
+            "numeric_model_preparation": 17,
+            "exact_fragment_artifacts": 4,
+            "other_layout": 1,
+            "numeric_chunk_preparation": 1
+          },
+          "gcEventOverlapUs": 1852,
+          "layoutThreadGcEventOverlapUs": 1852,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 28
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 25
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 25
+            },
+            {
+              "function": "_select.measure",
+              "samples": 24
+            },
+            {
+              "function": "_select.choose",
+              "samples": 24
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 20
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 19
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 14
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 14
+            },
+            {
+              "function": "_TextAnalysisCache.get",
+              "samples": 4
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 37509,
+          "layoutStartMicros": 4737631246059,
+          "sampleCount": 28,
+          "buckets": {
+            "source_preparation": 3,
+            "other_layout": 3,
+            "numeric_model_preparation": 16,
+            "numeric_exact_widths": 1,
+            "numeric_chunk_preparation": 2,
+            "exact_fragment_artifacts": 3
+          },
+          "gcEventOverlapUs": 1925,
+          "layoutThreadGcEventOverlapUs": 1925,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 28
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 25
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 22
+            },
+            {
+              "function": "_select.measure",
+              "samples": 22
+            },
+            {
+              "function": "_select.choose",
+              "samples": 22
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 19
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 16
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 16
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 14
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 11
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 9
+            },
+            {
+              "function": "_CompactTextModel.calibrate",
+              "samples": 5
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 36485,
+          "layoutStartMicros": 4737633063566,
+          "sampleCount": 27,
+          "buckets": {
+            "source_preparation": 5,
+            "other_layout": 1,
+            "numeric_model_preparation": 14,
+            "numeric_chunk_preparation": 3,
+            "numeric_exact_widths": 3,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 1893,
+          "layoutThreadGcEventOverlapUs": 1893,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 27
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 23
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 22
+            },
+            {
+              "function": "_select.choose",
+              "samples": 20
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 20
+            },
+            {
+              "function": "_select.measure",
+              "samples": 20
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 17
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 14
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 14
+            },
+            {
+              "function": "_CompactTextModel._CompactTextModel",
+              "samples": 9
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 9
+            },
+            {
+              "function": "_TextBreakAnalysis._TextBreakAnalysis",
+              "samples": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "decorated_code",
+      "phase": "resize",
+      "layoutCount": 10,
+      "sampleCount": 73,
+      "layoutsWithoutSamples": 0,
+      "truncatedStacks": 1,
+      "exclusiveBuckets": {
+        "exact_fragment_artifacts": 54,
+        "other_layout": 7,
+        "fragment_commit": 4,
+        "source_preparation": 2,
+        "numeric_chunk_preparation": 1,
+        "child_layout": 1,
+        "gc": 2,
+        "numeric_candidate_search": 1,
+        "numeric_exact_widths": 1
+      },
+      "topInclusiveLocalFunctions": [
+        {
+          "function": "RenderFlowParagraph.performLayout",
+          "samples": 73
+        },
+        {
+          "function": "_Composer.compose",
+          "samples": 67
+        },
+        {
+          "function": "_select.measure",
+          "samples": 56
+        },
+        {
+          "function": "_select.choose",
+          "samples": 56
+        },
+        {
+          "function": "_Composer._select",
+          "samples": 56
+        },
+        {
+          "function": "_PreparedText.measureRange",
+          "samples": 45
+        },
+        {
+          "function": "_TextShapeCache.acquire",
+          "samples": 39
+        },
+        {
+          "function": "_TextShape.build",
+          "samples": 34
+        },
+        {
+          "function": "_Composer._commit",
+          "samples": 6
+        },
+        {
+          "function": "_CompoundTextMeasurement._verticalMetrics",
+          "samples": 5
+        },
+        {
+          "function": "_verticalMetrics.<anonymous closure>",
+          "samples": 5
+        },
+        {
+          "function": "_TextMeasurement._metrics",
+          "samples": 4
+        },
+        {
+          "function": "_TextShape.metrics",
+          "samples": 4
+        },
+        {
+          "function": "_CompactPaddedText.rejectedWidth",
+          "samples": 4
+        },
+        {
+          "function": "_TextShape.release",
+          "samples": 3
+        },
+        {
+          "function": "_TextMeasurement.dispose",
+          "samples": 3
+        },
+        {
+          "function": "_Composer._spaceFor",
+          "samples": 3
+        },
+        {
+          "function": "FlowLayoutSnapshot._dispose",
+          "samples": 3
+        },
+        {
+          "function": "_TextAnalysisCache.get",
+          "samples": 3
+        },
+        {
+          "function": "_PreparedText._PreparedText._exact",
+          "samples": 3
+        }
+      ],
+      "layoutsSlowestFirst": [
+        {
+          "fullLayoutUs": 14341,
+          "layoutStartMicros": 4737632523912,
+          "sampleCount": 8,
+          "buckets": {
+            "other_layout": 1,
+            "exact_fragment_artifacts": 6,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 8854,
+          "layoutThreadGcEventOverlapUs": 4135,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 5
+            },
+            {
+              "function": "_defaultTextMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 13245,
+          "layoutStartMicros": 4737631888382,
+          "sampleCount": 8,
+          "buckets": {
+            "child_layout": 1,
+            "exact_fragment_artifacts": 6,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 7737,
+          "layoutThreadGcEventOverlapUs": 3417,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12873,
+          "layoutStartMicros": 4737631285164,
+          "sampleCount": 7,
+          "buckets": {
+            "source_preparation": 1,
+            "exact_fragment_artifacts": 5,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 7029,
+          "layoutThreadGcEventOverlapUs": 3590,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_select.measure",
+              "samples": 4
+            },
+            {
+              "function": "_select.choose",
+              "samples": 4
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 2
+            },
+            {
+              "function": "_TextAnalysisCache.get",
+              "samples": 1
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 1
+            },
+            {
+              "function": "_CompactPaddedText._CompactPaddedText",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11939,
+          "layoutStartMicros": 4737630382469,
+          "sampleCount": 9,
+          "buckets": {
+            "exact_fragment_artifacts": 7,
+            "other_layout": 1,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": false,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 9
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "RectangularFlowRegions.spaceFor",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._spaceFor",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.release",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11739,
+          "layoutStartMicros": 4737630689439,
+          "sampleCount": 8,
+          "buckets": {
+            "source_preparation": 1,
+            "other_layout": 1,
+            "exact_fragment_artifacts": 5,
+            "numeric_chunk_preparation": 1
+          },
+          "gcEventOverlapUs": 6517,
+          "layoutThreadGcEventOverlapUs": 2642,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 5
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextAnalysisCache.get",
+              "samples": 2
+            },
+            {
+              "function": "_PreparedText._PreparedText._exact",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText._CompactPaddedText",
+              "samples": 1
+            },
+            {
+              "function": "_PreparedText._PreparedText",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11116,
+          "layoutStartMicros": 4737633101408,
+          "sampleCount": 5,
+          "buckets": {
+            "exact_fragment_artifacts": 3,
+            "other_layout": 2
+          },
+          "gcEventOverlapUs": 4964,
+          "layoutThreadGcEventOverlapUs": 2231,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 5
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_select.measure",
+              "samples": 3
+            },
+            {
+              "function": "_select.choose",
+              "samples": 3
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 3
+            },
+            {
+              "function": "RectangularFlowRegions.spaceFor",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._spaceFor",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9401,
+          "layoutStartMicros": 4737632191712,
+          "sampleCount": 7,
+          "buckets": {
+            "fragment_commit": 1,
+            "exact_fragment_artifacts": 5,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_Composer._record",
+              "samples": 1
+            },
+            {
+              "function": "boxesForRange.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement.boxesForRange",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9239,
+          "layoutStartMicros": 4737630988234,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 5
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 8865,
+          "layoutStartMicros": 4737631587378,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 7
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 8699,
+          "layoutStartMicros": 4737632819617,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 4,
+            "numeric_exact_widths": 1,
+            "other_layout": 1,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 1
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._record",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "decorated_code",
+      "phase": "edit_beginning",
+      "layoutCount": 10,
+      "sampleCount": 74,
+      "layoutsWithoutSamples": 0,
+      "truncatedStacks": 0,
+      "exclusiveBuckets": {
+        "numeric_candidate_search": 5,
+        "exact_fragment_artifacts": 56,
+        "other_layout": 7,
+        "gc": 2,
+        "numeric_model_preparation": 1,
+        "fragment_commit": 1,
+        "numeric_chunk_preparation": 1,
+        "numeric_exact_widths": 1
+      },
+      "topInclusiveLocalFunctions": [
+        {
+          "function": "RenderFlowParagraph.performLayout",
+          "samples": 74
+        },
+        {
+          "function": "_Composer.compose",
+          "samples": 68
+        },
+        {
+          "function": "_select.choose",
+          "samples": 60
+        },
+        {
+          "function": "_Composer._select",
+          "samples": 60
+        },
+        {
+          "function": "_select.measure",
+          "samples": 56
+        },
+        {
+          "function": "_PreparedText.measureRange",
+          "samples": 36
+        },
+        {
+          "function": "_TextShapeCache.acquire",
+          "samples": 35
+        },
+        {
+          "function": "_TextShape.build",
+          "samples": 30
+        },
+        {
+          "function": "_TextShape.metrics",
+          "samples": 11
+        },
+        {
+          "function": "_TextMeasurement._metrics",
+          "samples": 11
+        },
+        {
+          "function": "_CompoundTextMeasurement._verticalMetrics",
+          "samples": 11
+        },
+        {
+          "function": "_verticalMetrics.<anonymous closure>",
+          "samples": 11
+        },
+        {
+          "function": "_CompactPaddedText.rejectedWidth",
+          "samples": 8
+        },
+        {
+          "function": "_TextShape.release",
+          "samples": 5
+        },
+        {
+          "function": "_TextMeasurement.dispose",
+          "samples": 5
+        },
+        {
+          "function": "_CompoundTextMeasurement.dispose",
+          "samples": 5
+        },
+        {
+          "function": "FlowLayoutSnapshot._dispose",
+          "samples": 5
+        },
+        {
+          "function": "_TextMeasurement.boxesForRange",
+          "samples": 4
+        },
+        {
+          "function": "_TextMeasurement.fragments",
+          "samples": 4
+        },
+        {
+          "function": "_CompoundTextMeasurement.fragments",
+          "samples": 4
+        }
+      ],
+      "layoutsSlowestFirst": [
+        {
+          "fullLayoutUs": 16116,
+          "layoutStartMicros": 4737630412328,
+          "sampleCount": 9,
+          "buckets": {
+            "numeric_candidate_search": 1,
+            "exact_fragment_artifacts": 6,
+            "other_layout": 1,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": false,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 9
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            },
+            {
+              "function": "_BreakWindow.reversed",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 14822,
+          "layoutStartMicros": 4737631612760,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 7,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 9415,
+          "layoutThreadGcEventOverlapUs": 4246,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_BreakWindow.reversed",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 13661,
+          "layoutStartMicros": 4737632212963,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 4,
+            "other_layout": 2,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 7824,
+          "layoutThreadGcEventOverlapUs": 3940,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 4
+            },
+            {
+              "function": "_select.choose",
+              "samples": 4
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextMeasurement.boxesForRange",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12029,
+          "layoutStartMicros": 4737631012478,
+          "sampleCount": 7,
+          "buckets": {
+            "other_layout": 2,
+            "exact_fragment_artifacts": 4,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 6212,
+          "layoutThreadGcEventOverlapUs": 2491,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_select.measure",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11245,
+          "layoutStartMicros": 4737632846503,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 4842,
+          "layoutThreadGcEventOverlapUs": 1918,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 5
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 10807,
+          "layoutStartMicros": 4737632546468,
+          "sampleCount": 8,
+          "buckets": {
+            "numeric_chunk_preparation": 1,
+            "exact_fragment_artifacts": 6,
+            "numeric_exact_widths": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 8
+            },
+            {
+              "function": "_select.choose",
+              "samples": 8
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 5
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText._numericChunks",
+              "samples": 1
+            },
+            {
+              "function": "_CompactTextCache.rangeKey",
+              "samples": 1
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 10464,
+          "layoutStartMicros": 4737631912825,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "numeric_candidate_search": 1,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9241,
+          "layoutStartMicros": 4737631312581,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "numeric_model_preparation": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextMeasurement.boxesForRange",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 8889,
+          "layoutStartMicros": 4737633130017,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "numeric_candidate_search": 1,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 8407,
+          "layoutStartMicros": 4737630712351,
+          "sampleCount": 6,
+          "buckets": {
+            "exact_fragment_artifacts": 6
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 6
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "decorated_code",
+      "phase": "edit_middle",
+      "layoutCount": 10,
+      "sampleCount": 74,
+      "layoutsWithoutSamples": 0,
+      "truncatedStacks": 0,
+      "exclusiveBuckets": {
+        "numeric_candidate_search": 5,
+        "exact_fragment_artifacts": 48,
+        "numeric_model_preparation": 7,
+        "other_layout": 5,
+        "gc": 5,
+        "numeric_exact_widths": 4
+      },
+      "topInclusiveLocalFunctions": [
+        {
+          "function": "RenderFlowParagraph.performLayout",
+          "samples": 74
+        },
+        {
+          "function": "_Composer.compose",
+          "samples": 70
+        },
+        {
+          "function": "_select.choose",
+          "samples": 65
+        },
+        {
+          "function": "_Composer._select",
+          "samples": 65
+        },
+        {
+          "function": "_select.measure",
+          "samples": 63
+        },
+        {
+          "function": "_PreparedText.measureRange",
+          "samples": 33
+        },
+        {
+          "function": "_TextShapeCache.acquire",
+          "samples": 29
+        },
+        {
+          "function": "_TextShape.build",
+          "samples": 27
+        },
+        {
+          "function": "_CompactPaddedText.rejectedWidth",
+          "samples": 19
+        },
+        {
+          "function": "_verticalMetrics.<anonymous closure>",
+          "samples": 10
+        },
+        {
+          "function": "_TextShape.metrics",
+          "samples": 10
+        },
+        {
+          "function": "_TextMeasurement._metrics",
+          "samples": 10
+        },
+        {
+          "function": "_CompoundTextMeasurement._verticalMetrics",
+          "samples": 10
+        },
+        {
+          "function": "_CompactTextCache.measure",
+          "samples": 9
+        },
+        {
+          "function": "_CompactTextCache.get",
+          "samples": 7
+        },
+        {
+          "function": "_CompactPreparedText._compactModel",
+          "samples": 7
+        },
+        {
+          "function": "_CompactTextModel.measure",
+          "samples": 4
+        },
+        {
+          "function": "_CompactTextModel._CompactTextModel",
+          "samples": 4
+        },
+        {
+          "function": "_CompoundTextMeasurement.fragments",
+          "samples": 4
+        },
+        {
+          "function": "_Composer._commit",
+          "samples": 4
+        }
+      ],
+      "layoutsSlowestFirst": [
+        {
+          "fullLayoutUs": 13888,
+          "layoutStartMicros": 4737632012979,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 3,
+            "numeric_exact_widths": 1,
+            "gc": 1,
+            "numeric_model_preparation": 1,
+            "numeric_candidate_search": 2
+          },
+          "gcEventOverlapUs": 8321,
+          "layoutThreadGcEventOverlapUs": 3134,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 8
+            },
+            {
+              "function": "_select.choose",
+              "samples": 8
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 2
+            },
+            {
+              "function": "_CompactTextCache.styleKey",
+              "samples": 1
+            },
+            {
+              "function": "_CompactPreparedText._compactStyleKey",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12598,
+          "layoutStartMicros": 4737630812408,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "other_layout": 1,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 6278,
+          "layoutThreadGcEventOverlapUs": 2733,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12257,
+          "layoutStartMicros": 4737631412601,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "gc": 1,
+            "numeric_candidate_search": 1,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 6113,
+          "layoutThreadGcEventOverlapUs": 2138,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.choose",
+              "samples": 8
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11656,
+          "layoutStartMicros": 4737632646522,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "gc": 2
+          },
+          "gcEventOverlapUs": 5029,
+          "layoutThreadGcEventOverlapUs": 1722,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement.fragments",
+              "samples": 2
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11451,
+          "layoutStartMicros": 4737632313004,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "numeric_model_preparation": 1,
+            "other_layout": 1,
+            "numeric_exact_widths": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 8
+            },
+            {
+              "function": "_select.choose",
+              "samples": 8
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 11133,
+          "layoutStartMicros": 4737633230175,
+          "sampleCount": 6,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "numeric_exact_widths": 1
+          },
+          "gcEventOverlapUs": 4508,
+          "layoutThreadGcEventOverlapUs": 1775,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 2
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 2
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 2
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 2
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 10472,
+          "layoutStartMicros": 4737631712743,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "numeric_exact_widths": 1,
+            "numeric_model_preparation": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactStyleKey.==",
+              "samples": 1
+            },
+            {
+              "function": "_CompactTextModel.measure",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9670,
+          "layoutStartMicros": 4737631112683,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 4,
+            "numeric_model_preparation": 2,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_CompactTextCache.get",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPreparedText._compactModel",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9378,
+          "layoutStartMicros": 4737632946545,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 4,
+            "numeric_model_preparation": 1,
+            "numeric_candidate_search": 1,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactTextModel.width",
+              "samples": 1
+            },
+            {
+              "function": "calibrate.matches",
+              "samples": 1
+            },
+            {
+              "function": "_CompactTextModel.calibrate",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9175,
+          "layoutStartMicros": 4737630512335,
+          "sampleCount": 7,
+          "buckets": {
+            "numeric_candidate_search": 1,
+            "exact_fragment_artifacts": 5,
+            "numeric_model_preparation": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPreparedText._compactExcluded",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "decorated_code",
+      "phase": "edit_end",
+      "layoutCount": 10,
+      "sampleCount": 81,
+      "layoutsWithoutSamples": 0,
+      "truncatedStacks": 0,
+      "exclusiveBuckets": {
+        "exact_fragment_artifacts": 55,
+        "other_layout": 8,
+        "numeric_candidate_search": 5,
+        "gc": 4,
+        "source_preparation": 1,
+        "numeric_exact_widths": 3,
+        "child_layout": 1,
+        "fragment_commit": 4
+      },
+      "topInclusiveLocalFunctions": [
+        {
+          "function": "RenderFlowParagraph.performLayout",
+          "samples": 81
+        },
+        {
+          "function": "_Composer.compose",
+          "samples": 75
+        },
+        {
+          "function": "_Composer._select",
+          "samples": 64
+        },
+        {
+          "function": "_select.choose",
+          "samples": 63
+        },
+        {
+          "function": "_select.measure",
+          "samples": 62
+        },
+        {
+          "function": "_PreparedText.measureRange",
+          "samples": 44
+        },
+        {
+          "function": "_TextShapeCache.acquire",
+          "samples": 38
+        },
+        {
+          "function": "_TextShape.build",
+          "samples": 31
+        },
+        {
+          "function": "_CompactPaddedText.rejectedWidth",
+          "samples": 8
+        },
+        {
+          "function": "_Composer._commit",
+          "samples": 7
+        },
+        {
+          "function": "_CompoundTextMeasurement._verticalMetrics",
+          "samples": 5
+        },
+        {
+          "function": "_verticalMetrics.<anonymous closure>",
+          "samples": 5
+        },
+        {
+          "function": "_CompoundTextMeasurement.fragments",
+          "samples": 5
+        },
+        {
+          "function": "_TextShape.metrics",
+          "samples": 4
+        },
+        {
+          "function": "_TextMeasurement._metrics",
+          "samples": 4
+        },
+        {
+          "function": "_TextMeasurement.boxesForRange",
+          "samples": 3
+        },
+        {
+          "function": "_TextMeasurement.fragments",
+          "samples": 3
+        },
+        {
+          "function": "_CompoundTextMeasurement.dispose",
+          "samples": 3
+        },
+        {
+          "function": "_TextShape.release",
+          "samples": 3
+        },
+        {
+          "function": "_TextMeasurement.dispose",
+          "samples": 3
+        }
+      ],
+      "layoutsSlowestFirst": [
+        {
+          "fullLayoutUs": 18682,
+          "layoutStartMicros": 4737632446888,
+          "sampleCount": 12,
+          "buckets": {
+            "child_layout": 1,
+            "numeric_exact_widths": 1,
+            "exact_fragment_artifacts": 7,
+            "other_layout": 1,
+            "gc": 1,
+            "fragment_commit": 1
+          },
+          "gcEventOverlapUs": 11707,
+          "layoutThreadGcEventOverlapUs": 4865,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 12
+            },
+            {
+              "function": "_select.measure",
+              "samples": 10
+            },
+            {
+              "function": "_select.choose",
+              "samples": 10
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 10
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 10
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 7
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 5
+            },
+            {
+              "function": "RenderFlowBoxAdapter.performLayout",
+              "samples": 1
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 1
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 15342,
+          "layoutStartMicros": 4737631812920,
+          "sampleCount": 9,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "numeric_candidate_search": 1,
+            "gc": 1,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 8519,
+          "layoutThreadGcEventOverlapUs": 3124,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 9
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 9
+            },
+            {
+              "function": "_select.choose",
+              "samples": 8
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 6
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_PreparedText.span",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 13847,
+          "layoutStartMicros": 4737630612305,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "other_layout": 1,
+            "numeric_candidate_search": 1,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 8016,
+          "layoutThreadGcEventOverlapUs": 3371,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 6
+            },
+            {
+              "function": "_select.choose",
+              "samples": 6
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12165,
+          "layoutStartMicros": 4737631212590,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "numeric_candidate_search": 1,
+            "other_layout": 1,
+            "numeric_exact_widths": 1
+          },
+          "gcEventOverlapUs": 7143,
+          "layoutThreadGcEventOverlapUs": 2356,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_CompactTextCache.measure",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.release",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement.dispose",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 12053,
+          "layoutStartMicros": 4737633029945,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "other_layout": 1,
+            "fragment_commit": 1,
+            "gc": 1
+          },
+          "gcEventOverlapUs": 6932,
+          "layoutThreadGcEventOverlapUs": 2727,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_Composer.compose",
+              "samples": 8
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 5
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement.descent",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 10460,
+          "layoutStartMicros": 4737630912435,
+          "sampleCount": 8,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "source_preparation": 1,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 8
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 5
+            },
+            {
+              "function": "_select.measure",
+              "samples": 5
+            },
+            {
+              "function": "_select.choose",
+              "samples": 5
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_TextBreakAnalysis.candidatesAfter",
+              "samples": 1
+            },
+            {
+              "function": "_PreparedText.indexedCandidatesAfter",
+              "samples": 1
+            },
+            {
+              "function": "_candidatesFor",
+              "samples": 1
+            },
+            {
+              "function": "_select.#candidates#initializer",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 10009,
+          "layoutStartMicros": 4737632112913,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 7
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 6
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._verticalMetrics",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9495,
+          "layoutStartMicros": 4737631512731,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 5,
+            "other_layout": 1,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "_select.measure",
+              "samples": 7
+            },
+            {
+              "function": "_select.choose",
+              "samples": 7
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 7
+            },
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 4
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 3
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 1
+            },
+            {
+              "function": "_TextShape.metrics",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement._metrics",
+              "samples": 1
+            },
+            {
+              "function": "_verticalMetrics.<anonymous closure>",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 9204,
+          "layoutStartMicros": 4737633330061,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 6,
+            "other_layout": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 4
+            },
+            {
+              "function": "_select.measure",
+              "samples": 4
+            },
+            {
+              "function": "_select.choose",
+              "samples": 4
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 4
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 3
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement.ascent",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement._origin",
+              "samples": 1
+            },
+            {
+              "function": "_CompoundTextMeasurement.fragments",
+              "samples": 1
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 1
+            }
+          ]
+        },
+        {
+          "fullLayoutUs": 8724,
+          "layoutStartMicros": 4737632746457,
+          "sampleCount": 7,
+          "buckets": {
+            "exact_fragment_artifacts": 3,
+            "numeric_exact_widths": 1,
+            "fragment_commit": 2,
+            "numeric_candidate_search": 1
+          },
+          "gcEventOverlapUs": 0,
+          "layoutThreadGcEventOverlapUs": 0,
+          "timelineCoversLayout": true,
+          "topInclusiveLocalFunctions": [
+            {
+              "function": "RenderFlowParagraph.performLayout",
+              "samples": 7
+            },
+            {
+              "function": "_Composer.compose",
+              "samples": 6
+            },
+            {
+              "function": "_select.measure",
+              "samples": 4
+            },
+            {
+              "function": "_select.choose",
+              "samples": 4
+            },
+            {
+              "function": "_Composer._select",
+              "samples": 4
+            },
+            {
+              "function": "_TextShape.build",
+              "samples": 2
+            },
+            {
+              "function": "_TextShapeCache.acquire",
+              "samples": 2
+            },
+            {
+              "function": "_PreparedText.measureRange",
+              "samples": 2
+            },
+            {
+              "function": "_Composer._commit",
+              "samples": 2
+            },
+            {
+              "function": "_CompactPaddedText.rejectedWidth",
+              "samples": 2
+            },
+            {
+              "function": "_TextMeasurement.boxesForRange",
+              "samples": 1
+            },
+            {
+              "function": "_TextMeasurement.fragments",
+              "samples": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
