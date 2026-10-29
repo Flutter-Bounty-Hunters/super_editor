@@ -103,22 +103,31 @@ void main() {
       });
 
       group("long press >", () {
-        testWidgetsOnIos("selects word under finger", (tester) async {
+        testWidgetsOnIos("places caret under finger and magnifies it", (tester) async {
           await _pumpAppWithLongText(tester);
 
           // Ensure that no overlay controls are visible.
           _expectNoControlsAreVisible();
 
-          // Long press on the middle of "conse|ctetur".
-          await tester.longPressInParagraph("1", 33);
+          // Long press down on the middle of "conse|ctetur".
+          final gesture = await tester.longPressDownInParagraph("1", 33);
+          await tester.pump();
+
+          // Ensure that the caret sits exactly where the user pressed, rather than
+          // at a word boundary, and that the word wasn't selected.
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(33));
+
+          // Ensure that the magnifier is visible, but the toolbar isn't.
+          expect(SuperEditorInspector.isMobileMagnifierVisible(), isTrue);
+          expect(SuperEditorInspector.isMobileToolbarVisible(), isFalse);
+
+          // Release the long-press.
+          await gesture.up();
           await tester.pumpAndSettle();
 
-          // Ensure the word was selected.
-          expect(SuperEditorInspector.findDocumentSelection(), isNotNull);
-          expect(SuperEditorInspector.findDocumentSelection(), _wordConsecteturSelection);
-
-          // Ensure the drag handles and toolbar are visible, but the magnifier isn't.
-          _expectHandlesAndToolbar();
+          // Ensure that the caret stayed put and the magnifier went away.
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(33));
+          expect(SuperEditorInspector.isMobileMagnifierVisible(), isFalse);
         });
 
         testWidgetsOnIos("does nothing with hack global property", (tester) async {
@@ -143,164 +152,186 @@ void main() {
           expect(SuperEditorInspector.findDocumentSelection()!.isCollapsed, isTrue);
         });
 
-        testWidgetsOnIos("over handle does nothing", (tester) async {
+        testWidgetsOnIos("moves an existing caret to the finger", (tester) async {
           await _pumpAppWithLongText(tester);
 
-          // Long press on the middle of "do|lor".
-          await tester.longPressInParagraph("1", 14);
+          // Place the caret at the start of the paragraph.
+          await tester.placeCaretInParagraph("1", 0);
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(0));
+
+          // Long press on the middle of "conse|ctetur".
+          await tester.longPressInParagraph("1", 33);
           await tester.pumpAndSettle();
 
-          // Ensure the word was selected.
-          expect(SuperEditorInspector.findDocumentSelection(), isNotNull);
+          // Ensure that the caret moved to where the user pressed.
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(33));
+        });
+
+        testWidgetsOnIos("moves the caret when pressing right beside it", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Place the caret at the end of "dolor|".
+          await tester.placeCaretInParagraph("1", 17);
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(17));
+
+          // Long press down a couple of characters upstream from the caret, in
+          // "dol|or", which is close enough to the caret to also be a caret drag.
+          final gesture = await tester.longPressDownInParagraph("1", 15);
+          await tester.pump();
+
+          // Ensure that the caret moved to the finger, and that the magnifier shows.
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(15));
+          expect(SuperEditorInspector.isMobileMagnifierVisible(), isTrue);
+
+          await gesture.up();
+          await tester.pumpAndSettle();
+        });
+
+        testWidgetsOnIos("replaces an expanded selection with the caret", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
 
-          // Long-press near the upstream handle, but just before the selected word.
-          await tester.longPressInParagraph("1", 11);
+          // Long press on the middle of "conse|ctetur", away from the selection.
+          await tester.longPressInParagraph("1", 33);
           await tester.pumpAndSettle();
+
+          // Ensure that the selection collapsed to a caret where the user pressed.
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(33));
+        });
+
+        testWidgetsOnIos("on an expanded selection's handle does nothing", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the caret of the upstream handle, within the line.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx, upstreamHandle.bottom - 8));
 
           // Ensure that the selection didn't change.
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
 
-          // Long-press near the downstream handle, but just after the selected word.
-          await tester.longPressInParagraph("1", 18);
-          await tester.pumpAndSettle();
+          // Long-press on the caret of the downstream handle, within the line.
+          final downstreamHandle = tester.getRect(find.byKey(DocumentKeys.downstreamHandle));
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx, downstreamHandle.top + 8));
 
           // Ensure that the selection didn't change.
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the ball of each handle, which sits above the line for
+          // the upstream handle, and below the line for the downstream handle.
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx + 6, upstreamHandle.top + 4));
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx - 6, downstreamHandle.bottom - 4));
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
         });
 
-        testWidgetsOnIos("selects by word when dragging upstream and then back downstream", (tester) async {
+        testWidgetsOnIos("beside an expanded selection's upstream handle places the caret", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the text just upstream from the upstream handle, close
+          // enough that a tap there would still grab the handle.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx - 6, upstreamHandle.bottom - 8));
+
+          // Ensure that the long-press replaced the selection with a caret at the
+          // finger, rather than being ignored as a press on the handle.
+          final selection = SuperEditorInspector.findDocumentSelection()!;
+          expect(selection.isCollapsed, isTrue);
+          expect((selection.extent.nodePosition as TextNodePosition).offset, lessThanOrEqualTo(12));
+        });
+
+        testWidgetsOnIos("beside an expanded selection's downstream handle places the caret", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the text just downstream from the downstream handle, close
+          // enough that a tap there would still grab the handle.
+          final downstreamHandle = tester.getRect(find.byKey(DocumentKeys.downstreamHandle));
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx + 6, downstreamHandle.top + 8));
+
+          // Ensure that the long-press replaced the selection with a caret at the
+          // finger, rather than being ignored as a press on the handle.
+          final selection = SuperEditorInspector.findDocumentSelection()!;
+          expect(selection.isCollapsed, isTrue);
+          expect((selection.extent.nodePosition as TextNodePosition).offset, greaterThanOrEqualTo(17));
+        });
+
+        testWidgetsOnIos("tap beside an expanded selection's handle keeps the selection", (tester) async {
+          await _pumpAppWithLongText(tester);
+
+          // Select the word "dolor".
+          await tester.doubleTapInParagraph("1", 14);
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Tap just upstream from the upstream handle, where a long-press places the caret.
+          final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
+          await tester.tapAt(Offset(upstreamHandle.center.dx - 6, upstreamHandle.bottom - 8));
+          await tester.pumpAndSettle();
+
+          // Ensure that the tap counted as a tap on the handle, which keeps the selection.
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+        });
+
+        testWidgetsOnIos("moves the caret with the finger when dragging", (tester) async {
           await _pumpAppWithLongText(tester);
 
           // Long press on the middle of "do|lor".
           final gesture = await tester.longPressDownInParagraph("1", 14);
-          await tester.pumpAndSettle();
+          await tester.pump();
+          expect(SuperEditorInspector.findDocumentSelection(), _caretAt(14));
 
-          // Ensure the word was selected.
-          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
-
-          // Ensure the drag handles and magnifier are visible, but the toolbar isn't.
-          _expectHandlesAndMagnifier();
-
-          // Drag upstream to the end of the previous word.
-          // "Lorem ipsu|m dolor sit amet"
-          //            ^ position 10
-          //
-          // We do this with manual distances because the attempt to look up character
-          // offsets was producing unpredictable results.
+          // Drag downstream.
           const dragIncrementCount = 10;
-          const upstreamDragDistance = -130 / dragIncrementCount;
           for (int i = 0; i < dragIncrementCount; i += 1) {
-            await gesture.moveBy(const Offset(upstreamDragDistance, 0));
+            await gesture.moveBy(const Offset(80 / dragIncrementCount, 0));
             await tester.pump();
           }
 
-          // Ensure the original word and upstream word are both selected.
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 6),
-              ),
-              extent: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 17),
-              ),
-            ),
-          );
+          // Ensure that the caret followed the finger downstream, without selecting
+          // anything, and that the magnifier is still visible.
+          final downstreamSelection = SuperEditorInspector.findDocumentSelection()!;
+          expect(downstreamSelection.isCollapsed, isTrue);
+          final downstreamOffset = (downstreamSelection.extent.nodePosition as TextNodePosition).offset;
+          expect(downstreamOffset, greaterThan(14));
+          expect(SuperEditorInspector.isMobileMagnifierVisible(), isTrue);
 
-          // Drag back towards the original long-press offset.
-          //
-          // We do this with manual distances because the attempt to look up character
-          // offsets was producing unpredictable results.
-          const downstreamDragDistance = 80 / dragIncrementCount;
+          // Drag back upstream, past the original long-press offset.
           for (int i = 0; i < dragIncrementCount; i += 1) {
-            await gesture.moveBy(const Offset(downstreamDragDistance, 0));
+            await gesture.moveBy(const Offset(-130 / dragIncrementCount, 0));
             await tester.pump();
           }
 
-          // Ensure that only the original word is selected.
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(
-                nodeId: "1",
-                // Note: when we move the selection back the other way, the word calculation
-                // decided to include the leading space, which is why we pass a different
-                // selection here.
-                nodePosition: TextNodePosition(offset: 11),
-              ),
-              extent: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 17),
-              ),
-            ),
-          );
+          // Ensure that the caret followed the finger upstream, without selecting anything.
+          final upstreamSelection = SuperEditorInspector.findDocumentSelection()!;
+          expect(upstreamSelection.isCollapsed, isTrue);
+          expect((upstreamSelection.extent.nodePosition as TextNodePosition).offset, lessThan(14));
 
-          // Release the gesture so the test system doesn't complain.
+          // Release the gesture, and ensure the magnifier goes away.
           await gesture.up();
+          await tester.pumpAndSettle();
+          expect(SuperEditorInspector.findDocumentSelection()!.isCollapsed, isTrue);
+          expect(SuperEditorInspector.isMobileMagnifierVisible(), isFalse);
         });
 
-        testWidgetsOnIos("selects by word when dragging downstream and then back upstream", (tester) async {
-          await _pumpAppWithLongText(tester);
-
-          // Long press on the middle of "do|lor".
-          final gesture = await tester.longPressDownInParagraph("1", 14);
-          await tester.pumpAndSettle();
-
-          // Ensure the word was selected.
-          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
-
-          // Ensure the drag handles and magnifier are visible, but the toolbar isn't.
-          _expectHandlesAndMagnifier();
-
-          // Drag downstream to the beginning of the next word.
-          // "Lorem ipsum dolor s|it amet"
-          //                     ^ position 19
-          //
-          // We do this with manual distances because the attempt to look up character
-          // offsets was producing unpredictable results.
-          const dragIncrementCount = 10;
-          const downstreamDragDistance = 80 / dragIncrementCount;
-          for (int i = 0; i < dragIncrementCount; i += 1) {
-            await gesture.moveBy(const Offset(downstreamDragDistance, 0));
-            await tester.pump();
-          }
-
-          // Ensure the original word and downstream word are both selected.
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 12),
-              ),
-              extent: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 21),
-              ),
-            ),
-          );
-
-          // Drag back towards the original long-press offset.
-          //
-          // We do this with manual distances because the attempt to look up character
-          // offsets was producing unpredictable results.
-          const upstreamDragDistance = -40 / dragIncrementCount;
-          for (int i = 0; i < dragIncrementCount; i += 1) {
-            await gesture.moveBy(const Offset(upstreamDragDistance, 0));
-            await tester.pump();
-          }
-
-          // Ensure that only the original word is selected.
-          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
-
-          // Release the gesture so the test system doesn't complain.
-          await gesture.up();
-        });
-
-        testWidgetsOnIos("selects an image and then by word when jumping down", (tester) async {
+        testWidgetsOnIos("places the caret beside an image and moves it into text", (tester) async {
           await tester
               .createDocument()
               .withCustomContent(
@@ -322,21 +353,20 @@ void main() {
             ],
           ).pump();
 
-          // Long press near the top of the image.
-          final tapDownOffset = tester.getTopLeft(find.byType(ImageComponent)) + const Offset(0, 10);
+          // Long press near the top left of the image.
+          final tapDownOffset = tester.getTopLeft(find.byType(ImageComponent)) + const Offset(10, 10);
           final gesture = await tester.startGesture(tapDownOffset);
           await tester.pump(kLongPressTimeout + kPressTimeout);
 
-          // Ensure the image was selected.
+          // Ensure that the caret sits before the image, rather than the image being selected.
           expect(
             SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(nodeId: '1', nodePosition: UpstreamDownstreamNodePosition.upstream()),
-              extent: DocumentPosition(nodeId: '1', nodePosition: UpstreamDownstreamNodePosition.downstream()),
+            const DocumentSelection.collapsed(
+              position: DocumentPosition(nodeId: '1', nodePosition: UpstreamDownstreamNodePosition.upstream()),
             ),
           );
 
-          // Drag down from the image to the begining of the paragraph.
+          // Drag down from the image to the beginning of the paragraph.
           const dragIncrementCount = 10;
           final verticalDragDistance =
               Offset(0, (tester.getTopLeft(find.byType(TextComponent)).dy - tapDownOffset.dy) / dragIncrementCount);
@@ -345,83 +375,10 @@ void main() {
             await tester.pump();
           }
 
-          // Ensure the selection begins at the image and goes to the end of "Lorem".
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(nodeId: '1', nodePosition: UpstreamDownstreamNodePosition.upstream()),
-              extent: DocumentPosition(
-                nodeId: "2",
-                nodePosition: TextNodePosition(offset: 5),
-              ),
-            ),
-          );
-
-          // Release the gesture so the test system doesn't complain.
-          await gesture.up();
-          await tester.pump();
-        });
-
-        testWidgetsOnIos("selects an image and then by word when jumping up", (tester) async {
-          await tester
-              .createDocument()
-              .withCustomContent(
-                MutableDocument(
-                  nodes: [
-                    ParagraphNode(
-                      id: '1',
-                      text: AttributedText('Lorem ipsum dolor'),
-                    ),
-                    ImageNode(id: '2', imageUrl: ''),
-                  ],
-                ),
-              )
-              .withAddedComponents(
-            [
-              const FakeImageComponentBuilder(
-                size: Size(100, 100),
-              ),
-            ],
-          ).pump();
-
-          // Long press near the top of the image.
-          final tapDownOffset = tester.getTopLeft(find.byType(ImageComponent)) + const Offset(0, 10);
-          final gesture = await tester.startGesture(tapDownOffset);
-          await tester.pump(kLongPressTimeout + kPressTimeout);
-
-          // Ensure the image was selected.
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(nodeId: '2', nodePosition: UpstreamDownstreamNodePosition.upstream()),
-              extent: DocumentPosition(nodeId: '2', nodePosition: UpstreamDownstreamNodePosition.downstream()),
-            ),
-          );
-
-          // Drag up from the image to the begining of the paragraph.
-          const dragIncrementCount = 10;
-          final verticalDragDistance =
-              Offset(0, (tester.getTopLeft(find.byType(TextComponent)).dy - tapDownOffset.dy) / dragIncrementCount);
-          for (int i = 0; i < dragIncrementCount; i += 1) {
-            await gesture.moveBy(verticalDragDistance);
-            await tester.pump();
-          }
-
-          // Ensure the selection starts at the beginning of the paragraph and goes to the end of the image.
-          //
-          // On iOS, the selection ends up normalized, where the position the appears first in the document
-          // is considered to be the selection base. Therefore, even though we are dragging upstream,
-          // the paragraph is the base of the selection.
-          expect(
-            SuperEditorInspector.findDocumentSelection(),
-            const DocumentSelection(
-              base: DocumentPosition(
-                nodeId: "1",
-                nodePosition: TextNodePosition(offset: 0),
-              ),
-              extent: DocumentPosition(nodeId: '2', nodePosition: UpstreamDownstreamNodePosition.downstream()),
-            ),
-          );
+          // Ensure that the caret moved into the paragraph, without selecting anything.
+          final selection = SuperEditorInspector.findDocumentSelection()!;
+          expect(selection.isCollapsed, isTrue);
+          expect(selection.extent.nodeId, '2');
 
           // Release the gesture so the test system doesn't complain.
           await gesture.up();
@@ -712,16 +669,24 @@ Future<void> _pumpAppWithLongText(WidgetTester tester) async {
       .pump();
 }
 
-const _wordConsecteturSelection = DocumentSelection(
-  base: DocumentPosition(
-    nodeId: "1",
-    nodePosition: TextNodePosition(offset: 28),
-  ),
-  extent: DocumentPosition(
-    nodeId: "1",
-    nodePosition: TextNodePosition(offset: 39),
-  ),
-);
+/// Long-presses at the given global [offset], and releases.
+Future<void> _longPressAt(WidgetTester tester, Offset offset) async {
+  // Wait out any earlier tap sequence, so that this press doesn't count as the
+  // next tap in a double or triple tap.
+  await tester.pump(kDoubleTapTimeout);
+
+  final gesture = await tester.startGesture(offset);
+  await tester.pump(kLongPressTimeout + kPressTimeout);
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
+DocumentSelection _caretAt(int offset) => DocumentSelection.collapsed(
+      position: DocumentPosition(
+        nodeId: "1",
+        nodePosition: TextNodePosition(offset: offset),
+      ),
+    );
 
 const _wordDolorSelection = DocumentSelection(
   base: DocumentPosition(
@@ -737,17 +702,5 @@ const _wordDolorSelection = DocumentSelection(
 void _expectNoControlsAreVisible() {
   expect(find.byType(IOSSelectionHandle), findsNothing);
   expect(find.byType(IOSTextEditingFloatingToolbar), findsNothing);
-  expect(find.byType(IOSRoundedRectangleMagnifyingGlass), findsNothing);
-}
-
-void _expectHandlesAndMagnifier() {
-  expect(find.byType(IOSSelectionHandle), findsNWidgets(2));
-  expect(find.byType(IOSRoundedRectangleMagnifyingGlass), findsOneWidget);
-  expect(find.byType(IOSTextEditingFloatingToolbar), findsNothing);
-}
-
-void _expectHandlesAndToolbar() {
-  expect(find.byType(IOSSelectionHandle), findsNWidgets(2));
-  expect(find.byType(IOSTextEditingFloatingToolbar), findsOneWidget);
   expect(find.byType(IOSRoundedRectangleMagnifyingGlass), findsNothing);
 }

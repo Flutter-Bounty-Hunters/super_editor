@@ -25,7 +25,6 @@ import 'package:super_editor/src/infrastructure/flutter/flutter_scheduler.dart';
 import 'package:super_editor/src/infrastructure/multi_tap_gesture.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/floating_cursor.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/ios_document_controls.dart';
-import 'package:super_editor/src/infrastructure/platforms/ios/long_press_selection.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/magnifier.dart';
 import 'package:super_editor/src/infrastructure/platforms/ios/selection_heuristics.dart';
 import 'package:super_editor/src/infrastructure/platforms/mobile_documents.dart';
@@ -358,8 +357,10 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
 
   Timer? _tapDownLongPressTimer;
   Offset? _globalTapDownOffset;
-  bool get _isLongPressInProgress => _longPressStrategy != null;
-  IosLongPressSelectionStrategy? _longPressStrategy;
+
+  /// Whether the user is holding a long-press, which places the caret under
+  /// their finger and magnifies it, as iOS does in editable text.
+  bool _isLongPressInProgress = false;
 
   // Cached view metrics to ignore unnecessary didChangeMetrics calls.
   Size? _lastSize;
@@ -621,27 +622,27 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
       return;
     }
 
-    if (_isOverBaseHandle(interactorOffset) ||
-        _isOverExtentHandle(interactorOffset) ||
-        _isOverCollapsedHandle(interactorOffset)) {
-      // Don't do anything for long presses over the handles, because we want the user
+    final selection = widget.selection.value;
+    if (selection != null && !selection.isCollapsed && _isOnExpandedHandleForLongPress(selection, interactorOffset)) {
+      // Don't do anything for long presses on the handles, because we want the user
       // to be able to drag them without worrying about how long they've pressed.
+      //
+      // A long-press over the caret still moves the caret, because that's what the
+      // user would get by dragging the caret, too.
       return;
     }
 
-    _globalDragOffset = _globalTapDownOffset;
-    _longPressStrategy = IosLongPressSelectionStrategy(
-      document: widget.document,
-      documentLayout: _docLayout,
-      select: _select,
-    );
-    final didLongPressSelectionStart = _longPressStrategy!.onLongPressStart(
-      tapDownDocumentOffset: tapDownDocumentOffset,
-    );
-    if (!didLongPressSelectionStart) {
-      _longPressStrategy = null;
+    if (!_docLayout.getComponentByNodeId(tapDownDocumentPosition.nodeId)!.isVisualSelectionSupported()) {
+      // The user pressed a component that can't hold the caret. Let the eventual
+      // tap up handle it, as it does for any tap on such a component.
       return;
     }
+
+    // As on iOS, a long-press in editable text places the caret exactly under the
+    // finger, and magnifies it, so that the user can drag the caret into place.
+    _globalDragOffset = _globalTapDownOffset;
+    _isLongPressInProgress = true;
+    _selectPosition(tapDownDocumentPosition);
 
     _placeFocalPointNearTouchOffset();
     _controlsController!
@@ -649,6 +650,49 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
       ..showMagnifier();
 
     widget.focusNode.requestFocus();
+  }
+
+  /// Whether the given [interactorOffset] sits on one of the handles of the
+  /// given expanded [selection], as far as a long-press is concerned.
+  ///
+  /// A tap or drag grabs a handle from well to either side of it (see
+  /// [_isOverBaseHandle] and [_isOverExtentHandle]), which makes handles easy to
+  /// grab. A long-press only counts as being on a handle when it's on the shape
+  /// of the handle: the thin line that runs alongside the text, or the ball
+  /// at the end of that line, which sits above the text for the upstream
+  /// handle, and below the text for the downstream handle. This way, the user
+  /// can still long-press the characters right beside a handle.
+  bool _isOnExpandedHandleForLongPress(DocumentSelection selection, Offset interactorOffset) {
+    final isDownstream = widget.document.getAffinityForSelection(selection) == TextAffinity.downstream;
+    final upstream = isDownstream ? selection.base : selection.extent;
+    final downstream = isDownstream ? selection.extent : selection.base;
+    final docOffset = _interactorOffsetToDocumentOffset(interactorOffset);
+
+    return _isOnHandleShape(upstream, HandleType.upstream, docOffset) ||
+        _isOnHandleShape(downstream, HandleType.downstream, docOffset);
+  }
+
+  /// Whether the given [docOffset] sits on the line, or the ball, of the handle
+  /// of the given [handleType] at [handlePosition].
+  bool _isOnHandleShape(DocumentPosition handlePosition, HandleType handleType, Offset docOffset) {
+    final caretRect = _docLayout.getRectForPosition(handlePosition)!;
+    final centerX = caretRect.center.dx;
+
+    final lineArea = Rect.fromLTRB(
+      centerX - _longPressHandleLineHalfWidth,
+      caretRect.top,
+      centerX + _longPressHandleLineHalfWidth,
+      caretRect.bottom,
+    );
+    if (lineArea.contains(docOffset)) {
+      return true;
+    }
+
+    const ballRadius = defaultIosHandleBallDiameter / 2;
+    final ballCenter = handleType == HandleType.upstream
+        ? Offset(centerX, caretRect.top - ballRadius)
+        : Offset(centerX, caretRect.bottom + ballRadius);
+    return Rect.fromCircle(center: ballCenter, radius: ballRadius).contains(docOffset);
   }
 
   void _onTapCancel() {
@@ -663,6 +707,18 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     _controlsController!
       ..hideMagnifier()
       ..blinkCaret();
+
+    if (_isLongPressInProgress) {
+      // The user released a long-press without dragging. The long-press already
+      // placed the caret, so this isn't a tap. Offer the editing options at the
+      // caret, as iOS does.
+      _isLongPressInProgress = false;
+      _controlsController!.showToolbar();
+      if (widget.openKeyboardOnSelectionChange) {
+        widget.openSoftwareKeyboard();
+      }
+      return;
+    }
 
     editorGesturesLog.info("Tap down on document");
     final docOffset = _interactorOffsetToDocumentOffset(details.localPosition);
@@ -1001,7 +1057,6 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     if (_isLongPressInProgress) {
       _dragMode = DragMode.longPress;
       _dragHandleType = null;
-      _longPressStrategy!.onLongPressDragStart();
     } else if (selection.isCollapsed && _isOverCollapsedHandle(details.localPosition)) {
       _dragMode = DragMode.collapsed;
       _dragHandleType = HandleType.collapsed;
@@ -1100,13 +1155,15 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     final dragEndInViewport = _interactorOffsetToViewportOffset(_dragEndInInteractor!);
 
     if (_isLongPressInProgress) {
+      // Move the caret with the finger.
       final fingerDragDelta = _globalDragOffset! - _globalStartDragOffset!;
       final scrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
-      final fingerDocumentOffset = _docLayout.getDocumentOffsetFromAncestorOffset(details.globalPosition);
       final fingerDocumentPosition = _docLayout.getDocumentPositionNearestToOffset(
         _startDragPositionOffset! + fingerDragDelta - Offset(0, scrollDelta),
       );
-      _longPressStrategy!.onLongPressDragUpdate(fingerDocumentOffset, fingerDocumentPosition);
+      if (fingerDocumentPosition != null) {
+        _selectPosition(fingerDocumentPosition);
+      }
     } else {
       _updateSelectionForNewDragHandleLocation();
     }
@@ -1227,8 +1284,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
   }
 
   void _onLongPressEnd() {
-    _longPressStrategy!.onLongPressEnd();
-    _longPressStrategy = null;
+    _isLongPressInProgress = false;
     _dragMode = null;
 
     _updateOverlayControlsAfterFinishingDragSelection();
@@ -1547,6 +1603,13 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     );
   }
 }
+
+/// How far to either side of the center of a handle's line a long-press still
+/// counts as being on the handle, rather than on the text beside it.
+///
+/// The line is only a couple of pixels wide, so this leaves the characters right
+/// beside the handle free to long-press.
+const _longPressHandleLineHalfWidth = 3.0;
 
 enum DragMode {
   // Dragging the collapsed handle
