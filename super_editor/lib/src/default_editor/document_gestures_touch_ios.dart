@@ -623,10 +623,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     }
 
     final selection = widget.selection.value;
-    if (selection != null &&
-        !selection.isCollapsed &&
-        (_isOnHandleForLongPress(selection.base, interactorOffset) ||
-            _isOnHandleForLongPress(selection.extent, interactorOffset))) {
+    if (selection != null && !selection.isCollapsed && _isOnExpandedHandleForLongPress(selection, interactorOffset)) {
       // Don't do anything for long presses on the handles, because we want the user
       // to be able to drag them without worrying about how long they've pressed.
       //
@@ -655,26 +652,47 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     widget.focusNode.requestFocus();
   }
 
-  /// Whether the given [interactorOffset] sits on the handle at [handlePosition],
-  /// as far as a long-press is concerned.
+  /// Whether the given [interactorOffset] sits on one of the handles of the
+  /// given expanded [selection], as far as a long-press is concerned.
   ///
   /// A tap or drag grabs a handle from well to either side of it (see
   /// [_isOverBaseHandle] and [_isOverExtentHandle]), which makes handles easy to
-  /// grab. A long-press only counts as being on a handle when it's no further to
-  /// either side than the handle's ball, so that the user can still long-press the
-  /// characters right beside a handle.
-  bool _isOnHandleForLongPress(DocumentPosition handlePosition, Offset interactorOffset) {
-    final handleRect = _docLayout.getRectForPosition(handlePosition)!;
-    const halfWidth = defaultIosHandleBallDiameter / 2;
-    final handleArea = Rect.fromLTRB(
-      handleRect.left - halfWidth,
-      handleRect.top - defaultIosHandleBallDiameter,
-      handleRect.right + halfWidth,
-      handleRect.bottom + defaultIosHandleBallDiameter,
-    );
-
+  /// grab. A long-press only counts as being on a handle when it's on the shape
+  /// of the handle: the thin line that runs alongside the text, or the ball
+  /// at the end of that line, which sits above the text for the upstream
+  /// handle, and below the text for the downstream handle. This way, the user
+  /// can still long-press the characters right beside a handle.
+  bool _isOnExpandedHandleForLongPress(DocumentSelection selection, Offset interactorOffset) {
+    final isDownstream = widget.document.getAffinityForSelection(selection) == TextAffinity.downstream;
+    final upstream = isDownstream ? selection.base : selection.extent;
+    final downstream = isDownstream ? selection.extent : selection.base;
     final docOffset = _interactorOffsetToDocumentOffset(interactorOffset);
-    return handleArea.contains(docOffset);
+
+    return _isOnHandleShape(upstream, HandleType.upstream, docOffset) ||
+        _isOnHandleShape(downstream, HandleType.downstream, docOffset);
+  }
+
+  /// Whether the given [docOffset] sits on the line, or the ball, of the handle
+  /// of the given [handleType] at [handlePosition].
+  bool _isOnHandleShape(DocumentPosition handlePosition, HandleType handleType, Offset docOffset) {
+    final caretRect = _docLayout.getRectForPosition(handlePosition)!;
+    final centerX = caretRect.center.dx;
+
+    final lineArea = Rect.fromLTRB(
+      centerX - _longPressHandleLineHalfWidth,
+      caretRect.top,
+      centerX + _longPressHandleLineHalfWidth,
+      caretRect.bottom,
+    );
+    if (lineArea.contains(docOffset)) {
+      return true;
+    }
+
+    const ballRadius = defaultIosHandleBallDiameter / 2;
+    final ballCenter = handleType == HandleType.upstream
+        ? Offset(centerX, caretRect.top - ballRadius)
+        : Offset(centerX, caretRect.bottom + ballRadius);
+    return Rect.fromCircle(center: ballCenter, radius: ballRadius).contains(docOffset);
   }
 
   void _onTapCancel() {
@@ -1585,6 +1603,13 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
     );
   }
 }
+
+/// How far to either side of the center of a handle's line a long-press still
+/// counts as being on the handle, rather than on the text beside it.
+///
+/// The line is only a couple of pixels wide, so this leaves the characters right
+/// beside the handle free to long-press.
+const _longPressHandleLineHalfWidth = 3.0;
 
 enum DragMode {
   // Dragging the collapsed handle

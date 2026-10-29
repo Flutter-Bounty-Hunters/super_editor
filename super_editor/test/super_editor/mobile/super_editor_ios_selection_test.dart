@@ -224,6 +224,13 @@ void main() {
 
           // Ensure that the selection didn't change.
           expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+
+          // Long-press on the ball of each handle, which sits above the line for
+          // the upstream handle, and below the line for the downstream handle.
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx + 6, upstreamHandle.top + 4));
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx - 6, downstreamHandle.bottom - 4));
+          expect(SuperEditorInspector.findDocumentSelection(), _wordDolorSelection);
         });
 
         testWidgetsOnIos("beside an expanded selection's upstream handle places the caret", (tester) async {
@@ -237,12 +244,13 @@ void main() {
           // Long-press on the text just upstream from the upstream handle, close
           // enough that a tap there would still grab the handle.
           final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
-          await _longPressAt(tester, Offset(upstreamHandle.center.dx - 14, upstreamHandle.bottom - 8));
+          await _longPressAt(tester, Offset(upstreamHandle.center.dx - 6, upstreamHandle.bottom - 8));
 
-          // Ensure that the long-press placed the caret upstream from the word.
+          // Ensure that the long-press replaced the selection with a caret at the
+          // finger, rather than being ignored as a press on the handle.
           final selection = SuperEditorInspector.findDocumentSelection()!;
           expect(selection.isCollapsed, isTrue);
-          expect((selection.extent.nodePosition as TextNodePosition).offset, lessThan(12));
+          expect((selection.extent.nodePosition as TextNodePosition).offset, lessThanOrEqualTo(12));
         });
 
         testWidgetsOnIos("beside an expanded selection's downstream handle places the caret", (tester) async {
@@ -256,12 +264,13 @@ void main() {
           // Long-press on the text just downstream from the downstream handle, close
           // enough that a tap there would still grab the handle.
           final downstreamHandle = tester.getRect(find.byKey(DocumentKeys.downstreamHandle));
-          await _longPressAt(tester, Offset(downstreamHandle.center.dx + 14, downstreamHandle.top + 8));
+          await _longPressAt(tester, Offset(downstreamHandle.center.dx + 6, downstreamHandle.top + 8));
 
-          // Ensure that the long-press placed the caret downstream from the word.
+          // Ensure that the long-press replaced the selection with a caret at the
+          // finger, rather than being ignored as a press on the handle.
           final selection = SuperEditorInspector.findDocumentSelection()!;
           expect(selection.isCollapsed, isTrue);
-          expect((selection.extent.nodePosition as TextNodePosition).offset, greaterThan(17));
+          expect((selection.extent.nodePosition as TextNodePosition).offset, greaterThanOrEqualTo(17));
         });
 
         testWidgetsOnIos("tap beside an expanded selection's handle keeps the selection", (tester) async {
@@ -274,7 +283,7 @@ void main() {
 
           // Tap just upstream from the upstream handle, where a long-press places the caret.
           final upstreamHandle = tester.getRect(find.byKey(DocumentKeys.upstreamHandle));
-          await tester.tapAt(Offset(upstreamHandle.center.dx - 14, upstreamHandle.bottom - 8));
+          await tester.tapAt(Offset(upstreamHandle.center.dx - 6, upstreamHandle.bottom - 8));
           await tester.pumpAndSettle();
 
           // Ensure that the tap counted as a tap on the handle, which keeps the selection.
@@ -662,6 +671,10 @@ Future<void> _pumpAppWithLongText(WidgetTester tester) async {
 
 /// Long-presses at the given global [offset], and releases.
 Future<void> _longPressAt(WidgetTester tester, Offset offset) async {
+  // Wait out any earlier tap sequence, so that this press doesn't count as the
+  // next tap in a double or triple tap.
+  await tester.pump(kDoubleTapTimeout);
+
   final gesture = await tester.startGesture(offset);
   await tester.pump(kLongPressTimeout + kPressTimeout);
   await gesture.up();
