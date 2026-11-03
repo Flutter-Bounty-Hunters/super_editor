@@ -774,6 +774,11 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
         // Rebuilds whenever this particular component view model changes
         // within the overall layout view model.
         _PresenterComponentBuilder(
+          // Key each component by its node, so that a node that's inserted, moved, or
+          // deleted above this one doesn't hand this component's Element, and every State
+          // in it, to another node. The component key only keeps the State of the widget
+          // that holds it, not the State of any widget above it, such as a list item's.
+          key: ValueKey(componentViewModel.nodeId),
           presenter: widget.presenter,
           watchNode: componentViewModel.nodeId,
           builder: (context, newComponentViewModel) {
