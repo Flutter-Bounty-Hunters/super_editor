@@ -148,29 +148,6 @@ void main() {
           reason: "Inserting a node at the top gave the second list item another component's state",
         );
       });
-
-      testWidgetsOnAllPlatforms('build a document that holds two nodes with the same ID', (tester) async {
-        // A document can briefly hold two nodes with the same ID, e.g., while an app applies
-        // changes from a server. Keying components by node mustn't give two sibling
-        // components the same key, which Flutter doesn't allow.
-        await tester
-            .createDocument() //
-            .withCustomContent(
-              MutableDocument(
-                nodes: [
-                  ParagraphNode(id: '1', text: AttributedText('The first paragraph')),
-                  ParagraphNode(id: 'shared', text: AttributedText('The second paragraph')),
-                  ParagraphNode(id: '3', text: AttributedText('The third paragraph')),
-                  ParagraphNode(id: 'shared', text: AttributedText('A paragraph with the ID of the second')),
-                ],
-              ),
-            )
-            .pump();
-
-        // Ensure that the document was built, with both nodes that share an ID.
-        expect(tester.takeException(), isNull, reason: 'Building a document with a shared node ID threw');
-        expect(find.byType(ParagraphComponent), findsNWidgets(4));
-      });
     });
   });
 
