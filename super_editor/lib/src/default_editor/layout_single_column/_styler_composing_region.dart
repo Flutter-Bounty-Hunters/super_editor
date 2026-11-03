@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
@@ -46,13 +48,33 @@ class SingleColumnLayoutComposingRegionStyler extends SingleColumnLayoutStylePha
       return viewModel;
     }
 
+    final startIndex = _document.getNodeIndexById(documentComposingRegion.start.nodeId);
+    final endIndex = _document.getNodeIndexById(documentComposingRegion.end.nodeId);
+
     return SingleColumnLayoutViewModel(
       padding: viewModel.padding,
       componentViewModels: [
         for (final previousViewModel in viewModel.componentViewModels) //
-          _applyComposingRegion(previousViewModel.copy(), documentComposingRegion),
+          // Only the components that the composing region is in have something to
+          // underline. Every other component keeps the view model that it came with,
+          // so that it stays equal to its last one, and the layout doesn't build that
+          // component again each time a composition starts or ends.
+          _isNodeBetween(previousViewModel.nodeId, startIndex, endIndex)
+              ? _applyComposingRegion(previousViewModel.copy(), documentComposingRegion)
+              : previousViewModel,
       ],
     );
+  }
+
+  /// Whether the node with the given [nodeId] sits between the nodes at [startIndex] and
+  /// [endIndex], inclusive, in either order.
+  bool _isNodeBetween(String nodeId, int startIndex, int endIndex) {
+    if (startIndex < 0 || endIndex < 0) {
+      return false;
+    }
+
+    final nodeIndex = _document.getNodeIndexById(nodeId);
+    return nodeIndex >= min(startIndex, endIndex) && nodeIndex <= max(startIndex, endIndex);
   }
 
   SingleColumnLayoutComponentViewModel _applyComposingRegion(

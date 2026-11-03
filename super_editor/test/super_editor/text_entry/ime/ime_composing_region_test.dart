@@ -457,7 +457,158 @@ void main() {
         expect(testContext.document.nodeCount, equals(1));
       });
     });
+
+    group('builds only the component of the node that', () {
+      testWidgetsOnMobile('a composition starts in', (tester) async {
+        final componentBuilds = <String, int>{};
+        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+
+        // Place the caret at the end of the word "Second".
+        await tester.placeCaretInParagraph('2', 6);
+
+        // Start composing the word, as a software keyboard does for the word that the user types.
+        componentBuilds.clear();
+        await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
+
+        // Ensure that the word is composing.
+        expect(
+          SuperEditorInspector.findComposingRegion(),
+          const DocumentRange(
+            start: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 0)),
+            end: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 6)),
+          ),
+        );
+
+        // Ensure that only the component of the paragraph with the composing region was built again.
+        expect(
+          componentBuilds,
+          {'2': 1},
+          reason: 'Starting a composition in one paragraph should build only that paragraph\'s component',
+        );
+      });
+
+      testWidgetsOnMac('a composition for an accent starts in', (tester) async {
+        final componentBuilds = <String, int>{};
+        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+
+        // Place the caret at the end of the word "Second".
+        await tester.placeCaretInParagraph('2', 6);
+
+        // Start composing an accent, as macOS does for Option-E.
+        componentBuilds.clear();
+        final imeValue = imeClientGetter().currentTextEditingValue!;
+        final caretOffset = imeValue.selection.extentOffset;
+        await tester.ime.sendDeltas(
+          [
+            TextEditingDeltaInsertion(
+              oldText: imeValue.text,
+              textInserted: '´',
+              insertionOffset: caretOffset,
+              selection: TextSelection.collapsed(offset: caretOffset + 1),
+              composing: TextRange(start: caretOffset, end: caretOffset + 1),
+            ),
+          ],
+          getter: imeClientGetter,
+        );
+
+        // Ensure that the accent is composing.
+        expect(SuperEditorInspector.findComposingRegion(), isNotNull);
+
+        // Ensure that only the component of the paragraph with the composing region was built again.
+        expect(
+          componentBuilds,
+          {'2': 1},
+          reason: 'Starting a composition in one paragraph should build only that paragraph\'s component',
+        );
+      });
+
+      testWidgetsOnMobile('a composition ends in', (tester) async {
+        final componentBuilds = <String, int>{};
+        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+
+        // Place the caret at the end of the word "Second", and start composing the word.
+        await tester.placeCaretInParagraph('2', 6);
+        await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
+
+        // Stop composing the word, as a software keyboard does when the user types a space.
+        componentBuilds.clear();
+        await _changeImeComposingRegion(tester, (caretOffset) => TextRange.empty);
+
+        // Ensure that nothing is composing.
+        expect(SuperEditorInspector.findComposingRegion(), isNull);
+
+        // Ensure that only the component of the paragraph that had the composing region was built again.
+        expect(
+          componentBuilds,
+          {'2': 1},
+          reason: 'Ending a composition in one paragraph should build only that paragraph\'s component',
+        );
+      });
+    });
   });
+}
+
+/// Pumps a [SuperEditor] with three paragraphs, whose IDs are "1", "2", and "3", which counts,
+/// in [componentBuilds], how many times it builds the component of each node, by node ID.
+Future<void> _pumpThreeParagraphs(WidgetTester tester, {required Map<String, int> componentBuilds}) async {
+  await tester
+      .createDocument()
+      .withCustomContent(
+        MutableDocument(
+          nodes: [
+            ParagraphNode(id: '1', text: AttributedText('First paragraph')),
+            ParagraphNode(id: '2', text: AttributedText('Second paragraph')),
+            ParagraphNode(id: '3', text: AttributedText('Third paragraph')),
+          ],
+        ),
+      )
+      .withInputSource(TextInputSource.ime)
+      .withComponentBuilders([
+    for (final builder in defaultComponentBuilders) _BuildCountingComponentBuilder(builder, componentBuilds),
+  ]).pump();
+}
+
+/// Sends the IME a change of its composing region, to the region that [composingRegion] returns
+/// for the IME's caret offset, without a change of its text or selection, as the platform does
+/// when a composition starts or ends.
+Future<void> _changeImeComposingRegion(WidgetTester tester, TextRange Function(int caretOffset) composingRegion) async {
+  final imeValue = imeClientGetter().currentTextEditingValue!;
+  await tester.ime.sendDeltas(
+    [
+      TextEditingDeltaNonTextUpdate(
+        oldText: imeValue.text,
+        selection: imeValue.selection,
+        composing: composingRegion(imeValue.selection.extentOffset),
+      ),
+    ],
+    getter: imeClientGetter,
+  );
+}
+
+/// A [ComponentBuilder] that builds components with the [delegate], and counts, in
+/// [componentBuilds], how many times it builds the component of each node, by node ID.
+class _BuildCountingComponentBuilder implements ComponentBuilder {
+  _BuildCountingComponentBuilder(this.delegate, this.componentBuilds);
+
+  final ComponentBuilder delegate;
+
+  final Map<String, int> componentBuilds;
+
+  @override
+  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) =>
+      delegate.createViewModel(document, node);
+
+  @override
+  Widget? createComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    SingleColumnLayoutComponentViewModel componentViewModel,
+  ) {
+    final component = delegate.createComponent(componentContext, componentViewModel);
+    if (component != null) {
+      componentBuilds[componentViewModel.nodeId] = (componentBuilds[componentViewModel.nodeId] ?? 0) + 1;
+    }
+    return component;
+  }
 }
 
 /// Simulates a `TextInputClient.performSelectors` call from the platform.
