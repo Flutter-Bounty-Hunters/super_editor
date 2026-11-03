@@ -756,6 +756,10 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
     final docComponents = <Widget>[];
     final newComponentKeys = <String, GlobalKey>{};
     final newNodeIds = <GlobalKey, String>{};
+    // How many components have been built for each node ID so far, which tells apart the
+    // nodes of a document that briefly holds more than one node with the same ID, e.g.,
+    // while an app applies changes from a server.
+    final componentCountsByNodeId = <String, int>{};
     _topToBottomComponentKeys.clear();
 
     final viewModel = widget.presenter.viewModel;
@@ -770,10 +774,21 @@ class _SingleColumnDocumentLayoutState extends State<SingleColumnDocumentLayout>
 
       _topToBottomComponentKeys.add(componentKey);
 
+      final nodeIdOccurrence = componentCountsByNodeId[componentViewModel.nodeId] ?? 0;
+      componentCountsByNodeId[componentViewModel.nodeId] = nodeIdOccurrence + 1;
+
       docComponents.add(
         // Rebuilds whenever this particular component view model changes
         // within the overall layout view model.
         _PresenterComponentBuilder(
+          // Key each component by its node, so that a node that's inserted, moved, or
+          // deleted above this one doesn't hand this component's Element, and every State
+          // in it, to another node. The component key only keeps the State of the widget
+          // that holds it, not the State of any widget above it, such as a list item's.
+          //
+          // A node whose ID an earlier node already has gets a key of its own, because
+          // sibling widgets can't share a key.
+          key: ValueKey((componentViewModel.nodeId, nodeIdOccurrence)),
           presenter: widget.presenter,
           watchNode: componentViewModel.nodeId,
           builder: (context, newComponentViewModel) {
