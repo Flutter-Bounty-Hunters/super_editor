@@ -458,94 +458,70 @@ void main() {
       });
     });
 
-    group('builds only the component of the node that', () {
-      testWidgetsOnMobile('a composition starts in', (tester) async {
-        final componentBuilds = <String, int>{};
-        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+    group('only rebuilds the composing paragraph', () {
+      // Super Editor only shows the composing underline on macOS, iOS, and Android.
+      testWidgetsOnMac('when a composition starts', _startComposingInParagraph);
+      testWidgetsOnMobile('when a composition starts', _startComposingInParagraph);
 
-        // Place the caret at the end of the word "Second".
-        await tester.placeCaretInParagraph('2', 6);
-
-        // Start composing the word, as a software keyboard does for the word that the user types.
-        componentBuilds.clear();
-        await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
-
-        // Ensure that the word is composing.
-        expect(
-          SuperEditorInspector.findComposingRegion(),
-          const DocumentRange(
-            start: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 0)),
-            end: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 6)),
-          ),
-        );
-
-        // Ensure that only the component of the paragraph with the composing region was built again.
-        expect(
-          componentBuilds,
-          {'2': 1},
-          reason: 'Starting a composition in one paragraph should build only that paragraph\'s component',
-        );
-      });
-
-      testWidgetsOnMac('a composition for an accent starts in', (tester) async {
-        final componentBuilds = <String, int>{};
-        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
-
-        // Place the caret at the end of the word "Second".
-        await tester.placeCaretInParagraph('2', 6);
-
-        // Start composing an accent, as macOS does for Option-E.
-        componentBuilds.clear();
-        final imeValue = imeClientGetter().currentTextEditingValue!;
-        final caretOffset = imeValue.selection.extentOffset;
-        await tester.ime.sendDeltas(
-          [
-            TextEditingDeltaInsertion(
-              oldText: imeValue.text,
-              textInserted: '´',
-              insertionOffset: caretOffset,
-              selection: TextSelection.collapsed(offset: caretOffset + 1),
-              composing: TextRange(start: caretOffset, end: caretOffset + 1),
-            ),
-          ],
-          getter: imeClientGetter,
-        );
-
-        // Ensure that the accent is composing.
-        expect(SuperEditorInspector.findComposingRegion(), isNotNull);
-
-        // Ensure that only the component of the paragraph with the composing region was built again.
-        expect(
-          componentBuilds,
-          {'2': 1},
-          reason: 'Starting a composition in one paragraph should build only that paragraph\'s component',
-        );
-      });
-
-      testWidgetsOnMobile('a composition ends in', (tester) async {
-        final componentBuilds = <String, int>{};
-        await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
-
-        // Place the caret at the end of the word "Second", and start composing the word.
-        await tester.placeCaretInParagraph('2', 6);
-        await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
-
-        // Stop composing the word, as a software keyboard does when the user types a space.
-        componentBuilds.clear();
-        await _changeImeComposingRegion(tester, (caretOffset) => TextRange.empty);
-
-        // Ensure that nothing is composing.
-        expect(SuperEditorInspector.findComposingRegion(), isNull);
-
-        // Ensure that only the component of the paragraph that had the composing region was built again.
-        expect(
-          componentBuilds,
-          {'2': 1},
-          reason: 'Ending a composition in one paragraph should build only that paragraph\'s component',
-        );
-      });
+      testWidgetsOnMac('when a composition ends', _stopComposingInParagraph);
+      testWidgetsOnMobile('when a composition ends', _stopComposingInParagraph);
     });
   });
+}
+
+/// Starts composing the word "Second" in the second of three paragraphs, and checks that only that
+/// paragraph's component is built again.
+Future<void> _startComposingInParagraph(WidgetTester tester) async {
+  final componentBuilds = <String, int>{};
+  await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+
+  // Place the caret at the end of the word "Second".
+  await tester.placeCaretInParagraph('2', 6);
+
+  // Start composing the word.
+  componentBuilds.clear();
+  await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
+
+  // Ensure that the word is composing.
+  expect(
+    SuperEditorInspector.findComposingRegion(),
+    const DocumentRange(
+      start: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 0)),
+      end: DocumentPosition(nodeId: '2', nodePosition: TextNodePosition(offset: 6)),
+    ),
+  );
+
+  // Ensure that only the component of the paragraph with the composing region was built again.
+  expect(
+    componentBuilds,
+    {'2': 1},
+    reason: 'Starting a composition in one paragraph should build only that paragraph\'s component',
+  );
+}
+
+/// Stops composing the word "Second" in the second of three paragraphs, and checks that only that
+/// paragraph's component is built again.
+Future<void> _stopComposingInParagraph(WidgetTester tester) async {
+  final componentBuilds = <String, int>{};
+  await _pumpThreeParagraphs(tester, componentBuilds: componentBuilds);
+
+  // Place the caret at the end of the word "Second", and start composing the word.
+  await tester.placeCaretInParagraph('2', 6);
+  await _changeImeComposingRegion(tester, (caretOffset) => TextRange(start: caretOffset - 6, end: caretOffset));
+
+  // Stop composing the word.
+  componentBuilds.clear();
+  await _changeImeComposingRegion(tester, (caretOffset) => TextRange.empty);
+
+  // Ensure that nothing is composing.
+  expect(SuperEditorInspector.findComposingRegion(), isNull);
+
+  // Ensure that only the component of the paragraph that had the composing region was built again.
+  expect(
+    componentBuilds,
+    {'2': 1},
+    reason: 'Ending a composition in one paragraph should build only that paragraph\'s component',
+  );
 }
 
 /// Pumps a [SuperEditor] with three paragraphs, whose IDs are "1", "2", and "3", which counts,
