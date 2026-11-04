@@ -568,6 +568,27 @@ void main() {
       expect(controller.isAttachedToIme, isFalse);
     });
 
+    testWidgetsOnAllPlatforms('stops handling IME actions when disposed', (tester) async {
+      final controller = ImeAttributedTextEditingController();
+      await _pumpSuperTextField(tester, controller);
+
+      // Place the caret to open an IME connection.
+      await tester.placeCaretInSuperTextField(0);
+
+      // Ensure the text field handles the IME's actions.
+      expect(controller.onPerformActionPressed, isNotNull, reason: 'The text field should handle IME actions');
+
+      // Pump a different tree to cause the text field to dispose.
+      await tester.pumpWidget(const MaterialApp());
+
+      // Ensure the controller no longer calls the disposed text field.
+      expect(
+        controller.onPerformActionPressed,
+        isNull,
+        reason: 'The controller outlives the text field, so it should not keep calling the disposed text field',
+      );
+    });
+
     testWidgetsOnAllPlatforms('applies custom IME configuration', (tester) async {
       // Pump a SuperTextField with an IME configuration with values
       // that differ from the defaults.
