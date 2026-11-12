@@ -290,6 +290,9 @@ class TestSuperKeyboard implements SuperKeyboard {
     // no-op
   }
 
+  @override
+  Future<String?> getActiveKeyboardId() async => null;
+
   /// An ID for this specific test keyboard instance, which is used primarily to
   /// ensure that one test keyboard doesn't accidentally uninstall some other
   /// test keyboard.
