@@ -6,11 +6,18 @@ import 'package:super_editor/super_editor.dart';
 
 void main() {
   group('SuperTextField', () {
-    testWidgetsOnArbitraryDesktop('computes line height for empty field', (tester) async {
+    setUpAll(() async {
       // We need to load the app fonts, because using Ahem the estimated line height
       // is always equal to the true line height.
+      //
+      // Fonts are loaded before the test, rather than within it, because loading fonts
+      // causes a "fontsChange" system message to arrive asynchronously, which schedules
+      // a frame callback. If that happens within the test, the callback can still be
+      // pending when the test ends, which fails the test.
       await loadAppFonts();
+    });
 
+    testWidgetsOnArbitraryDesktop('computes line height for empty field', (tester) async {
       // Pump an empty SuperTextField containing a hint text.
       final controller = AttributedTextEditingController();
       await _pumpScaffold(tester, controller: controller);

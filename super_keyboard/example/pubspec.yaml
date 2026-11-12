@@ -16,6 +16,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.6.0
 
   super_keyboard:
     # When depending on this package from a real application you should use:
