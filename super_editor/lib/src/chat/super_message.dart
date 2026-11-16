@@ -21,7 +21,7 @@ import 'package:super_editor/src/default_editor/layout_single_column/_styler_shy
 import 'package:super_editor/src/default_editor/layout_single_column/_styler_user_selection.dart';
 import 'package:super_editor/src/default_editor/multi_node_editing.dart';
 import 'package:super_editor/src/default_editor/super_editor.dart'
-    show defaultComponentBuilders, defaultInlineTextStyler;
+    show SuperEditor, SuperEditorPlugin, defaultComponentBuilders, defaultInlineTextStyler;
 import 'package:super_editor/src/default_editor/text.dart';
 import 'package:super_editor/src/default_editor/text/custom_underlines.dart';
 import 'package:super_editor/src/infrastructure/content_layers.dart';
@@ -63,10 +63,15 @@ class SuperMessage extends StatefulWidget {
     this.overlayController,
     List<DocumentKeyboardAction>? keyboardActions,
     this.createOverlayControlsClipper,
-    this.componentBuilders = defaultComponentBuilders,
+    List<ComponentBuilder> componentBuilders = defaultComponentBuilders,
+    this.plugins = const {},
     this.debugPaint = const DebugPaintConfig(),
   })  : styles = styles ?? SuperMessageStyles.lightAndDark(),
-        keyboardActions = keyboardActions ?? superMessageDefaultKeyboardActions;
+        keyboardActions = keyboardActions ?? superMessageDefaultKeyboardActions,
+        componentBuilders = [
+          for (final plugin in plugins) ...plugin.componentBuilders,
+          ...componentBuilders,
+        ];
 
   final FocusNode? focusNode;
 
@@ -151,7 +156,21 @@ class SuperMessage extends StatefulWidget {
   /// (probably the entire screen).
   final CustomClipper<Rect> Function(BuildContext overlayContext)? createOverlayControlsClipper;
 
+  /// Component builders for the message's nodes, preceded by those of every
+  /// plugin in [plugins].
   final List<ComponentBuilder> componentBuilders;
+
+  /// Plugins that add behaviors to this message and its [editor].
+  ///
+  /// Each plugin is attached to [editor] while this message shows it, and its
+  /// [SuperEditorPlugin.componentBuilders], [SuperEditorPlugin.contentTapHandlers]
+  /// and [SuperEditorPlugin.appendedStylePhases] are applied to the message.
+  /// Plugins are told about focus changes through
+  /// [SuperEditorPlugin.onFocusChange].
+  ///
+  /// [SuperEditorPlugin.keyboardActions] and the plugin's document layer
+  /// builders are specific to [SuperEditor], so a message ignores them.
+  final Set<SuperEditorPlugin> plugins;
 
   final DebugPaintConfig debugPaint;
 
@@ -190,6 +209,8 @@ class _SuperMessageState extends State<SuperMessage> {
     _focusNode.addListener(_onFocusChange);
 
     _selectionLinks = widget.selectionLayerLinks ?? SelectionLayerLinks();
+
+    _attachPlugins(widget.plugins, widget.editor);
   }
 
   @override
@@ -217,7 +238,17 @@ class _SuperMessageState extends State<SuperMessage> {
       _focusNode.addListener(_onFocusChange);
     }
 
+    if (widget.editor != oldWidget.editor) {
+      _detachPlugins(oldWidget.plugins, oldWidget.editor);
+      _attachPlugins(widget.plugins, widget.editor);
+    } else {
+      // The editor didn't change, but the plugin set may have.
+      _detachPlugins(oldWidget.plugins.difference(widget.plugins), widget.editor);
+      _attachPlugins(widget.plugins.difference(oldWidget.plugins), widget.editor);
+    }
+
     if (widget.editor != oldWidget.editor ||
+        !const SetEquality<SuperEditorPlugin>().equals(widget.plugins, oldWidget.plugins) ||
         widget.styles != oldWidget.styles ||
         !const DeepCollectionEquality().equals(widget.customStylePhases, oldWidget.customStylePhases) ||
         !const DeepCollectionEquality().equals(widget.componentBuilders, oldWidget.componentBuilders)) {
@@ -240,9 +271,26 @@ class _SuperMessageState extends State<SuperMessage> {
       handler.dispose();
     }
 
+    _detachPlugins(widget.plugins, widget.editor);
+
     _iOSControlsController.dispose();
 
     super.dispose();
+  }
+
+  void _attachPlugins(Iterable<SuperEditorPlugin> plugins, Editor editor) {
+    for (final plugin in plugins) {
+      plugin.attachToEditorWidget(editor);
+
+      // Tell the plugin the focus state at the time it attaches.
+      plugin.onFocusChange(_focusNode);
+    }
+  }
+
+  void _detachPlugins(Iterable<SuperEditorPlugin> plugins, Editor editor) {
+    for (final plugin in plugins) {
+      plugin.detachFromEditorWidget(editor);
+    }
   }
 
   void _initializePresenter() {
@@ -277,9 +325,12 @@ class _SuperMessageState extends State<SuperMessage> {
         _docLayoutPerComponentBlockStyler,
         _customUnderlineStyler,
         ...widget.customStylePhases,
-        // Selection changes are very volatile. Put that phase last
-        // to minimize view model recalculations.
+        // Selection changes are very volatile. Put that phase last, just
+        // before the phases plugins want at the end, to minimize view model
+        // recalculations.
         _docLayoutSelectionStyler,
+        for (final plugin in widget.plugins) //
+          ...plugin.appendedStylePhases,
       ],
     );
 
@@ -297,6 +348,10 @@ class _SuperMessageState extends State<SuperMessage> {
   }
 
   void _onFocusChange() {
+    for (final plugin in widget.plugins) {
+      plugin.onFocusChange(_focusNode);
+    }
+
     if (!_focusNode.hasFocus && widget.editor.composer.selection != null) {
       // This message doesn't have focus. Clear the selection.
       widget.editor.execute([
@@ -304,6 +359,13 @@ class _SuperMessageState extends State<SuperMessage> {
       ]);
     }
   }
+
+  /// The tap handlers this message created, followed by those its plugins own.
+  List<ContentTapDelegate> get _allContentTapHandlers => [
+        ..._contentTapHandlers,
+        for (final plugin in widget.plugins) //
+          ...plugin.contentTapHandlers,
+      ];
 
   DocumentGestureMode get _gestureMode {
     if (widget.gestureMode != null) {
@@ -368,7 +430,7 @@ class _SuperMessageState extends State<SuperMessage> {
         return SuperMessageMouseInteractor(
           focusNode: _focusNode,
           messageContext: _messageContext,
-          contentTapHandlers: _contentTapHandlers,
+          contentTapHandlers: _allContentTapHandlers,
           showDebugPaint: widget.debugPaint.gestures,
           child: child,
         );
@@ -382,7 +444,7 @@ class _SuperMessageState extends State<SuperMessage> {
                 focusNode: _focusNode,
                 editor: widget.editor,
                 getDocumentLayout: () => _messageContext.documentLayout,
-                contentTapHandlers: _contentTapHandlers,
+                contentTapHandlers: _allContentTapHandlers,
                 showDebugPaint: widget.debugPaint.gestures,
                 child: SuperMessageAndroidControlsOverlayManager(
                   editor: widget.editor,
@@ -411,7 +473,7 @@ class _SuperMessageState extends State<SuperMessage> {
               messageContext: _messageContext,
               documentKey: _documentLayoutKey,
               getDocumentLayout: () => _messageContext.documentLayout,
-              contentTapHandlers: _contentTapHandlers,
+              contentTapHandlers: _allContentTapHandlers,
               showDebugPaint: widget.debugPaint.gestures,
               child: SuperMessageIosToolbarOverlayManager(
                 tapRegionGroupId: widget.tapRegionGroupId,
