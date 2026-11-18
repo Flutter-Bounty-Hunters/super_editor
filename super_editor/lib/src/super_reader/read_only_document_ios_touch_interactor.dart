@@ -658,26 +658,28 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
     _globalTapDownOffset = null;
     _tapDownLongPressTimer?.cancel();
 
-    // TODO: to help the user drag handles instead of scrolling, try checking touch
-    //       placement during onTapDown, and then pick that up here. I think the little
-    //       bit of slop might be the problem.
-    final selection = widget.readerContext.composer.selection;
-    if (selection == null) {
-      return;
-    }
-
     if (_isLongPressInProgress) {
       _dragMode = DragMode.longPress;
       _dragHandleType = null;
       _longPressStrategy!.onLongPressDragStart();
-    } else if (_isOverBaseHandle(details.localPosition)) {
-      _dragMode = DragMode.base;
-      _dragHandleType = HandleType.upstream;
-    } else if (_isOverExtentHandle(details.localPosition)) {
-      _dragMode = DragMode.extent;
-      _dragHandleType = HandleType.downstream;
     } else {
-      return;
+      // TODO: to help the user drag handles instead of scrolling, try checking touch
+      //       placement during onTapDown, and then pick that up here. I think the little
+      //       bit of slop might be the problem.
+      final selection = widget.readerContext.composer.selection;
+      if (selection == null) {
+        return;
+      }
+
+      if (_isOverBaseHandle(details.localPosition)) {
+        _dragMode = DragMode.base;
+        _dragHandleType = HandleType.upstream;
+      } else if (_isOverExtentHandle(details.localPosition)) {
+        _dragMode = DragMode.extent;
+        _dragHandleType = HandleType.downstream;
+      } else {
+        return;
+      }
     }
 
     _controlsController!.hideToolbar();
@@ -720,6 +722,10 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    if (_dragMode == null) {
+      return; // The drag was rejected in _onPanStart
+    }
+
     // The user is dragging a handle. Update the document selection, and
     // auto-scroll, if needed.
     _globalDragOffset = details.globalPosition;
@@ -748,6 +754,11 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
   }
 
   void _updateSelectionForNewDragHandleLocation() {
+    final selection = widget.readerContext.composer.selection;
+    if (selection == null) {
+      return;
+    }
+
     final docDragDelta = _globalDragOffset! - _globalStartDragOffset!;
     final dragScrollDelta = _dragStartScrollOffset! - scrollPosition.pixels;
     final docDragPosition = _docLayout
@@ -758,11 +769,11 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
     }
 
     if (_dragHandleType == HandleType.upstream) {
-      _setSelection(widget.readerContext.composer.selection!.copyWith(
+      _setSelection(selection.copyWith(
         base: docDragPosition,
       ));
     } else if (_dragHandleType == HandleType.downstream) {
-      _setSelection(widget.readerContext.composer.selection!.copyWith(
+      _setSelection(selection.copyWith(
         extent: docDragPosition,
       ));
     }
@@ -770,6 +781,10 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
 
   void _onPanEnd(DragEndDetails details) {
     scrollPosition.removeListener(_onAutoScrollChange);
+
+    if (_dragMode != null) {
+      _onDragSelectionEnd();
+    }
   }
 
   void _onPanCancel() {
@@ -843,6 +858,11 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
       return;
     }
 
+    final selection = widget.readerContext.composer.selection;
+    if (selection == null) {
+      return;
+    }
+
     late DocumentPosition basePosition;
     late DocumentPosition extentPosition;
     switch (_dragHandleType!) {
@@ -851,10 +871,10 @@ class _SuperReaderIosDocumentTouchInteractorState extends State<SuperReaderIosDo
         return;
       case HandleType.upstream:
         basePosition = dragPosition;
-        extentPosition = widget.readerContext.composer.selection!.extent;
+        extentPosition = selection.extent;
         break;
       case HandleType.downstream:
-        basePosition = widget.readerContext.composer.selection!.base;
+        basePosition = selection.base;
         extentPosition = dragPosition;
         break;
     }
