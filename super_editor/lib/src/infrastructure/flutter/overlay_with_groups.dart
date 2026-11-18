@@ -27,6 +27,15 @@ class GroupedOverlayPortalController extends OverlayPortalController {
       return;
     }
 
+    // A listed controller that isn't showing was detached from its OverlayPortal without being
+    // hidden, e.g., because the OverlayPortal left the tree. Drop it, so that we don't show it
+    // again below.
+    for (final listedController in _visibleControllers.toUnorderedList()) {
+      if (!listedController.isShowing) {
+        _visibleControllers.remove(listedController);
+      }
+    }
+
     if (!_visibleControllers.contains(controller)) {
       _visibleControllers.add(controller);
     }
