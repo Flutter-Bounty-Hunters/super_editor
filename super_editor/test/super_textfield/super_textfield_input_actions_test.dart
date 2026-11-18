@@ -79,6 +79,36 @@ void main() {
       expect(focusNodeFirstField.hasFocus, true);
     });
 
+    testWidgetsOnMobile("unfocus on DONE when the controller was used by a removed field", (tester) async {
+      final textController = ImeAttributedTextEditingController();
+
+      // Show a text field, and then remove it, but keep its controller.
+      await _pumpSingleFieldTestApp(tester, focusNode: FocusNode(), textController: textController);
+      await tester.pumpWidget(const SizedBox());
+
+      // Show a new text field with the same controller.
+      final focusNode = FocusNode();
+      await _pumpSingleFieldTestApp(tester, focusNode: focusNode, textController: textController);
+
+      // Focus the new text field.
+      focusNode.requestFocus();
+      await tester.pump();
+
+      // Ensure we have focus
+      expect(focusNode.hasFocus, true);
+
+      // Simulate a tap at the action button
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      // Ensure focus was removed
+      expect(
+        focusNode.hasFocus,
+        false,
+        reason: 'The DONE action should be handled by the new text field, not by the removed one',
+      );
+    });
+
     group('with custom onPerformActionPressed callback', () {
       testWidgetsOnMobile("does nothing on DONE", (tester) async {
         FocusNode focusNode = FocusNode();
