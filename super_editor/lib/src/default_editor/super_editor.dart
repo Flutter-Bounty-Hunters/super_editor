@@ -1,6 +1,5 @@
 import 'package:attributed_text/attributed_text.dart';
 import 'package:flutter/foundation.dart' show ValueListenable, defaultTargetPlatform;
-import 'package:meta/meta.dart' show internal;
 import 'package:flutter/material.dart' hide SelectableText;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -521,7 +520,7 @@ class SuperEditorState extends State<SuperEditor> {
 
     if (widget.editor != oldWidget.editor) {
       for (final plugin in oldWidget.plugins) {
-        plugin.detachFromEditorWidget(oldWidget.editor);
+        plugin._detachFromSuperEditor(oldWidget.editor);
       }
 
       // Replace the old document layout `Editable` with a new one.
@@ -542,12 +541,12 @@ class SuperEditorState extends State<SuperEditor> {
       // plugins that were removed, and attach any plugins that were added.
       for (final oldPlugin in oldWidget.plugins) {
         if (!widget.plugins.contains(oldPlugin)) {
-          oldPlugin.detachFromEditorWidget(widget.editor);
+          oldPlugin._detachFromSuperEditor(widget.editor);
         }
       }
       for (final newPlugin in widget.plugins) {
         if (!oldWidget.plugins.contains(newPlugin)) {
-          newPlugin.attachToEditorWidget(widget.editor);
+          newPlugin._attachToSuperEditor(widget.editor);
         }
       }
 
@@ -583,7 +582,7 @@ class SuperEditorState extends State<SuperEditor> {
     }
 
     for (final plugin in widget.plugins) {
-      plugin.detachFromEditorWidget(widget.editor);
+      plugin._detachFromSuperEditor(widget.editor);
     }
 
     _iosControlsController.dispose();
@@ -622,7 +621,7 @@ class SuperEditorState extends State<SuperEditor> {
     );
 
     for (final plugin in widget.plugins) {
-      plugin.attachToEditorWidget(widget.editor);
+      plugin._attachToSuperEditor(widget.editor);
 
       // Notify plugin of focus state at time of attachment.
       plugin.onFocusChange(_focusNode);
@@ -1249,7 +1248,7 @@ class _SelectionLeadersDocumentLayerBuilder implements SuperEditorLayerBuilder {
 abstract class SuperEditorPlugin {
   SuperEditorPlugin();
 
-  /// The reference count of the number of times [attachToEditorWidget] was
+  /// The reference count of the number of times [_attachToSuperEditor] was
   /// called for each editor.
   ///
   /// This reference count is here due to order of operation nuances in Flutter's
@@ -1260,14 +1259,7 @@ abstract class SuperEditorPlugin {
   /// the attachment we just ran.
   final _attachCount = <Editor, int>{};
 
-  /// Attaches this plugin to [editor] on behalf of a widget that hosts it, such
-  /// as [SuperEditor] or `SuperMessage`, running [attach] only for the first
-  /// host of that [editor].
-  ///
-  /// Every call must be balanced by a call to [detachFromEditorWidget]. Apps
-  /// shouldn't call this; pass the plugin to a host widget instead.
-  @internal
-  void attachToEditorWidget(Editor editor) {
+  void _attachToSuperEditor(Editor editor) {
     _attachCount[editor] ??= 0;
 
     if (_attachCount[editor] == 0) {
@@ -1277,10 +1269,7 @@ abstract class SuperEditorPlugin {
     _attachCount[editor] = _attachCount[editor]! + 1;
   }
 
-  /// Detaches this plugin from [editor] on behalf of a host widget, running
-  /// [detach] once the last host of that [editor] lets go.
-  @internal
-  void detachFromEditorWidget(Editor editor) {
+  void _detachFromSuperEditor(Editor editor) {
     _attachCount[editor] = _attachCount[editor]! - 1;
 
     if (_attachCount[editor] == 0) {

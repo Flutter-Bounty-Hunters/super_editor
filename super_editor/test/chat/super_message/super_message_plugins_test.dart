@@ -68,6 +68,23 @@ void main() {
 
       expect(find.byKey(_FakeParagraphComponentBuilder.componentKey), findsOneWidget);
     });
+
+    testWidgetsOnAllPlatforms('build their document underlays and overlays, and remove them when removed',
+        (tester) async {
+      final editor = _createEditor();
+
+      await tester.pumpWidget(_buildMessage(editor, plugins: {_FakeLayersPlugin()}));
+
+      expect(find.byKey(_FakeLayersPlugin.underlayKey), findsOneWidget);
+      expect(find.byKey(_FakeLayersPlugin.overlayKey), findsOneWidget);
+
+      // Remove the plugin, which shifts the default overlays into the plugin's
+      // former slots.
+      await tester.pumpWidget(_buildMessage(editor));
+
+      expect(find.byKey(_FakeLayersPlugin.underlayKey), findsNothing);
+      expect(find.byKey(_FakeLayersPlugin.overlayKey), findsNothing);
+    });
   });
 }
 
@@ -80,7 +97,7 @@ Editor _createEditor() => createDefaultDocumentEditor(
       composer: MutableDocumentComposer(),
     );
 
-Widget _buildMessage(Editor editor, {Set<SuperEditorPlugin> plugins = const {}, Key? key}) {
+Widget _buildMessage(Editor editor, {Set<SuperMessagePlugin> plugins = const {}, Key? key}) {
   return MaterialApp(
     home: Scaffold(
       body: SuperMessage(
@@ -92,7 +109,7 @@ Widget _buildMessage(Editor editor, {Set<SuperEditorPlugin> plugins = const {}, 
   );
 }
 
-class _FakePlugin extends SuperEditorPlugin {
+class _FakePlugin extends SuperMessagePlugin {
   int attachCallCount = 0;
   int detachCallCount = 0;
   Editor? attachedEditor;
@@ -113,6 +130,28 @@ class _FakePlugin extends SuperEditorPlugin {
 
   @override
   List<ComponentBuilder> get componentBuilders => const [_FakeParagraphComponentBuilder()];
+}
+
+class _FakeLayersPlugin extends SuperMessagePlugin {
+  static const underlayKey = ValueKey('fake-underlay');
+  static const overlayKey = ValueKey('fake-overlay');
+
+  @override
+  List<SuperMessageDocumentLayerBuilder> get documentUnderlayBuilders => const [_FakeLayerBuilder(underlayKey)];
+
+  @override
+  List<SuperMessageDocumentLayerBuilder> get documentOverlayBuilders => const [_FakeLayerBuilder(overlayKey)];
+}
+
+class _FakeLayerBuilder implements SuperMessageDocumentLayerBuilder {
+  const _FakeLayerBuilder(this.key);
+
+  final Key key;
+
+  @override
+  ContentLayerWidget build(BuildContext context, DocumentContext messageContext) {
+    return ContentLayerProxyWidget(child: SizedBox(key: key));
+  }
 }
 
 /// Builds every paragraph as a keyed box, so a test can tell the plugin's

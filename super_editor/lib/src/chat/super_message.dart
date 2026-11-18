@@ -163,14 +163,9 @@ class SuperMessage extends StatefulWidget {
   /// Plugins that add behaviors to this message and its [editor].
   ///
   /// Each plugin is attached to [editor] while this message shows it, and its
-  /// [SuperEditorPlugin.componentBuilders], [SuperEditorPlugin.contentTapHandlers]
-  /// and [SuperEditorPlugin.appendedStylePhases] are applied to the message.
-  /// Plugins are told about focus changes through
-  /// [SuperEditorPlugin.onFocusChange].
-  ///
-  /// [SuperEditorPlugin.keyboardActions] and the plugin's document layer
-  /// builders are specific to [SuperEditor], so a message ignores them.
-  final Set<SuperEditorPlugin> plugins;
+  /// UI extensions, such as keyboard actions, component builders, and document
+  /// layers, are added to this message.
+  final Set<SuperMessagePlugin> plugins;
 
   final DebugPaintConfig debugPaint;
 
@@ -248,7 +243,7 @@ class _SuperMessageState extends State<SuperMessage> {
     }
 
     if (widget.editor != oldWidget.editor ||
-        !const SetEquality<SuperEditorPlugin>().equals(widget.plugins, oldWidget.plugins) ||
+        !const SetEquality<SuperMessagePlugin>().equals(widget.plugins, oldWidget.plugins) ||
         widget.styles != oldWidget.styles ||
         !const DeepCollectionEquality().equals(widget.customStylePhases, oldWidget.customStylePhases) ||
         !const DeepCollectionEquality().equals(widget.componentBuilders, oldWidget.componentBuilders)) {
@@ -278,18 +273,18 @@ class _SuperMessageState extends State<SuperMessage> {
     super.dispose();
   }
 
-  void _attachPlugins(Iterable<SuperEditorPlugin> plugins, Editor editor) {
+  void _attachPlugins(Iterable<SuperMessagePlugin> plugins, Editor editor) {
     for (final plugin in plugins) {
-      plugin.attachToEditorWidget(editor);
+      plugin._attachToSuperMessage(editor);
 
       // Tell the plugin the focus state at the time it attaches.
       plugin.onFocusChange(_focusNode);
     }
   }
 
-  void _detachPlugins(Iterable<SuperEditorPlugin> plugins, Editor editor) {
+  void _detachPlugins(Iterable<SuperMessagePlugin> plugins, Editor editor) {
     for (final plugin in plugins) {
-      plugin.detachFromEditorWidget(editor);
+      plugin._detachFromSuperMessage(editor);
     }
   }
 
@@ -387,7 +382,11 @@ class _SuperMessageState extends State<SuperMessage> {
       // Note: This widget adds a `Focus` widget, internally.
       focusNode: _focusNode,
       messageContext: _messageContext,
-      keyboardActions: widget.keyboardActions,
+      keyboardActions: [
+        for (final plugin in widget.plugins) //
+          ...plugin.keyboardActions,
+        ...widget.keyboardActions,
+      ],
       child: Builder(builder: (context) {
         return _buildGestureInteractor(
           context,
@@ -402,6 +401,10 @@ class _SuperMessageState extends State<SuperMessage> {
                 showDebugPaint: widget.debugPaint.layout,
               ),
               underlays: [
+                // Add all underlays from plugins.
+                for (final plugin in widget.plugins) //
+                  for (final underlayBuilder in plugin.documentUnderlayBuilders) //
+                    (context) => underlayBuilder.build(context, _messageContext),
                 // Add any underlays that were provided by the client.
                 for (final underlayBuilder in widget.documentUnderlayBuilders) //
                   (context) => underlayBuilder.build(context, _messageContext),
@@ -413,6 +416,10 @@ class _SuperMessageState extends State<SuperMessage> {
                 (context) => _SelectionLeadersDocumentLayerBuilder(
                       links: _selectionLinks,
                     ).build(context, _messageContext),
+                // Add all overlays from plugins.
+                for (final plugin in widget.plugins) //
+                  for (final overlayBuilder in plugin.documentOverlayBuilders) //
+                    (context) => overlayBuilder.build(context, _messageContext),
                 // Add any overlays that were provided by the client.
                 for (final overlayBuilder in widget.documentOverlayBuilders) //
                   (context) => overlayBuilder.build(context, _messageContext),
@@ -492,6 +499,89 @@ class _SuperMessageState extends State<SuperMessage> {
         );
     }
   }
+}
+
+/// A [SuperMessage] plugin.
+///
+/// A [SuperMessagePlugin] is the [SuperMessage] counterpart of a
+/// [SuperEditorPlugin]. It combines two kinds of extensions:
+///
+///  * Extensions to an [Editor], which are applied in [attach] and removed in
+///    [detach]. An [Editor] is a logical pipeline with no user interface, and
+///    it's mutable, so a plugin alters it directly.
+///  * Extensions to the [SuperMessage] widget, such as [keyboardActions],
+///    [componentBuilders], and document layers. A widget is immutable, so
+///    [SuperMessage] queries these from the plugin on every build.
+abstract class SuperMessagePlugin {
+  SuperMessagePlugin();
+
+  /// The number of [SuperMessage]s that currently host this plugin, for each
+  /// [Editor].
+  ///
+  /// When a [SuperMessage] subtree is replaced by a new one, the new message
+  /// attaches before the old one detaches. Counting hosts keeps that detach
+  /// from undoing the attachment that just happened.
+  final _attachCount = <Editor, int>{};
+
+  void _attachToSuperMessage(Editor editor) {
+    final count = _attachCount[editor] ?? 0;
+    if (count == 0) {
+      attach(editor);
+    }
+    _attachCount[editor] = count + 1;
+  }
+
+  void _detachFromSuperMessage(Editor editor) {
+    final count = _attachCount[editor]! - 1;
+    if (count == 0) {
+      _attachCount.remove(editor);
+      detach(editor);
+    } else {
+      _attachCount[editor] = count;
+    }
+  }
+
+  /// Adds desired behaviors to the given [editor].
+  void attach(Editor editor) {}
+
+  /// Removes behaviors from the given [editor], which were added in [attach].
+  void detach(Editor editor) {}
+
+  /// Hook, which is invoked when the attached [SuperMessage] gains or loses
+  /// focus.
+  ///
+  /// This hook might be called at times when no change in focus actually took
+  /// place. It's the job of implementers to handle repeat invocations without
+  /// focus changes.
+  void onFocusChange(FocusNode messageFocusNode) {}
+
+  /// Additional [DocumentKeyboardAction]s, which run before the message's own
+  /// keyboard actions.
+  List<DocumentKeyboardAction> get keyboardActions => const [];
+
+  /// Additional [ComponentBuilder]s, which take priority over the message's
+  /// own component builders.
+  List<ComponentBuilder> get componentBuilders => const [];
+
+  /// Additional document underlays, which are placed beneath the message's own
+  /// underlays.
+  List<SuperMessageDocumentLayerBuilder> get documentUnderlayBuilders => const [];
+
+  /// Additional document overlays, which are placed beneath the message's own
+  /// overlays.
+  List<SuperMessageDocumentLayerBuilder> get documentOverlayBuilders => const [];
+
+  /// Optional handlers that respond to taps on content, e.g., opening a link
+  /// when the user taps on text with a link attribution.
+  ///
+  /// These handlers run after the message's own tap handlers. If a handler
+  /// returns [TapHandlingInstruction.halt], no subsequent handlers nor the
+  /// default tap behavior will be executed.
+  List<ContentTapDelegate> get contentTapHandlers => const [];
+
+  /// Custom style phases that are added to the very end of the message's
+  /// style phases.
+  List<SingleColumnLayoutStylePhase> get appendedStylePhases => const [];
 }
 
 /// Creates an [Editor], which is nominally configured for a typical AI message,

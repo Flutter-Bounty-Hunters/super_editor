@@ -709,6 +709,79 @@ void main() {
       variant: _layoutVariant,
     );
 
+    testWidgets(
+      "disposes layers that are removed",
+      (tester) async {
+        final disposedLayers = <String>[];
+
+        Future<void> pumpLayers(List<String> layerIds) async {
+          await _pumpScaffold(
+            tester,
+            _layoutVariant.currentValue!,
+            child: _buildContentLayers(
+              _layoutVariant.currentValue!,
+              underlays: [
+                for (final id in layerIds) //
+                  (context) => _DisposeTrackingLayer(id: "underlay-$id", onDispose: disposedLayers.add),
+              ],
+              overlays: [
+                for (final id in layerIds) //
+                  (context) => _DisposeTrackingLayer(id: "overlay-$id", onDispose: disposedLayers.add),
+              ],
+            ),
+          );
+        }
+
+        await pumpLayers(["1", "2"]);
+        expect(disposedLayers, isEmpty);
+
+        // Remove the last underlay and overlay.
+        await pumpLayers(["1"]);
+
+        expect(disposedLayers, unorderedEquals(["underlay-2", "overlay-2"]));
+      },
+      variant: _layoutVariant,
+    );
+
+    testWidgets(
+      "releases inherited widget dependencies of layers that are removed",
+      (tester) async {
+        Future<void> pumpLayers({required Key inheritedKey, required bool withLayers}) async {
+          await _pumpScaffold(
+            tester,
+            _layoutVariant.currentValue!,
+            child: _TestInheritedWidget(
+              key: inheritedKey,
+              child: _buildContentLayers(
+                _layoutVariant.currentValue!,
+                underlays: [
+                  if (withLayers) //
+                    (context) => const ContentLayerProxyWidget(child: _InheritedDependentWidget()),
+                ],
+                overlays: [
+                  if (withLayers) //
+                    (context) => const ContentLayerProxyWidget(child: _InheritedDependentWidget()),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final inheritedKey = GlobalKey();
+        await pumpLayers(inheritedKey: inheritedKey, withLayers: true);
+
+        // Remove the layers, which should drop their dependency on the inherited widget.
+        await pumpLayers(inheritedKey: inheritedKey, withLayers: false);
+
+        // Replace the inherited widget. If a removed layer is still registered as one
+        // of its dependents, Flutter fails an assertion when deactivating it.
+        await pumpLayers(inheritedKey: GlobalKey(), withLayers: false);
+
+        expect(tester.takeException(), isNull);
+      },
+      variant: _layoutVariant,
+    );
+
     testWidgets("SuperEditor ContentLayers full rebuild", (tester) async {
       // This test recreates a nuanced timing scenario where rebuilding
       // all of SuperEditor, while also rebuilding its selection layer,
@@ -782,6 +855,28 @@ Future<void> _pumpScaffold(
       ),
     ),
   );
+}
+
+/// Builds [BoxContentLayers] or [SliverContentLayers], depending on [layoutMode],
+/// with content that fills the window.
+Widget _buildContentLayers(
+  _LayoutMode layoutMode, {
+  List<ContentLayerWidgetBuilder> underlays = const [],
+  List<ContentLayerWidgetBuilder> overlays = const [],
+}) {
+  return layoutMode == _LayoutMode.slivers
+      ? SliverContentLayers(
+          content: (_) => SliverToBoxAdapter(
+            child: SizedBox.fromSize(size: _windowSize),
+          ),
+          underlays: underlays,
+          overlays: overlays,
+        )
+      : BoxContentLayers(
+          content: (_) => SizedBox.fromSize(size: _windowSize),
+          underlays: underlays,
+          overlays: overlays,
+        );
 }
 
 final _layoutVariant = ValueVariant(_LayoutMode.values.toSet());
@@ -1109,5 +1204,54 @@ class _RenderSliverLayoutTrackingWidget extends RenderProxySliver {
   void performLayout() {
     _onLayout();
     super.performLayout();
+  }
+}
+
+/// A content layer that reports its [id] to [onDispose] when its state is disposed.
+class _DisposeTrackingLayer extends ContentLayerStatefulWidget {
+  const _DisposeTrackingLayer({
+    required this.id,
+    required this.onDispose,
+  });
+
+  final String id;
+  final void Function(String id) onDispose;
+
+  @override
+  ContentLayerState<ContentLayerStatefulWidget, Object> createState() => _DisposeTrackingLayerState();
+}
+
+class _DisposeTrackingLayerState extends ContentLayerState<_DisposeTrackingLayer, Object> {
+  @override
+  void dispose() {
+    widget.onDispose(widget.id);
+    super.dispose();
+  }
+
+  @override
+  Object? computeLayoutData(Element? contentElement, RenderObject? contentLayout) => null;
+
+  @override
+  Widget doBuild(BuildContext context, Object? layoutData) => const SizedBox();
+}
+
+class _TestInheritedWidget extends InheritedWidget {
+  const _TestInheritedWidget({
+    super.key,
+    required super.child,
+  });
+
+  @override
+  bool updateShouldNotify(_TestInheritedWidget oldWidget) => false;
+}
+
+/// A widget that depends on the nearest [_TestInheritedWidget].
+class _InheritedDependentWidget extends StatelessWidget {
+  const _InheritedDependentWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    context.dependOnInheritedWidgetOfExactType<_TestInheritedWidget>();
+    return const SizedBox();
   }
 }
