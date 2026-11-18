@@ -61,6 +61,21 @@ void main() {
       expect(plugin.detachCallCount, 1);
     });
 
+    testWidgetsOnAllPlatforms('are told about a new focus node when the message gets one', (tester) async {
+      final editor = _createEditor();
+      final plugin = _FakePlugin();
+      final focusNode1 = FocusNode();
+      final focusNode2 = FocusNode();
+      addTearDown(focusNode1.dispose);
+      addTearDown(focusNode2.dispose);
+
+      await tester.pumpWidget(_buildMessage(editor, plugins: {plugin}, focusNode: focusNode1));
+      expect(plugin.lastFocusNode, focusNode1);
+
+      await tester.pumpWidget(_buildMessage(editor, plugins: {plugin}, focusNode: focusNode2));
+      expect(plugin.lastFocusNode, focusNode2);
+    });
+
     testWidgetsOnAllPlatforms('build nodes with their component builders', (tester) async {
       final editor = _createEditor();
 
@@ -97,11 +112,17 @@ Editor _createEditor() => createDefaultDocumentEditor(
       composer: MutableDocumentComposer(),
     );
 
-Widget _buildMessage(Editor editor, {Set<SuperMessagePlugin> plugins = const {}, Key? key}) {
+Widget _buildMessage(
+  Editor editor, {
+  Set<SuperMessagePlugin> plugins = const {},
+  FocusNode? focusNode,
+  Key? key,
+}) {
   return MaterialApp(
     home: Scaffold(
       body: SuperMessage(
         key: key,
+        focusNode: focusNode,
         editor: editor,
         plugins: plugins,
       ),
@@ -113,6 +134,12 @@ class _FakePlugin extends SuperMessagePlugin {
   int attachCallCount = 0;
   int detachCallCount = 0;
   Editor? attachedEditor;
+  FocusNode? lastFocusNode;
+
+  @override
+  void onFocusChange(FocusNode messageFocusNode) {
+    lastFocusNode = messageFocusNode;
+  }
 
   @override
   void attach(Editor editor) {

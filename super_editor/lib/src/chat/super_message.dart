@@ -231,6 +231,12 @@ class _SuperMessageState extends State<SuperMessage> {
 
       _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'SuperMessage');
       _focusNode.addListener(_onFocusChange);
+
+      // Plugins that are staying attached need to know about the new focus node.
+      // Plugins that attach below are told about it when they attach.
+      for (final plugin in widget.plugins.intersection(oldWidget.plugins)) {
+        plugin.onFocusChange(_focusNode);
+      }
     }
 
     if (widget.editor != oldWidget.editor) {
