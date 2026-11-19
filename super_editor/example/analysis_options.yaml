@@ -1,3 +1,11 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
 linter:
   rules:
     avoid_print: false
