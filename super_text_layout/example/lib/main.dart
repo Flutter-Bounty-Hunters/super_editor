@@ -1,5 +1,5 @@
 import 'package:example/typing_robot.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 import 'package:super_text_layout/super_text_layout_logging.dart';
 

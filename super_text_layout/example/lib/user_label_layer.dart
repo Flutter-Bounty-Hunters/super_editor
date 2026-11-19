@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:super_text_layout/super_text_layout.dart';
 
 class TextLayoutUserLabel extends StatelessWidget {
