@@ -11,7 +11,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: ^1.6.0
 
   super_text_layout:
     path: ../
