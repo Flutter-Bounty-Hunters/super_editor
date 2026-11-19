@@ -284,6 +284,11 @@ class ContentLayersElement extends RenderObjectElement {
       }
       underlays[i] = child;
     }
+    // Deactivate any underlays that were removed, so they unmount and let go of
+    // their dependencies, e.g., inherited widgets.
+    for (int i = underlays.length; i < _underlays.length; i += 1) {
+      deactivateChild(_underlays[i]);
+    }
     _underlays = underlays;
 
     final List<Element> overlays = List<Element>.filled(widget.overlays.length, _NullElement.instance);
@@ -295,6 +300,11 @@ class ContentLayersElement extends RenderObjectElement {
         child = super.updateChild(_overlays[i], widget.overlays[i](this), OverlaySlot(i))!;
       }
       overlays[i] = child;
+    }
+    // Deactivate any overlays that were removed, so they unmount and let go of
+    // their dependencies, e.g., inherited widgets.
+    for (int i = overlays.length; i < _overlays.length; i += 1) {
+      deactivateChild(_overlays[i]);
     }
     _overlays = overlays;
   }
