@@ -13,6 +13,20 @@ void main() {
     final documentPosition = DocumentPosition(nodeId: "1", nodePosition: TextNodePosition(offset: textPosition.offset));
     final tapPosition = documentPosition;
 
+    testWidgetsOnDesktop('reports a composing rect for Windows IME positioning', (tester) async {
+      await tester.createDocument().withSingleParagraph().pump();
+
+      await tester.placeCaretInParagraph('1', 5);
+      await tester.pump();
+
+      final composingRectCalls = tester.testTextInput.log.where((call) => call.method == 'TextInput.setMarkedTextRect');
+      expect(composingRectCalls, isNotEmpty);
+
+      final composingRect = composingRectCalls.last.arguments as Map<String, dynamic>;
+      expect(composingRect['x'], greaterThan(0));
+      expect(composingRect['y'], greaterThan(0));
+    });
+
     group('text affinity', () {
       // Use a relatively small size to make sure we have a line break.
       const editorSize = Size(400, 400);

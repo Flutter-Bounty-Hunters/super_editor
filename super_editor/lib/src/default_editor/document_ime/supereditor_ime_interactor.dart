@@ -540,7 +540,10 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
 
     final caretRect = _computeCaretRectInViewportSpace();
     if (caretRect != null) {
-      SuperIme.instance.getImeConnectionForOwner(_myImeId)!.setCaretRect(caretRect);
+      final imeConnection = SuperIme.instance.getImeConnectionForOwner(_myImeId)!;
+      imeConnection
+        ..setComposingRect(_computeComposingRectInViewportSpace() ?? caretRect)
+        ..setCaretRect(caretRect);
     }
   }
 
@@ -626,6 +629,26 @@ class SuperEditorImeInteractorState extends State<SuperEditorImeInteractor> impl
     );
 
     return caretOffset & rectInDocLayoutSpace.size;
+  }
+
+  Rect? _computeComposingRectInViewportSpace() {
+    final composingRegion = widget.editContext.composer.composingRegion.value;
+    if (composingRegion == null) {
+      return null;
+    }
+
+    final docLayout = widget.editContext.documentLayout;
+    final rectInDocLayoutSpace = docLayout.getRectForSelection(composingRegion.start, composingRegion.end);
+    if (rectInDocLayoutSpace == null) {
+      return null;
+    }
+
+    final renderSliver = context.findRenderObject() as RenderSliver;
+    final composingOffset = renderSliver.globalToLocal(
+      docLayout.getGlobalOffsetFromDocumentOffset(rectInDocLayoutSpace.topLeft),
+    );
+
+    return rectInDocLayoutSpace.shift(composingOffset - rectInDocLayoutSpace.topLeft);
   }
 
   /// Compute the size and transform of the selected node's visual component
