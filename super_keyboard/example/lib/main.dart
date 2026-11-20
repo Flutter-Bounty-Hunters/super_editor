@@ -21,6 +21,7 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
   bool _closeOnOutsideTap = true;
   bool _isFlutterLoggingEnabled = false;
   bool _isPlatformLoggingEnabled = false;
+  String? _activeKeyboardId;
 
   @override
   void initState() {
@@ -32,6 +33,15 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
   Future<void> initSuperKeyboard() async {
     if (_isFlutterLoggingEnabled) {
       SKLog.startLogging();
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final imeId = await SuperKeyboardAndroid.instance.getActiveKeyboardId();
+      if (mounted) {
+        setState(() {
+          _activeKeyboardId = imeId;
+        });
+      }
     }
   }
 
@@ -115,6 +125,10 @@ class _SuperKeyboardDemoAppState extends State<SuperKeyboardDemoApp> {
                       _buildCloseOnFocusOption(),
                       _buildFlutterLoggingOption(),
                       _buildPlatformLoggingOption(),
+                      if (defaultTargetPlatform == TargetPlatform.android) ...[
+                        const SizedBox(height: 16),
+                        Text("Active keyboard ID: ${_activeKeyboardId ?? "???"}"),
+                      ],
                       ValueListenableBuilder(
                         valueListenable: SuperKeyboard.instance.mobileGeometry,
                         builder: (context, value, child) {
