@@ -21,7 +21,38 @@ extension SuperReaderRobot on WidgetTester {
     await _tapInParagraph(nodeId, offset, 3, superReaderFinder);
   }
 
+  /// Simulates a double tap at the given [offset] within the paragraph with the
+  /// given [nodeId], leaving the pointer down after the second tap, and returns
+  /// the [TestGesture] so that a test can drag it, or release it.
+  Future<TestGesture> doubleTapDownInParagraph(String nodeId, int offset, [Finder? superReaderFinder]) async {
+    final globalTapOffset = _findGlobalOffsetForTextPosition(nodeId, offset, superReaderFinder);
+
+    final gesture = await startGesture(globalTapOffset);
+    await gesture.up();
+    await pump(kTapMinTime + const Duration(milliseconds: 1));
+
+    await gesture.down(globalTapOffset);
+    await pump(kTapMinTime + const Duration(milliseconds: 1));
+    await pump();
+
+    return gesture;
+  }
+
   Future<void> _tapInParagraph(String nodeId, int offset, int tapCount, [Finder? superReaderFinder]) async {
+    final globalTapOffset = _findGlobalOffsetForTextPosition(nodeId, offset, superReaderFinder);
+
+    // Tap the desired number of times in SuperReader at the given position.
+    for (int i = 0; i < tapCount; i += 1) {
+      await tapAt(globalTapOffset);
+      await pump(kTapMinTime + const Duration(milliseconds: 1));
+    }
+
+    await pumpAndSettle();
+  }
+
+  /// Returns the global offset of the text [offset] within the paragraph with
+  /// the given [nodeId].
+  Offset _findGlobalOffsetForTextPosition(String nodeId, int offset, [Finder? superReaderFinder]) {
     late final Finder layoutFinder;
     if (superReaderFinder != null) {
       layoutFinder = find.descendant(of: superReaderFinder, matching: find.byType(SingleColumnDocumentLayout));
@@ -53,18 +84,11 @@ extension SuperReaderRobot on WidgetTester {
     // offset, but the caret height is null when the text is empty. So we use a
     // hard-coded value, instead.
     final localTapOffset = textLayout.getOffsetForCaret(position) + const Offset(0, 5);
-    final globalTapOffset = localTapOffset + textRenderBox.localToGlobal(Offset.zero);
 
     // TODO: check that the tap offset is visible within the viewport. Add option to
     // auto-scroll, or throw exception when it's not tappable.
 
-    // Tap the desired number of times in SuperReader at the given position.
-    for (int i = 0; i < tapCount; i += 1) {
-      await tapAt(globalTapOffset);
-      await pump(kTapMinTime + const Duration(milliseconds: 1));
-    }
-
-    await pumpAndSettle();
+    return localTapOffset + textRenderBox.localToGlobal(Offset.zero);
   }
 
   /// Taps at the center of the content at the given [position] within a [SuperReader].

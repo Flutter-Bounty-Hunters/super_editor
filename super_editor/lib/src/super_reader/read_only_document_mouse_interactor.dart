@@ -86,6 +86,10 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
   Offset? _dragStartGlobal;
   Offset? _dragEndGlobal;
   bool _expandSelectionDuringDrag = false;
+  // When selecting by word, this is the initial word's upstream position.
+  DocumentPosition? _wordSelectionUpstream;
+  // When selecting by word, this is the initial word's downstream position.
+  DocumentPosition? _wordSelectionDownstream;
 
   /// Holds which kind of device started a pan gesture, e.g., a mouse or a trackpad.
   PointerDeviceKind? _panGestureDevice;
@@ -313,6 +317,11 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
       if (wordSelection != null) {
         _setSelection(wordSelection);
         didSelectContent = true;
+
+        // We selected a word - store the word bounds so that we can correctly
+        // select by word when moving upstream or downstream from this word.
+        _wordSelectionUpstream = wordSelection.start;
+        _wordSelectionDownstream = wordSelection.end;
       }
 
       if (!didSelectContent) {
@@ -465,6 +474,8 @@ class _ReadOnlyDocumentMouseInteractorState extends State<ReadOnlyDocumentMouseI
       _dragStartGlobal = null;
       _dragEndGlobal = null;
       _expandSelectionDuringDrag = false;
+      _wordSelectionUpstream = null;
+      _wordSelectionDownstream = null;
     });
 
     widget.autoScroller.disableAutoScrolling();
@@ -493,6 +504,8 @@ Updating drag selection:
       extentOffsetInDocument: dragEndInDoc,
       selectionType: _selectionType,
       expandSelection: _expandSelectionDuringDrag,
+      wordSelectionUpstream: _wordSelectionUpstream,
+      wordSelectionDownstream: _wordSelectionDownstream,
     );
 
     if (widget.showDebugPaint) {
@@ -721,6 +734,13 @@ void moveToNearestSelectableComponent(
 /// Calculates an appropriate [DocumentSelection] from an (x,y)
 /// [baseOffsetInDocument], to an (x,y) [extentOffsetInDocument], setting
 /// the new document selection in the given [selection].
+///
+/// When [selectionType] is [SelectionType.word], [wordSelectionUpstream] and
+/// [wordSelectionDownstream] should hold the bounds of the word that the user
+/// double-tapped to begin the word-by-word selection. Those bounds keep the
+/// initial word fully selected while the user drags in either direction. When
+/// they're `null`, the initial word is inferred from [baseOffsetInDocument],
+/// which only produces the desired selection when dragging downstream.
 void selectRegion({
   required Editor editor,
   required DocumentLayout documentLayout,
@@ -728,6 +748,8 @@ void selectRegion({
   required Offset extentOffsetInDocument,
   required SelectionType selectionType,
   bool expandSelection = false,
+  DocumentPosition? wordSelectionUpstream,
+  DocumentPosition? wordSelectionDownstream,
 }) {
   docGesturesLog.info("Selecting region with selection mode: $selectionType");
   DocumentSelection? regionSelection = documentLayout.getDocumentSelectionInRegion(
@@ -768,15 +790,33 @@ void selectRegion({
         ? extentParagraphSelection.extent
         : extentParagraphSelection.base;
   } else if (selectionType == SelectionType.word) {
-    final baseWordSelection = getWordSelection(
-      docPosition: basePosition,
-      docLayout: documentLayout,
-    );
-    if (baseWordSelection == null) {
-      editor.execute([const ClearSelectionRequest()]);
-      return;
+    DocumentPosition wordSelectionStart;
+    DocumentPosition wordSelectionEnd;
+    if (wordSelectionUpstream != null && wordSelectionDownstream != null) {
+      wordSelectionStart = wordSelectionUpstream;
+      wordSelectionEnd = wordSelectionDownstream;
+    } else {
+      final baseWordSelection = getWordSelection(
+        docPosition: basePosition,
+        docLayout: documentLayout,
+      );
+      if (baseWordSelection == null) {
+        editor.execute([const ClearSelectionRequest()]);
+        return;
+      }
+      wordSelectionStart = baseWordSelection.start;
+      wordSelectionEnd = baseWordSelection.end;
     }
-    basePosition = baseWordSelection.base;
+
+    // Anchor the selection at whichever end of the initial word is opposite the
+    // drag direction, so the initial word always stays fully selected.
+    final dragDirection = editor.document.getAffinityBetween(
+      base: wordSelectionStart,
+      extent: extentPosition,
+    );
+    basePosition = dragDirection == TextAffinity.downstream //
+        ? wordSelectionStart
+        : wordSelectionEnd;
 
     final extentWordSelection = getWordSelection(
       docPosition: extentPosition,
@@ -786,7 +826,9 @@ void selectRegion({
       editor.execute([const ClearSelectionRequest()]);
       return;
     }
-    extentPosition = extentWordSelection.extent;
+    extentPosition = dragDirection == TextAffinity.downstream //
+        ? extentWordSelection.end
+        : extentWordSelection.start;
   }
 
   final selection = editor.composer.selection;
